@@ -1,0 +1,351 @@
+# Copyright (c) 2026 xangma
+# SPDX-License-Identifier: MIT
+
+"""Long-block and entropy regressions, with independent RFC 1951 fixtures."""
+
+import contextlib
+import functools
+import random
+import sys
+import threading
+import time
+import types
+import zlib
+from concurrent.futures import ThreadPoolExecutor
+
+import pytest
+
+import cuda_zlib as codec
+from test_decode import (
+    _assert_bytes, _codes, _compressed, _dynamic_literal_fields, _header,
+    _stored, _wrap, cuda_device,
+)
+
+
+_MIB = 1 << 20
+_FIXED = _codes([8] * 144 + [9] * 112 + [7] * 24 + [8] * 8)
+_DISTANCE = _codes([5] * 32)
+_LENGTH_BASE = (3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23,
+                27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163,
+                195, 227, 258)
+_LENGTH_EXTRA = (0,) * 8 + (1,) * 4 + (2,) * 4 + (3,) * 4 + (4,) * 4 + (5,) * 4 + (0,)
+_DISTANCE_BASE = (1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97,
+                  129, 193, 257, 385, 513, 769, 1025, 1537, 2049,
+                  3073, 4097, 6145, 8193, 12289, 16385, 24577)
+_DISTANCE_EXTRA = (0,) * 4 + tuple(width for width in range(1, 14) for _ in range(2))
+
+
+class _Writer:
+    """Pack bits continuously; block boundaries never receive implicit padding."""
+
+    def __init__(self):
+        self.data = bytearray()
+        self.pending = self.width = self.bits = 0
+
+    def put(self, value, width):
+        assert 0 <= value < (1 << width) if width else value == 0
+        self.pending |= value << self.width
+        self.width += width
+        self.bits += width
+        while self.width >= 8:
+            self.data.append(self.pending & 255)
+            self.pending >>= 8
+            self.width -= 8
+
+    def fields(self, fields):
+        for value, width in fields:
+            self.put(value, width)
+
+    def aligned(self, data):
+        assert not self.width
+        self.data.extend(data)
+        self.bits += len(data) * 8
+
+    def finish(self):
+        return bytes(self.data) + (bytes((self.pending,)) if self.width else b"")
+
+
+def _literals(writer, raw):
+    for value in raw:
+        writer.put(*_FIXED[value])
+
+
+def _match(writer, output, length, distance):
+    assert 3 <= length <= 258 and 1 <= distance <= min(32768, len(output))
+    length_symbol = max(index for index, base in enumerate(_LENGTH_BASE)
+                        if base <= length)
+    distance_symbol = max(index for index, base in enumerate(_DISTANCE_BASE)
+                          if base <= distance)
+    writer.put(*_FIXED[257 + length_symbol])
+    writer.put(length - _LENGTH_BASE[length_symbol], _LENGTH_EXTRA[length_symbol])
+    writer.put(*_DISTANCE[distance_symbol])
+    writer.put(distance - _DISTANCE_BASE[distance_symbol],
+               _DISTANCE_EXTRA[distance_symbol])
+    # The independent oracle repeats the preceding history for overlapping
+    # copies, including distance 1; it does not use the candidate's root model.
+    history = bytes(output[-distance:])
+    output.extend((history * ((length + distance - 1) // distance))[:length])
+
+
+@functools.lru_cache(maxsize=None)
+def _long_fixed(tail="valid"):
+    raw = bytes(range(256)) * (_MIB // 256)
+    writer = _Writer()
+    writer.put(3, 3)  # BFINAL=1, BTYPE=01.
+    _literals(writer, raw)
+    if tail == "reserved-symbol":
+        writer.put(*_FIXED[286])
+    elif tail == "reserved-distance":
+        writer.put(*_FIXED[257])  # Length 3, then reserved distance code 30.
+        writer.put(*_DISTANCE[30])
+    else:
+        assert tail == "valid"
+        writer.put(*_FIXED[256])
+    return _wrap(writer.finish(), raw), raw
+
+
+@functools.lru_cache(maxsize=None)
+def _chained_fixed(kind, alignment=0):
+    writer = _Writer()
+    if kind == "stored":
+        prefix = random.Random(142).randbytes(32768)
+        writer.aligned(_stored(prefix, final=False))
+    else:
+        assert kind == "dynamic"
+        # This literal-only dynamic tree consumes 330 + len(prefix) bits.
+        # Adjust the prefix to place the fixed header at every bit alignment.
+        prefix = b"A" * (32768 + (alignment - 330) % 8)
+        writer.fields(_dynamic_literal_fields(prefix, final=False))
+    assert writer.bits % 8 == alignment
+    output = bytearray(prefix)
+    writer.put(3, 3)
+    _match(writer, output, 258, 32768)  # Cross the preceding block boundary.
+    literals = _long_fixed()[1]
+    _literals(writer, literals)
+    output.extend(literals)
+    _match(writer, output, 258, 1)
+    _match(writer, output, 258, 32768)
+    writer.put(*_FIXED[256])
+    raw = bytes(output)
+    return _wrap(writer.finish(), raw), raw
+
+
+@functools.lru_cache(maxsize=1)
+def _window_matches():
+    # A match starts one byte before 32 KiB, then successive 258-byte copies
+    # cross many output partitions, using overlap and maximum-window history.
+    seed = random.Random(897).randbytes(32767)
+    writer, output = _Writer(), bytearray(seed)
+    writer.put(3, 3)
+    _literals(writer, seed)
+    distances = (1, 2, 3, 257, 258, 32767, 32768)
+    for index in range(1024):
+        _match(writer, output, 258, distances[index % len(distances)])
+    writer.put(*_FIXED[256])
+    raw = bytes(output)
+    return _wrap(writer.finish(), raw), raw
+
+
+@contextlib.contextmanager
+def _no_cpu_codec(monkeypatch):
+    def forbidden(*args, **kwargs):
+        pytest.fail("candidate call used a CPU zlib codec")
+
+    with monkeypatch.context() as patch:
+        for name in ("compress", "compressobj", "decompress", "decompressobj"):
+            patch.setattr(zlib, name, forbidden)
+        yield
+
+
+def _inflate_exact(payload):
+    decoder = zlib.decompressobj()
+    raw = decoder.decompress(payload) + decoder.flush()
+    assert decoder.eof and not decoder.unused_data and not decoder.unconsumed_tail
+    return raw
+
+
+def test_long_fixed_fixture_oracles():
+    payload, raw = _long_fixed()
+    assert (payload[2] >> 1) & 3 == 1
+    assert len(raw) == _MIB and _inflate_exact(payload) == raw
+    # Invalid tokens occur after the entire long literal run, not at admission.
+    for tail in ("reserved-symbol", "reserved-distance"):
+        with pytest.raises(zlib.error):
+            _inflate_exact(_long_fixed(tail)[0])
+    payload, raw = _window_matches()
+    assert _inflate_exact(payload) == raw
+
+
+def test_bit_aligned_chain_fixture_oracles():
+    for kind, alignment in [("stored", 0)] + [("dynamic", n) for n in range(8)]:
+        payload, raw = _chained_fixed(kind, alignment)
+        assert _inflate_exact(payload) == raw
+
+
+@pytest.mark.parametrize("size", [_MIB, 4 * _MIB], ids=["1MiB", "4MiB"])
+@pytest.mark.parametrize("kind", ["stored", "fixed", "dynamic"])
+def test_external_large_blocks(cuda_device, monkeypatch, size, kind):
+    if kind == "stored":
+        raw = random.Random(109).randbytes(size)
+        payload, block_type = _compressed(raw, level=0), 0
+    elif kind == "fixed":
+        raw = (bytes(range(256)) * ((size + 255) // 256))[:size]
+        payload = _compressed(raw, strategy=zlib.Z_FIXED)
+        block_type = 1
+    else:
+        raw = bytes(value | 128 for value in random.Random(19).randbytes(size))
+        payload = _compressed(raw, strategy=zlib.Z_HUFFMAN_ONLY)
+        block_type = 2
+    assert (payload[2] >> 1) & 3 == block_type
+    assert _inflate_exact(payload) == raw
+    with _no_cpu_codec(monkeypatch):
+        result = codec.decompress_zlib(payload, size, cuda_device)
+    _assert_bytes(result, raw, cuda_device)
+
+
+def test_true_single_long_fixed_literal_block(cuda_device, monkeypatch):
+    payload, raw = _long_fixed()
+    with _no_cpu_codec(monkeypatch):
+        result = codec.decompress_zlib(payload, len(raw), cuda_device)
+    _assert_bytes(result, raw, cuda_device)
+
+
+@pytest.mark.parametrize("kind,alignment", [("stored", 0)] +
+                         [("dynamic", n) for n in range(8)])
+def test_long_fixed_after_stored_or_dynamic(cuda_device, monkeypatch, kind, alignment):
+    payload, raw = _chained_fixed(kind, alignment)
+    with _no_cpu_codec(monkeypatch):
+        result = codec.decompress_zlib(payload, len(raw), cuda_device)
+    _assert_bytes(result, raw, cuda_device)
+
+
+def test_fixed_overlap_and_full_window_across_output_partitions(cuda_device, monkeypatch):
+    payload, raw = _window_matches()
+    with _no_cpu_codec(monkeypatch):
+        result = codec.decompress_zlib(payload, len(raw), cuda_device)
+    _assert_bytes(result, raw, cuda_device)
+
+
+@pytest.mark.parametrize("change", [
+    "too-small", "too-large", "adler", "truncated-body", "missing-eob",
+    "reserved-symbol", "reserved-distance", "extra-deflate-byte",
+])
+def test_long_fixed_failure_then_fresh_recovery(cuda_device, monkeypatch, change):
+    valid, raw = _long_fixed()
+    payload, expected = valid, len(raw)
+    if change == "too-small":
+        expected -= 1
+    elif change == "too-large":
+        expected += 1
+    elif change == "adler":
+        payload = payload[:-1] + bytes((payload[-1] ^ 1,))
+    elif change == "truncated-body":
+        payload = payload[:-11] + payload[-4:]
+    elif change == "missing-eob":
+        # The last body byte contains the final two EOB bits.
+        payload = payload[:-5] + payload[-4:]
+    elif change in ("reserved-symbol", "reserved-distance"):
+        payload = _long_fixed(change)[0]
+    else:
+        payload = payload[:-4] + b"\x00" + payload[-4:]
+    with _no_cpu_codec(monkeypatch):
+        with pytest.raises(codec.CodecError):
+            codec.decompress_zlib(payload, expected, cuda_device)
+        recovered = codec.decompress_zlib(valid, len(raw), cuda_device)
+    _assert_bytes(recovered, raw, cuda_device)
+
+
+def test_long_fixed_declared_window_failure_and_recovery(cuda_device, monkeypatch):
+    valid, raw = _window_matches()
+    # CINFO=6 advertises 16 KiB, smaller than this stream's 32 KiB distances.
+    small_window = _header(cmf=0x68) + valid[2:]
+    with _no_cpu_codec(monkeypatch):
+        with pytest.raises(codec.CodecError):
+            codec.decompress_zlib(small_window, len(raw), cuda_device)
+        recovered = codec.decompress_zlib(valid, len(raw), cuda_device)
+    _assert_bytes(recovered, raw, cuda_device)
+
+
+@functools.lru_cache(maxsize=None)
+def _encoder_input(kind):
+    rng = random.Random(589)
+    if kind == "high-literals":
+        # Uniform over high 128 symbols: about 7 bits of literal entropy,
+        # few repeated triples, and mostly 9-bit fixed Huffman codes.
+        return bytes(value | 128 for value in rng.randbytes(_MIB + 257))
+    if kind == "skewed":
+        symbols = list(range(144, 256))
+        weights = [8192, 4096, 2048, 1024, 512, 256, 128, 64] + [1] * 104
+        return bytes(rng.choices(symbols, weights=weights, k=512 * 1024 + 137))
+    if kind == "rare-symbols":
+        # Include singleton symbols beside long overlap runs and chunk seams.
+        return b"\xff" * 65534 + bytes(range(256)) + b"\xfe" * 196609
+    assert kind == "collision-prefixes"
+    # Many equal three-byte prefixes with unrelated suffixes stress replacing
+    # match candidates without assuming a particular hash implementation.
+    return b"".join(b"ABC" + rng.randbytes(29) for _ in range(16384)) + b"ABCend"
+
+
+def test_entropy_fixture_has_dynamic_compression_headroom():
+    raw = _encoder_input("high-literals")
+    payload = _compressed(raw, strategy=zlib.Z_HUFFMAN_ONLY)
+    assert (payload[2] >> 1) & 3 == 2
+    assert len(payload) < len(raw) * 0.95
+    assert _inflate_exact(payload) == raw
+
+
+@pytest.mark.parametrize("chunk", [32768, 65535])
+@pytest.mark.parametrize("kind", ["high-literals", "skewed", "rare-symbols",
+                                  "collision-prefixes"])
+def test_encoder_entropy_skew_and_colliding_prefixes(cuda_device, monkeypatch, kind, chunk):
+    raw = _encoder_input(kind)
+    with _no_cpu_codec(monkeypatch):
+        encoded = codec.compress_zlib(raw, cuda_device, chunk_bytes=chunk)
+        decoded = codec.decompress_zlib(encoded, len(raw), cuda_device)
+        if kind == "high-literals":
+            repeated = codec.compress_zlib(raw, cuda_device, chunk_bytes=chunk)
+    payload = encoded.get().tobytes()
+    assert _inflate_exact(payload) == raw
+    _assert_bytes(decoded, raw, cuda_device)
+    if kind == "high-literals":
+        assert repeated.get().tobytes() == payload
+        assert (payload[2] >> 1) & 3 == 2, "biased literals need dynamic Huffman coding"
+        assert len(payload) < len(raw) * 0.95
+
+
+def test_resource_cache_singleton_under_concurrent_misses_and_many_ordinals(monkeypatch):
+    """CPU fake checks synchronization without initializing a CUDA context."""
+    from cuda_zlib import _codec
+
+    class Pool:
+        def __init__(self):
+            # Widen the race: lru_cache alone does not serialize cache misses.
+            time.sleep(0.01)
+
+        def set_limit(self, **kwargs):
+            pass
+
+    fake = types.SimpleNamespace(cuda=types.SimpleNamespace(
+        Device=lambda ordinal: contextlib.nullcontext(), MemoryPool=Pool,
+        Stream=lambda **kwargs: object(),
+    ))
+    barrier = threading.Barrier(8)
+
+    def concurrent_miss(_):
+        barrier.wait(timeout=5)
+        return _codec._resources(0)
+
+    monkeypatch.setitem(sys.modules, "cupy", fake)
+    _codec._resources_cached.cache_clear()
+    try:
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            results = list(executor.map(concurrent_miss, range(8)))
+        first = results[0]
+        assert all(result is first for result in results)
+        other = [_codec._resources(ordinal) for ordinal in range(1, 17)]
+        assert len({id(result) for result in [first] + other}) == 17
+        assert _codec._resources(0) is first
+        for ordinal, resource in enumerate(other, 1):
+            assert _codec._resources(ordinal) is resource
+    finally:
+        _codec._resources_cached.cache_clear()

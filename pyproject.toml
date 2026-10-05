@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cuda-zlib"
+version = "0.1.0a1"
+description = "Experimental bounded RFC 1950 byte codec on CUDA"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = ["numpy>=1.24"]
+
+[project.urls]
+Homepage = "https://github.com/xangma/cuda-zlib"
+Source = "https://github.com/xangma/cuda-zlib"
+Issues = "https://github.com/xangma/cuda-zlib/issues"
+
+[project.optional-dependencies]
+cuda12 = ["cupy-cuda12x>=13.3,<14"]
+jax = ["jax>=0.11.2"]
+test = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
