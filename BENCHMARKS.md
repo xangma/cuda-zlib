@@ -4,8 +4,8 @@ These results compare cuda-zlib on an **RTX 3090** with **single-threaded stdlib
 zlib on the same AMD Threadripper PRO 3995WX CPU**, using five synthetic workloads
 at 64 KiB, 1 MiB and 64 MiB.
 
-For warm **64 MiB** inputs, CUDA compression achieved **3.40–12.14×** CPU zlib
-level-1 throughput. CUDA decompression achieved **0.89–3.65×** CPU throughput
+For warm **64 MiB** inputs, CUDA compression achieved **3.89–12.57×** CPU zlib
+level-1 throughput. CUDA decompression achieved **0.98–4.16×** CPU throughput
 on identical stdlib level-6 streams; CUDA was faster for zeros, generated text,
 integer counters and Gaussian float32, and CPU was faster for random bytes.
 **Both comparisons include uploads, downloads, codec validation and conversion
@@ -45,11 +45,11 @@ without another copy.
 
 | Workload | Compression vs CPU level 1 | Compression vs CPU level 6 | Decompression vs CPU, identical level-6 stream |
 | --- | ---: | ---: | ---: |
-| Zero bytes | 3.40× | 7.85× | 3.24× |
-| Generated text | 3.55× | 11.35× | 1.74× |
-| Integer counters | 5.90× | 43.37× | 3.16× |
-| Gaussian float32 | 12.14× | 13.50× | 3.65× |
-| Uniform random bytes | 9.89× | 9.94× | 0.89× |
+| Zero bytes | 4.14× | 9.60× | 3.70× |
+| Generated text | 3.89× | 12.41× | 2.03× |
+| Integer counters | 7.08× | 46.47× | 3.67× |
+| Gaussian float32 | 12.57× | 13.97× | 4.16× |
+| Uniform random bytes | 10.32× | 10.34× | 0.98× |
 
 ### Smaller inputs
 
@@ -58,11 +58,11 @@ decompression, with the same host-to-host CUDA timing scope as above.
 
 | Workload | 64 KiB compression | 1 MiB compression | 64 KiB decompression | 1 MiB decompression |
 | --- | ---: | ---: | ---: | ---: |
-| Zero bytes | 0.03× | 0.66× | 0.12× | 0.38× |
-| Generated text | 0.04× | 0.73× | 0.02× | 0.07× |
-| Integer counters | 0.09× | 1.54× | 0.02× | 0.33× |
-| Gaussian float32 | 0.24× | 4.04× | 0.05× | 0.79× |
-| Uniform random bytes | 0.24× | 4.02× | 0.02× | 0.26× |
+| Zero bytes | 0.03× | 0.71× | 0.14× | 0.39× |
+| Generated text | 0.04× | 0.75× | 0.02× | 0.07× |
+| Integer counters | 0.10× | 1.58× | 0.02× | 0.34× |
+| Gaussian float32 | 0.25× | 4.15× | 0.06× | 0.83× |
+| Uniform random bytes | 0.25× | 4.14× | 0.03× | 0.30× |
 
 Only these three sizes were measured; they do not identify an exact crossover
 size. Launch and transfer costs make small inputs less favorable to CUDA.
@@ -90,7 +90,7 @@ GPU), with an AMD Ryzen Threadripper PRO 3995WX CPU, Linux x86_64, Python
 3.13.3, NumPy 2.2.5, JAX and JAXlib 0.11.2, the JAX typed CUDA FFI backend,
 CUDA 12.6, NVIDIA driver 610.57.04 and stdlib zlib 1.3.1. The native library
 was built with `nvcc` 12.6.85 for `sm_86`. The installed wheel's source snapshot is
-[94a863c](https://github.com/xangma/cuda-zlib/tree/94a863c29be9518da856474d64fc026f232058d7);
+[b6d9b14](https://github.com/xangma/cuda-zlib/tree/b6d9b143b870ead85d5ce0c118ac8efeaec2db35);
 its nine codec source SHA-256 hashes, native build flags and FFI header hashes
 are recorded in the raw results.
 All 15 workload/size cases passed byte-exact validation, including stdlib
@@ -102,9 +102,17 @@ below come from the same run and host. These are single-run measurements on a
 shared workstation; recorded utilization snapshots do not establish isolation.
 
 With a fresh native library cache, imports and CUDA initialization took
-1.714 s, and `compile_kernels` took 33.293 s for the native build and FFI
+1.196 s, and `compile_kernels` took 33.701 s for the native build and FFI
 registration. These startup costs and each workflow's initial XLA compilation
 are excluded from the warmed tables.
+
+The codec used a **1 GiB release threshold** for its private workspace pool.
+After the run, one pool retained **544 MiB** of reserved pages with **0 bytes**
+of live scratch. Retaining freed pages allows allocation reuse between calls
+at the cost of keeping GPU memory reserved. These warm throughput measurements
+use that retention policy; changing the threshold or trimming unused pages can
+change subsequent allocation costs. This pool accounting excludes JAX input,
+output and pinned-host buffers.
 
 ### Plots
 
@@ -146,7 +154,7 @@ To regenerate the figures from a current checkout:
 
 ```sh
 python -m pip install matplotlib
-python benchmarks/plot_results.py
+python benchmarks/plot_results.py --input benchmarks/results/rtx3090-ffi-20261006-2.json
 ```
 
 The script reads the existing JSON without running CUDA benchmarks. PNG, SVG
@@ -175,11 +183,11 @@ workspace allocations remain included in both workflows.
 
 | Workload | CUDA resident | CUDA host-to-host | CPU level 1 | CPU level 6 |
 | --- | ---: | ---: | ---: | ---: |
-| Zero bytes | 1405.6 | 1236.9 | 364.0 | 157.6 |
-| Generated text | 675.4 | 608.5 | 171.4 | 53.6 |
-| Integer counters | 402.2 | 296.5 | 50.3 | 6.8 |
-| Gaussian float32 | 359.1 | 210.8 | 17.4 | 15.6 |
-| Uniform random bytes | 543.3 | 252.9 | 25.6 | 25.5 |
+| Zero bytes | 1783.0 | 1510.6 | 364.5 | 157.4 |
+| Generated text | 751.3 | 665.8 | 171.0 | 53.6 |
+| Integer counters | 425.8 | 311.9 | 44.1 | 6.7 |
+| Gaussian float32 | 379.7 | 217.6 | 17.3 | 15.6 |
+| Uniform random bytes | 593.8 | 264.1 | 25.6 | 25.5 |
 
 ### 64 MiB decompression throughput
 
@@ -191,17 +199,17 @@ completed pinned host storage, without the final copy to Python `bytes`.
 
 | Workload | CUDA resident, codec stream | CPU, codec stream | CUDA resident, level-6 stream | CUDA host array, level-6 stream | CUDA host bytes, level-6 stream | CPU, level-6 stream |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Zero bytes | 3551.7 | 178.3 | 1464.8 | 1358.1 | 585.4 | 180.6 |
-| Generated text | 2145.7 | 241.3 | 1114.3 | 1039.0 | 513.7 | 294.7 |
-| Integer counters | 1281.1 | 168.4 | 1237.7 | 1107.3 | 534.7 | 169.1 |
-| Gaussian float32 | 909.2 | 122.9 | 859.4 | 759.5 | 438.0 | 119.9 |
-| Uniform random bytes | 1755.0 | 653.7 | 1654.1 | 1332.8 | 583.3 | 652.7 |
+| Zero bytes | 6782.4 | 178.6 | 2256.9 | 1996.2 | 667.8 | 180.6 |
+| Generated text | 2858.9 | 242.2 | 1495.3 | 1365.9 | 599.6 | 295.6 |
+| Integer counters | 1512.5 | 168.3 | 1729.7 | 1507.0 | 619.8 | 169.1 |
+| Gaussian float32 | 1010.4 | 122.7 | 1065.0 | 934.2 | 498.6 | 119.8 |
+| Uniform random bytes | 2264.2 | 654.0 | 2071.0 | 1597.3 | 642.0 | 655.7 |
 
-For example, resident zero-byte decoding reaches 3551.7 MiB/s for this codec's
-stream and 1464.8 MiB/s for the level-6 stream. This difference is a property of
+For example, resident zero-byte decoding reaches 6782.4 MiB/s for this codec's
+stream and 2256.9 MiB/s for the level-6 stream. This difference is a property of
 the stream layout and decoder paths, not a general speedup over the CPU.
 
-[Raw RTX 3090 and same-host CPU results](benchmarks/results/rtx3090-ffi-20261006.json)
+[Raw RTX 3090 and same-host CPU results](benchmarks/results/rtx3090-ffi-20261006-2.json)
 include all three input sizes, every sample, min/max timings, host-to-device
 compression, encoded sizes, payload hashes, startup measurements and environment
 metadata. Separate [Apple M4 Max CPU measurements](benchmarks/CPU_BASELINES.md)
@@ -213,8 +221,9 @@ From this repository checkout, install the measured codec source snapshot and
 run the harness:
 
 ```sh
-python -m pip install "cuda-zlib[cuda12] @ git+https://github.com/xangma/cuda-zlib.git@94a863c29be9518da856474d64fc026f232058d7" matplotlib
-CUDACXX=/usr/local/cuda-12.6/bin/nvcc CUDA_ZLIB_CACHE_DIR="$(mktemp -d)" python benchmarks/benchmark.py \
+python -m pip install "cuda-zlib[cuda12] @ git+https://github.com/xangma/cuda-zlib.git@b6d9b143b870ead85d5ce0c118ac8efeaec2db35" matplotlib
+CUDACXX=/usr/local/cuda-12.6/bin/nvcc CUDA_ZLIB_WORKSPACE_RETENTION_BYTES=1073741824 \
+  CUDA_ZLIB_CACHE_DIR="$(mktemp -d)" python benchmarks/benchmark.py \
   --sizes 65536 1048576 67108864 --samples 15 --cpu-samples 5 \
   --seed 20261006 --device 0 --output results-cuda.json
 python benchmarks/plot_results.py --input results-cuda.json
@@ -281,3 +290,25 @@ streams can exercise different decoding paths from random bytes. Compare both
 encoded size and end-to-end throughput for the intended workload; synthetic
 results and the alpha codec's documented bounds are not a universal performance
 or compatibility guarantee.
+
+## Profiling
+
+Capture warmed CUDA calls with Nsight Systems:
+
+```sh
+CUDACXX=/usr/local/cuda-12.6/bin/nvcc python benchmarks/trace.py \
+  --nsys /path/to/nsys --output traces/codec --cuda-profiler-range -- \
+  python benchmarks/profile.py --sizes 1048576 --workloads zeros random \
+  --samples 3 --cuda-profiler-range --output traces/wall.json
+```
+
+The command was validated with Nsight Systems 2026.5.1. Each profiler API range
+captures an extra completed codec call after warmup; startup and oracle checks
+are outside those ranges. The workload checks byte-exact outputs and forbids
+CPU codec calls during CUDA operations. Profiler overhead can affect timings;
+use the benchmark harness for throughput comparisons.
+
+`trace.py` writes the Nsight report, SQLite export, log and a `.trace.json`
+manifest containing the CLI version and record counts. It requires successful
+execution, imported GPU kernels and CUDA API records, and rejects known import
+errors even when Nsight returns zero. Choose a fresh output prefix for each run.
