@@ -4,6 +4,7 @@
 """Independent stdlib oracle, device round trips, ownership and bounds."""
 import builtins
 import gc
+import hashlib
 import random
 import zlib
 from concurrent.futures import ThreadPoolExecutor
@@ -46,6 +47,60 @@ def test_chunk_alignment_and_stored_fallback(cuda_device, chunk):
     result = codec.compress_zlib(raw, cuda_device, chunk_bytes=chunk)
     assert zlib.decompress(result.get().tobytes()) == raw
     assert codec.decompress_zlib(result, len(raw), cuda_device).get().tobytes() == raw
+
+
+@pytest.mark.parametrize("kind,encoded_size,encoded_sha256", [
+    ("empty", 8, "09d469dfeeaf4c436fd3f80ba7e168bcc34e5050993b5da3c8416fbae680f18f"),
+    ("one", 9, "8697003ea5c8f20f906cf3e1c5a02071cd8030421091c335812e8c3555cd673c"),
+    ("repeat", 53, "0e90a17da0061571bacea268276bda67e1722967a274d4296164095ae2118402"),
+    ("ramp", 454, "489850606f508ad255fe309bebdb2b87a7890de28bc345d169c8922129d8f9be"),
+    ("mixed", 32826, "8c948d5c7640be206ec1dd70a6fcecff616616d1fa7e5638d3ede9fc22d688e0"),
+])
+def test_encoder_matches_original_streams(cuda_device, kind, encoded_size, encoded_sha256):
+    # Frozen device-produced streams from the original deterministic matcher.
+    if kind == "mixed":
+        raw = np.random.default_rng(1729).integers(
+            0, 256, 32768, dtype=np.uint8).tobytes() + b"a" * 32768
+    else:
+        raw = {"empty": b"", "one": b"a", "repeat": b"a" * 32768,
+               "ramp": bytes(range(256)) * 128}[kind]
+    encoded = codec.compress_zlib(raw, cuda_device).get().tobytes()
+    assert len(encoded) == encoded_size
+    assert hashlib.sha256(encoded).hexdigest() == encoded_sha256
+    assert zlib.decompress(encoded) == raw
+
+
+@pytest.mark.parametrize("size", [0, 1, 256, 32768, 65535])
+def test_token_workspace_bounds(cuda_device, size):
+    import cupy as cp
+    from cuda_zlib import _codec
+    # A de Bruijn sequence of order two has no repeated byte pairs, hence no
+    # three-byte matches. It exercises the maximum of one token per byte.
+    sequence = b"".join(bytes((i,)) + b"".join(bytes((i, j))
+                       for j in range(i + 1, 256)) for i in range(256))
+    raw = sequence[:size]
+    chunk = max(256, size)
+    slot_bytes = (chunk * 9 + 7) // 8 + 16
+    guard = np.uint32(0xDEADBEEF)
+    with _codec._workspace(cuda_device):
+        source = cp.asarray(np.frombuffer(raw, dtype=np.uint8))
+        token_storage = cp.full(max(1, size) + 2, guard, dtype=cp.uint32)
+        scratch = cp.empty(slot_bytes, dtype=cp.uint8)
+        sizes = cp.empty(1, dtype=cp.uint32)
+        status = cp.empty(1, dtype=cp.uint32)
+        kernel = _codec._encoder_module(cuda_device)
+        kernel["encode_chunks"]((1,), (256,),
+            (source, np.uint32(size), np.uint32(chunk), np.uint32(1),
+             np.uint32(slot_bytes), scratch, sizes, status, token_storage[1:-1]))
+        cached = token_storage.get()
+        assert not int(status.get()[0])
+        assert int(sizes.get()[0]) <= size + 5
+    assert cached[0] == cached[-1] == guard
+    if size:
+        np.testing.assert_array_equal(cached[1:-1],
+                                      np.frombuffer(raw, dtype=np.uint8))
+    else:
+        assert cached[1] == guard
 
 
 def test_device_input_lifetime_and_caller_stream(cuda_device):

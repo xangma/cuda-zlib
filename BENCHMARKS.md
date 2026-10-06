@@ -150,6 +150,89 @@ sizes, every sample, min/max timings, host-to-device compression, encoded sizes,
 startup measurements and environment metadata. No cross-machine speedup is inferred
 from the Apple measurements below.
 
+## Codec optimisation comparison
+
+The following comparison measures the token-cache and decoder changes against
+[commit 2829e23](https://github.com/xangma/cuda-zlib/tree/2829e23542ebb0b5b2ff206c9e208214a7ca7cda),
+using the same RTX 3090 environment described above. The preceding release tables
+remain historical measurements of the original `0.1.0a1` wheel.
+
+The encoder now saves the greedy matcher's tokens for emission instead of
+matching twice. A conservative dynamic-code cost bound avoids unnecessary
+distance/header trees when dynamic coding cannot improve stored/fixed size.
+The decoder avoids reference refinement when emission already resolved every
+match, and combines output gathering with Adler32 partials. Validation remains
+enabled. All 15 encoded outputs are bit-identical to the baseline; encoded size
+and compression ratios are unchanged.
+
+![Before and after codec optimisation](benchmarks/figures/optimisation-throughput.png)
+
+[SVG](benchmarks/figures/optimisation-throughput.svg) ·
+[PDF](benchmarks/figures/optimisation-throughput.pdf) ·
+[Comparison manifest](benchmarks/figures/optimisation-manifest.json)
+
+These are warm, synchronized resident API timings, including allocations, with
+one warmup and five samples per operation. Uploads, downloads, generation,
+validation and compilation are excluded. Decoding uses identical frozen baseline
+streams and identical stdlib level-6 streams in each run. The CPU codec is
+forbidden inside measured CUDA calls. Error bars show sample extrema, not
+confidence intervals. The separate CUDA-event profile records one diagnostic
+call per case and named codec kernels; it does not cover every CuPy operation or
+represent complete API latency.
+
+At 64 MiB, cells show before → after MiB/s and median wall-time speedup:
+
+| Workload | Compression | Frozen baseline decoding | Stdlib level-6 decoding |
+| --- | ---: | ---: | ---: |
+| Zero bytes | 873.5 → 1681.8 (1.93×) | 5999.5 → 6604.4 (1.10×) | 508.4 → 515.0 (1.01×) |
+| Generated text | 406.0 → 730.6 (1.80×) | 2908.5 → 3062.0 (1.05×) | 892.1 → 903.3 (1.01×) |
+| Integer counters | 284.6 → 422.9 (1.49×) | 1448.1 → 1389.8 (0.96×) | 1739.3 → 1739.2 (1.00×) |
+| Gaussian float32 | 277.6 → 378.4 (1.36×) | 1013.3 → 964.5 (0.95×) | 1085.4 → 1079.3 (0.99×) |
+| Uniform random bytes | 586.8 → 579.6 (0.99×) | 2238.1 → 2293.2 (1.02×) | 2090.9 → 2123.0 (1.02×) |
+
+Decoding gains depend on stream layout. The integer and float sample ranges
+overlap between versions, and their five-sample medians are slower in this run;
+these measurements do not establish an improvement for every workload.
+Compression of random bytes is roughly unchanged. The encoder token workspace
+costs four bytes per input byte, or 256 MiB at 64 MiB input. A decode that skips
+refinement avoids a second 256 MiB reference array at that output size; the first
+reference array remains necessary.
+
+[Before profile](benchmarks/results/optimisation-before.json) and
+[after profile](benchmarks/results/optimisation-after.json) record all three input
+sizes, individual samples, kernel timings, source hashes and input/stream hashes.
+The plot script checks matching environments and exact decode-input hashes.
+These are sequential runs on a shared workstation; small changes should be
+interpreted alongside the observed variation.
+
+A focused 15-sample repeat at 64 MiB measured frozen-stream decode medians of
+43.34 → 42.48 ms for integer counters (1.02×) and 63.76 → 63.11 ms for Gaussian
+floats (1.01×). Stdlib-stream decode speedups were 0.99× and 1.00× respectively.
+The earlier slower medians were not consistent across these runs; small decoder
+changes remain within the observed variation. The complete five-sample comparison
+above is retained. [Repeat before](benchmarks/results/decoder-repeat-before.json)
+and [repeat after](benchmarks/results/decoder-repeat-after.json) preserve the
+additional measurements. Add `--sizes 67108864 --workloads uint32 float32
+--samples 15` to both profiling commands below to repeat this focused check.
+
+To reproduce on a CUDA machine from a checkout containing these changes:
+
+```sh
+python -m pip install ".[cuda12]" matplotlib
+BASELINE="$(mktemp -d)/before"
+STREAMS="$(mktemp -d)"
+git worktree add --detach "$BASELINE" 2829e23542ebb0b5b2ff206c9e208214a7ca7cda
+cp benchmarks/profile.py "$BASELINE/benchmarks/"
+PYTHONPATH="$BASELINE/src" python "$BASELINE/benchmarks/profile.py" \
+  --output benchmarks/results/optimisation-before.json --save-streams "$STREAMS"
+PYTHONPATH=src python benchmarks/profile.py \
+  --output benchmarks/results/optimisation-after.json --streams-from "$STREAMS"
+python benchmarks/plot_optimisation.py
+```
+
+Use the pinned NumPy/CuPy versions above to reproduce the recorded environment.
+Profiling defaults to five samples, seed `20261006`, GPU 0 and all 15 cases.
+
 ## Recorded CPU baselines
 
 Measured 2026-10-06 on Apple M4 Max, macOS arm64, Python 3.14.6,

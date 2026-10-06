@@ -67,6 +67,11 @@ GPU token-boundary summaries only when the actual stream requires them. Stored
 copying uses a separate parallel kernel; dynamic blocks retain parallel decoding.
 Cold NVRTC compilation is additional to warmed measurements.
 
+Compression caches match tokens in a workspace of four bytes per input byte
+(256 MiB for a 64 MiB input). Decoding skips the second four-byte-per-output-byte
+reference workspace when every match resolves within its emitted segment, and
+gathers output bytes while calculating checksum partials.
+
 See [BENCHMARKS.md](BENCHMARKS.md) for measured compression ratios, startup costs,
 warm timings and CPU baselines. Compression remains experimental; measurements
 depend on the workload and CUDA environment and do not establish a general

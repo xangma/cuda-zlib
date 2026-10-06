@@ -31,7 +31,7 @@ _FIXED_TILE_BYTES = 2048
 _WORKSPACE_POOL_LIMIT = 3 * 2**30
 _RESOURCE_CREATION_LOCK = threading.Lock()
 _NAMES = KERNEL_NAMES + (
-    "refine_roots", "write_bytes", "adler_parts", "adler_finish",
+    "refine_roots", "write_adler_parts", "adler_parts", "adler_finish",
 )
 
 # Each refinement reads an immutable predecessor map. Local copies have already
@@ -55,10 +55,34 @@ extern "C" __global__ void refine_roots(
   output[i] = value;
   if (!(value & 0x80000000u)) atomicExch(pending, 1u);
 }
-extern "C" __global__ void write_bytes(
-    const unsigned int* roots, unsigned char* output, unsigned int size) {
-  unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < size) output[i] = (unsigned char)roots[i];
+// Resolved roots hold tagged literals. Gather the returned bytes while making
+// checksum partials, avoiding a separate gather launch and output read.
+extern "C" __global__ void write_adler_parts(
+    const unsigned int* roots, unsigned char* output, unsigned int size,
+    unsigned long long* partial_a, unsigned long long* partial_b) {
+  __shared__ unsigned long long a[256], b[256];
+  unsigned int i = blockIdx.x * 4096u + threadIdx.x;
+  unsigned long long sa = 0, sb = 0;
+  for (unsigned int j = 0; j < 16u; ++j, i += 256u) {
+    if (i < size) {
+      unsigned int value = (unsigned char)roots[i];
+      output[i] = (unsigned char)value;
+      sa += value;
+      sb += (unsigned long long)(size - i) * value;
+    }
+  }
+  a[threadIdx.x] = sa; b[threadIdx.x] = sb;
+  __syncthreads();
+  for (int stride = 128; stride; stride >>= 1) {
+    if (threadIdx.x < stride) {
+      a[threadIdx.x] += a[threadIdx.x + stride];
+      b[threadIdx.x] += b[threadIdx.x + stride];
+    }
+    __syncthreads();
+  }
+  if (!threadIdx.x) {
+    partial_a[blockIdx.x] = a[0]; partial_b[blockIdx.x] = b[0];
+  }
 }
 extern "C" __global__ void adler_parts(
     const unsigned char* data, unsigned int size,
@@ -222,7 +246,10 @@ def _workspace(device_id):
 
 
 def _check(status, operation):
-    value = int(status.get()[0])
+    _check_value(int(status.get()[0]), operation)
+
+
+def _check_value(value, operation):
     if value:
         message = STATUS_MESSAGES.get(value, "unknown error")
         raise CodecError("%s: %s (Deflate status %d)" %
@@ -313,41 +340,40 @@ def decompress_zlib(payload, expected_bytes, device=0):
         _check(chain_status, "Deflate boundary validation")
         blocks = int(block_count.get()[0])
         roots = cp.empty(expected_bytes, dtype=cp.uint32)
-        emit_status = cp.zeros(blocks, dtype=cp.uint32)
+        emit_status = cp.zeros((2, blocks), dtype=cp.uint32)
         emit_args = (data, u32(length), block_starts, block_ends, prefix,
                      block_sizes, u32(blocks), u32(expected_bytes),
                      u32(window), roots, emit_status)
         kernel["emit_blocks"]((blocks,), (1,), emit_args)
         kernel["emit_stored"]((blocks,), (256,), emit_args)
-        _check(cp.max(emit_status, keepdims=True), "Deflate output emission")
-        alternate = cp.empty_like(roots)
-        pending = cp.zeros(1, dtype=cp.uint32)
-        root_status = cp.zeros(1, dtype=cp.uint32)
-        grid = ((expected_bytes + 255) // 256,)
-        for _ in range(28):
-            if not expected_bytes:
-                break
-            pending.fill(0)
-            kernel["refine_roots"](grid, (256,),
-                                   (roots, alternate, u32(expected_bytes),
-                                    pending, root_status))
-            roots, alternate = alternate, roots
-            _check(root_status, "Deflate back-reference resolution")
-            if not int(pending.get()[0]):
-                break
-        else:
-            raise CodecError("Deflate back-reference depth exceeded")
+        emission = cp.max(emit_status, axis=1).get()
+        _check_value(int(emission[0]), "Deflate output emission")
+        # Emitters flatten every local reference. Only accepted references to
+        # earlier blocks/segments require another workspace and resolution.
+        if int(emission[1]):
+            alternate = cp.empty_like(roots)
+            pending = cp.zeros(1, dtype=cp.uint32)
+            root_status = cp.zeros(1, dtype=cp.uint32)
+            grid = ((expected_bytes + 255) // 256,)
+            for _ in range(28):
+                pending.fill(0)
+                kernel["refine_roots"](grid, (256,),
+                                       (roots, alternate, u32(expected_bytes),
+                                        pending, root_status))
+                roots, alternate = alternate, roots
+                _check(root_status, "Deflate back-reference resolution")
+                if not int(pending.get()[0]):
+                    break
+            else:
+                raise CodecError("Deflate back-reference depth exceeded")
         output = cp.empty(expected_bytes, dtype=cp.uint8)
-        if expected_bytes:
-            kernel["write_bytes"](grid, (256,),
-                                  (roots, output, u32(expected_bytes)))
         parts = max(1, (expected_bytes + 4095) // 4096)
         partial_a = cp.empty(parts, dtype=cp.uint64)
         partial_b = cp.empty_like(partial_a)
         actual_checksum = cp.empty(1, dtype=cp.uint32)
-        kernel["adler_parts"]((parts,), (256,),
-                              (output, u32(expected_bytes),
-                               partial_a, partial_b))
+        kernel["write_adler_parts"]((parts,), (256,),
+                                    (roots, output, u32(expected_bytes),
+                                     partial_a, partial_b))
         kernel["adler_finish"]((1,), (256,),
                                (partial_a, partial_b, u32(parts),
                                 u32(expected_bytes), actual_checksum))
@@ -396,11 +422,12 @@ def compress_zlib(data, device=0, *, chunk_bytes=32768):
         slot_bytes = (chunk_bytes * 9 + 7) // 8 + 16
         kernel = _encoder_module(device)
         scratch = cp.empty(chunks * slot_bytes, dtype=cp.uint8)
+        tokens = cp.empty(max(1, size), dtype=cp.uint32)
         sizes = cp.empty(chunks, dtype=cp.uint32)
         status = cp.empty(chunks, dtype=cp.uint32)
         kernel["encode_chunks"](
             (chunks,), (256,), (raw, u32(size), u32(chunk_bytes), u32(chunks),
-                               u32(slot_bytes), scratch, sizes, status))
+                               u32(slot_bytes), scratch, sizes, status, tokens))
         if int(cp.max(status).get()):
             raise CodecError("CUDA compression workspace overflow")
         ends = cp.cumsum(sizes, dtype=cp.uint64)

@@ -1,0 +1,329 @@
+{
+  "schema_version": 1,
+  "arguments": {
+    "sizes": [
+      67108864
+    ],
+    "workloads": [
+      "uint32",
+      "float32"
+    ],
+    "samples": 15,
+    "seed": 20261006,
+    "device": 0,
+    "output": "../decoder-repeat-after.json",
+    "save_streams": null,
+    "streams_from": "../streams"
+  },
+  "environment": {
+    "gpu_before": [
+      "NVIDIA GeForce RTX 3090, 610.57.04, 281, 24576, 0, 55",
+      "NVIDIA GeForce RTX 3090, 610.57.04, 18, 24576, 0, 32"
+    ],
+    "python": "3.12.3",
+    "cupy": "13.3.0",
+    "numpy": "2.2.6",
+    "zlib_runtime": "1.3",
+    "gpu_after": [
+      "NVIDIA GeForce RTX 3090, 610.57.04, 1481, 24576, 16, 61",
+      "NVIDIA GeForce RTX 3090, 610.57.04, 18, 24576, 0, 32"
+    ]
+  },
+  "source_sha256": {
+    "__init__.py": "144027bb247c3fcac24fa19ec622c2c836233607c297f351f669b3a848ba42eb",
+    "_codec.py": "8816fa5169360bff1f1c8b95f137a9faa4abd8c57492d4718d1ed361b536dc9e",
+    "_decode_kernels.py": "5fa3d2bba1f587d7e1c293b70dee1b12b6d0440de937baf04c85aa3b19d60cac",
+    "_encode_kernels.py": "3bec230acd755d3c77419d4c9d798062ef0636738ba8486a19b5244b70dba6aa",
+    "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
+    "jax.py": "4c7c89348def2899cd9a71af802c03e68a4f15bd099cfe69d9cffc65778299dd"
+  },
+  "methodology": "Warm synchronized API wall timings; separate one-call CUDA-event profile. Generation, validation and stream transfers excluded. CPU codec forbidden inside timed/profiled calls. Frozen streams permit identical decode comparisons.",
+  "cases": [
+    {
+      "workload": "uint32",
+      "input_bytes": 67108864,
+      "input_sha256": "d5f530811c8d9d406ad550cfcda607b89df0716df2e0561686c46283f4a1f3bd",
+      "encoded_bytes": 23233621,
+      "encoded_sha256": "b9a773e07a84a228107ca985eec60852a2ec11b9e2d1d4518e7eaafea89f068f",
+      "frozen_stream_sha256": "b9a773e07a84a228107ca985eec60852a2ec11b9e2d1d4518e7eaafea89f068f",
+      "stdlib_stream_sha256": "b612612d6d78be110c8a9a1ed1a84a7928163186115f9df0ff15aa3aa954e332",
+      "timings": {
+        "compress": {
+          "wall": {
+            "seconds": [
+              0.15289919497445226,
+              0.1519721169024706,
+              0.15250416612252593,
+              0.15250467602163553,
+              0.15251160878688097,
+              0.1524578477256,
+              0.15245633525773883,
+              0.1524827047251165,
+              0.15277718286961317,
+              0.15249501820653677,
+              0.1524996468797326,
+              0.15246434975415468,
+              0.15243750996887684,
+              0.15247375797480345,
+              0.15246554324403405
+            ],
+            "median_seconds": 0.1524827047251165,
+            "min_seconds": 0.1519721169024706,
+            "max_seconds": 0.15289919497445226,
+            "mib_per_second": 419.71973225012
+          },
+          "instrumented_seconds": 0.15269985562190413,
+          "kernel_ms": {
+            "encode_chunks": 151.9819793701172,
+            "pack_chunks": 0.11007999628782272,
+            "adler_parts": 0.09932799637317657,
+            "adler_finish": 0.011264000087976456,
+            "write_wrapper": 0.004095999989658594
+          },
+          "launches": {
+            "encode_chunks": 1,
+            "pack_chunks": 1,
+            "adler_parts": 1,
+            "adler_finish": 1,
+            "write_wrapper": 1
+          }
+        },
+        "decode_frozen": {
+          "wall": {
+            "seconds": [
+              0.045980606228113174,
+              0.04522028611972928,
+              0.04341948311775923,
+              0.04228738695383072,
+              0.04082824196666479,
+              0.0437005958519876,
+              0.04191543301567435,
+              0.04284013481810689,
+              0.04317766521126032,
+              0.04248114489018917,
+              0.04189337091520429,
+              0.041929658968001604,
+              0.04353685537353158,
+              0.04232281493023038,
+              0.041787009220570326
+            ],
+            "median_seconds": 0.04248114489018917,
+            "min_seconds": 0.04082824196666479,
+            "max_seconds": 0.045980606228113174,
+            "mib_per_second": 1506.5507336357243
+          },
+          "instrumented_seconds": 0.04217560635879636,
+          "kernel_ms": {
+            "discover": 3.530751943588257,
+            "describe_candidates": 12.355584144592285,
+            "select_chain": 5.06163215637207,
+            "emit_blocks": 19.99452781677246,
+            "emit_stored": 0.013311999849975109,
+            "write_adler_parts": 0.4135040044784546,
+            "adler_finish": 0.011264000087976456
+          },
+          "launches": {
+            "discover": 1,
+            "describe_candidates": 1,
+            "select_chain": 1,
+            "emit_blocks": 1,
+            "emit_stored": 1,
+            "write_adler_parts": 1,
+            "adler_finish": 1
+          }
+        },
+        "decode_zlib6": {
+          "wall": {
+            "seconds": [
+              0.036698907148092985,
+              0.03686841810122132,
+              0.036815627943724394,
+              0.03739745123311877,
+              0.037548827938735485,
+              0.037354369182139635,
+              0.03724353900179267,
+              0.03711655782535672,
+              0.037094767205417156,
+              0.037089898250997066,
+              0.03727053990587592,
+              0.03746231412515044,
+              0.037384987343102694,
+              0.03737447690218687,
+              0.03707797499373555
+            ],
+            "median_seconds": 0.03724353900179267,
+            "min_seconds": 0.036698907148092985,
+            "max_seconds": 0.037548827938735485,
+            "mib_per_second": 1718.4188644618182
+          },
+          "instrumented_seconds": 0.03649565204977989,
+          "kernel_ms": {
+            "discover": 3.3372159004211426,
+            "describe_candidates": 12.371935844421387,
+            "select_chain": 2.356384038925171,
+            "emit_blocks": 16.436063766479492,
+            "emit_stored": 0.008191999979317188,
+            "refine_roots": 0.6512640118598938,
+            "write_adler_parts": 0.4127039909362793,
+            "adler_finish": 0.011264000087976456
+          },
+          "launches": {
+            "discover": 1,
+            "describe_candidates": 1,
+            "select_chain": 1,
+            "emit_blocks": 1,
+            "emit_stored": 1,
+            "refine_roots": 1,
+            "write_adler_parts": 1,
+            "adler_finish": 1
+          }
+        }
+      },
+      "byte_exact": true,
+      "cpu_codec_forbidden": true
+    },
+    {
+      "workload": "float32",
+      "input_bytes": 67108864,
+      "input_sha256": "ebf74d853aa2cf26a0062aff6f8df5185fb462acc7ab392d5dd05fa96abfb155",
+      "encoded_bytes": 62161999,
+      "encoded_sha256": "4a09b44e31c4a17883b246506e829d766534ae58d639575ab47caac4fc0d39c9",
+      "frozen_stream_sha256": "4a09b44e31c4a17883b246506e829d766534ae58d639575ab47caac4fc0d39c9",
+      "stdlib_stream_sha256": "b8581bcf642664df95b56c0c1771b164e83e07380d39259b54759a85dfad485f",
+      "timings": {
+        "compress": {
+          "wall": {
+            "seconds": [
+              0.16915896721184254,
+              0.16950880084186792,
+              0.16911258874461055,
+              0.16903676558285952,
+              0.16914688516408205,
+              0.16901774983853102,
+              0.16906601190567017,
+              0.16905883699655533,
+              0.16908207209780812,
+              0.16914867796003819,
+              0.1691121286712587,
+              0.16920050606131554,
+              0.16901701921597123,
+              0.16913004266098142,
+              0.1690635667182505
+            ],
+            "median_seconds": 0.1691121286712587,
+            "min_seconds": 0.16901701921597123,
+            "max_seconds": 0.16950880084186792,
+            "mib_per_second": 378.44713151480227
+          },
+          "instrumented_seconds": 0.1693057557567954,
+          "kernel_ms": {
+            "encode_chunks": 168.45516967773438,
+            "pack_chunks": 0.2553279995918274,
+            "adler_parts": 0.09932799637317657,
+            "adler_finish": 0.011264000087976456,
+            "write_wrapper": 0.004095999989658594
+          },
+          "launches": {
+            "encode_chunks": 1,
+            "pack_chunks": 1,
+            "adler_parts": 1,
+            "adler_finish": 1,
+            "write_wrapper": 1
+          }
+        },
+        "decode_frozen": {
+          "wall": {
+            "seconds": [
+              0.06630411092191935,
+              0.06327801616862416,
+              0.06310876458883286,
+              0.06218271981924772,
+              0.06310055963695049,
+              0.06367522897198796,
+              0.06310667097568512,
+              0.06263711210340261,
+              0.06344960117712617,
+              0.06672279397025704,
+              0.06296002399176359,
+              0.062341490760445595,
+              0.06340116914361715,
+              0.06290425779297948,
+              0.06514751864597201
+            ],
+            "median_seconds": 0.06310876458883286,
+            "min_seconds": 0.06218271981924772,
+            "max_seconds": 0.06672279397025704,
+            "mib_per_second": 1014.1222129283268
+          },
+          "instrumented_seconds": 0.06255393382161856,
+          "kernel_ms": {
+            "discover": 19.03923225402832,
+            "describe_candidates": 15.831040382385254,
+            "select_chain": 5.57260799407959,
+            "emit_blocks": 20.63155174255371,
+            "emit_stored": 0.015359999611973763,
+            "write_adler_parts": 0.4538559913635254,
+            "adler_finish": 0.011264000087976456
+          },
+          "launches": {
+            "discover": 1,
+            "describe_candidates": 1,
+            "select_chain": 1,
+            "emit_blocks": 1,
+            "emit_stored": 1,
+            "write_adler_parts": 1,
+            "adler_finish": 1
+          }
+        },
+        "decode_zlib6": {
+          "wall": {
+            "seconds": [
+              0.05941537627950311,
+              0.060122165363281965,
+              0.05985321616753936,
+              0.0602298085577786,
+              0.06015786295756698,
+              0.059862523805350065,
+              0.06021743593737483,
+              0.059834952000528574,
+              0.05985663179308176,
+              0.06059103365987539,
+              0.06022605299949646,
+              0.060028779320418835,
+              0.05991344014182687,
+              0.060032153967767954,
+              0.060055778827518225
+            ],
+            "median_seconds": 0.060032153967767954,
+            "min_seconds": 0.05941537627950311,
+            "max_seconds": 0.06059103365987539,
+            "mib_per_second": 1066.0953467430543
+          },
+          "instrumented_seconds": 0.0593259371817112,
+          "kernel_ms": {
+            "discover": 19.325952529907227,
+            "describe_candidates": 15.224831581115723,
+            "select_chain": 5.436416149139404,
+            "emit_blocks": 17.258495330810547,
+            "emit_stored": 0.01228800043463707,
+            "refine_roots": 0.6543359756469727,
+            "write_adler_parts": 0.4131839871406555,
+            "adler_finish": 0.010239999741315842
+          },
+          "launches": {
+            "discover": 1,
+            "describe_candidates": 1,
+            "select_chain": 1,
+            "emit_blocks": 1,
+            "emit_stored": 1,
+            "refine_roots": 1,
+            "write_adler_parts": 1,
+            "adler_finish": 1
+          }
+        }
+      },
+      "byte_exact": true,
+      "cpu_codec_forbidden": true
+    }
+  ]
+}

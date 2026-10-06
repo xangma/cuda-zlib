@@ -1,0 +1,1133 @@
+{
+  "schema_version": 1,
+  "profile_sha256": {
+    "before": "e315f7ac02bc54b67a549e340ea6e7bd814901c6086eb91688d19c623e985c90",
+    "after": "a76f2eaf4766d17e587f7a103dc94850f59dfd67817f0851b3e315aac5047f04"
+  },
+  "source_sha256": {
+    "before": {
+      "__init__.py": "144027bb247c3fcac24fa19ec622c2c836233607c297f351f669b3a848ba42eb",
+      "_codec.py": "4a98f96c55940a0fba4fb365d541b7e0fb5d1dc7c0ae6779f75dd17a27ae3837",
+      "_decode_kernels.py": "69ef7a4191cffdfbb84d2302b16fc16aaa28cceb247d318aa23cfa98d4179cc4",
+      "_encode_kernels.py": "2009887827aeffa1cf2b176db4ca12c3ed6507135a7e413ea8bb747b69a55a52",
+      "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
+      "jax.py": "4c7c89348def2899cd9a71af802c03e68a4f15bd099cfe69d9cffc65778299dd"
+    },
+    "after": {
+      "__init__.py": "144027bb247c3fcac24fa19ec622c2c836233607c297f351f669b3a848ba42eb",
+      "_codec.py": "8816fa5169360bff1f1c8b95f137a9faa4abd8c57492d4718d1ed361b536dc9e",
+      "_decode_kernels.py": "5fa3d2bba1f587d7e1c293b70dee1b12b6d0440de937baf04c85aa3b19d60cac",
+      "_encode_kernels.py": "3bec230acd755d3c77419d4c9d798062ef0636738ba8486a19b5244b70dba6aa",
+      "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
+      "jax.py": "4c7c89348def2899cd9a71af802c03e68a4f15bd099cfe69d9cffc65778299dd"
+    }
+  },
+  "changed_source_files": [
+    "_codec.py",
+    "_decode_kernels.py",
+    "_encode_kernels.py"
+  ],
+  "environment": {
+    "cupy": "13.3.0",
+    "numpy": "2.2.6",
+    "python": "3.12.3",
+    "zlib_runtime": "1.3"
+  },
+  "gpu": {
+    "name": "NVIDIA GeForce RTX 3090",
+    "driver": "610.57.04",
+    "ordinal": 0
+  },
+  "samples_per_measurement": 5,
+  "seed": 20261006,
+  "validated_cases": 15,
+  "methodology": "Warm synchronized API wall timings; separate one-call CUDA-event profile. Generation, validation and stream transfers excluded. CPU codec forbidden inside timed/profiled calls. Frozen streams permit identical decode comparisons.",
+  "point_statistic": "uncompressed MiB / median synchronized API wall seconds",
+  "error_bars": "individual sample throughput minimum and maximum; not confidence intervals",
+  "speedup": "before median seconds / after median seconds; greater than 1 is faster",
+  "kernel_event_profiles_plotted": false,
+  "comparison_limitations": "Recorded environment and selected GPU name/driver/ordinal match; profiles do not establish exclusive workstation use.",
+  "cases": [
+    {
+      "workload": "zeros",
+      "input_bytes": 65536,
+      "input_sha256": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31",
+      "frozen_stream_sha256": "566c852d00fe42c5ca9f2d6be9766aec46b24d6d2c4d8dae2fc856f6b62c1546",
+      "stdlib_stream_sha256": "67c6fdbc22ddcba7bf0d4a939c1ba684bbd20af5c9d48238a12e01fb2b36f2c2",
+      "encoded_bytes": {
+        "before": 102,
+        "after": 102
+      },
+      "encoded_sha256": {
+        "before": "566c852d00fe42c5ca9f2d6be9766aec46b24d6d2c4d8dae2fc856f6b62c1546",
+        "after": "566c852d00fe42c5ca9f2d6be9766aec46b24d6d2c4d8dae2fc856f6b62c1546"
+      },
+      "encoded_percent": {
+        "before": 0.1556396484375,
+        "after": 0.1556396484375
+      },
+      "encoded_size_after_over_before": 1.0,
+      "compression_ratio": {
+        "before": 642.5098039215686,
+        "after": 642.5098039215686
+      },
+      "timings": {
+        "compress": {
+          "before_seconds": 0.0064625367522239685,
+          "after_seconds": 0.003503349144011736,
+          "speedup": 1.8446739067587263,
+          "before_mib_per_second": {
+            "median": 9.671124884278875,
+            "minimum": 9.575403224972208,
+            "maximum": 9.681645627738247
+          },
+          "after_mib_per_second": {
+            "median": 17.840071723034246,
+            "minimum": 17.457495312982473,
+            "maximum": 17.851150116589057
+          }
+        },
+        "decode_frozen": {
+          "before_seconds": 0.0020811939612030983,
+          "after_seconds": 0.001954995095729828,
+          "speedup": 1.0645520112807028,
+          "before_mib_per_second": {
+            "median": 30.030838626818785,
+            "minimum": 28.703467121869473,
+            "maximum": 30.428697318207448
+          },
+          "after_mib_per_second": {
+            "median": 31.969389660626156,
+            "minimum": 30.649215819391724,
+            "maximum": 32.679328599108764
+          }
+        },
+        "decode_zlib6": {
+          "before_seconds": 0.003058246336877346,
+          "after_seconds": 0.002928779926151037,
+          "speedup": 1.044204895550637,
+          "before_mib_per_second": {
+            "median": 20.436548634540756,
+            "minimum": 20.41348237364362,
+            "maximum": 20.464982894479437
+          },
+          "after_mib_per_second": {
+            "median": 21.339944132346144,
+            "minimum": 21.29623095393402,
+            "maximum": 21.377022067665425
+          }
+        }
+      }
+    },
+    {
+      "workload": "text",
+      "input_bytes": 65536,
+      "input_sha256": "12ec4ef6664b12caaca6d63dcb8587c3e1ec4030b3b0d60c56e7909957b53679",
+      "frozen_stream_sha256": "be9623e29bd1f27987d726430f21f9cd0b269d5a56dcb6a6eca9607d78c6047e",
+      "stdlib_stream_sha256": "d48d032b6672cd85e7b8483ac029523ca3cd155849d4d4e4b4b4598c0ef23fc0",
+      "encoded_bytes": {
+        "before": 8696,
+        "after": 8696
+      },
+      "encoded_sha256": {
+        "before": "be9623e29bd1f27987d726430f21f9cd0b269d5a56dcb6a6eca9607d78c6047e",
+        "after": "be9623e29bd1f27987d726430f21f9cd0b269d5a56dcb6a6eca9607d78c6047e"
+      },
+      "encoded_percent": {
+        "before": 13.26904296875,
+        "after": 13.26904296875
+      },
+      "encoded_size_after_over_before": 1.0,
+      "compression_ratio": {
+        "before": 7.536338546458142,
+        "after": 7.536338546458142
+      },
+      "timings": {
+        "compress": {
+          "before_seconds": 0.013693921267986298,
+          "after_seconds": 0.00775531679391861,
+          "speedup": 1.76574621409721,
+          "before_mib_per_second": {
+            "median": 4.564068886982193,
+            "minimum": 4.561612601873746,
+            "maximum": 4.566708519229734
+          },
+          "after_mib_per_second": {
+            "median": 8.058987358067673,
+            "minimum": 8.046471527736188,
+            "maximum": 8.064728503307183
+          }
+        },
+        "decode_frozen": {
+          "before_seconds": 0.005220653954893351,
+          "after_seconds": 0.005101267248392105,
+          "speedup": 1.0234033428730627,
+          "before_mib_per_second": {
+            "median": 11.971680279904087,
+            "minimum": 11.94232317263658,
+            "maximum": 13.179659813297757
+          },
+          "after_mib_per_second": {
+            "median": 12.251857618261365,
+            "minimum": 12.229495999013752,
+            "maximum": 12.293387360916222
+          }
+        },
+        "decode_zlib6": {
+          "before_seconds": 0.007079865783452988,
+          "after_seconds": 0.007718407083302736,
+          "speedup": 0.9172703262527954,
+          "before_mib_per_second": {
+            "median": 8.82785096662066,
+            "minimum": 8.796541567573913,
+            "maximum": 8.850230491017411
+          },
+          "after_mib_per_second": {
+            "median": 8.097525736263188,
+            "minimum": 8.072586423005395,
+            "maximum": 8.128123978819769
+          }
+        }
+      }
+    },
+    {
+      "workload": "uint32",
+      "input_bytes": 65536,
+      "input_sha256": "999b5382075e99fc59c39652a6d0776f0c73f49866ad762d450569c51a30f5db",
+      "frozen_stream_sha256": "6218bf0bc545ea8dc54e48391e96aa676dea3504c9554300fe32d8df09c6d2e7",
+      "stdlib_stream_sha256": "699d07fa48cd505ef963505ea4159a37ae16ef0e0754a8adb75ba8d860127992",
+      "encoded_bytes": {
+        "before": 22721,
+        "after": 22721
+      },
+      "encoded_sha256": {
+        "before": "6218bf0bc545ea8dc54e48391e96aa676dea3504c9554300fe32d8df09c6d2e7",
+        "after": "6218bf0bc545ea8dc54e48391e96aa676dea3504c9554300fe32d8df09c6d2e7"
+      },
+      "encoded_percent": {
+        "before": 34.66949462890625,
+        "after": 34.66949462890625
+      },
+      "encoded_size_after_over_before": 1.0,
+      "compression_ratio": {
+        "before": 2.8843800889045377,
+        "after": 2.8843800889045377
+      },
+      "timings": {
+        "compress": {
+          "before_seconds": 0.017306516878306866,
+          "after_seconds": 0.01268583070486784,
+          "speedup": 1.3642399367402849,
+          "before_mib_per_second": {
+            "median": 3.6113563716764774,
+            "minimum": 3.6099332024640916,
+            "maximum": 3.6116260376974356
+          },
+          "after_mib_per_second": {
+            "median": 4.926756588042543,
+            "minimum": 4.831132224985699,
+            "maximum": 5.397304253828956
+          }
+        },
+        "decode_frozen": {
+          "before_seconds": 0.01329490402713418,
+          "after_seconds": 0.01316886581480503,
+          "speedup": 1.0095709238822566,
+          "before_mib_per_second": {
+            "median": 4.701049354883712,
+            "minimum": 4.696571829441922,
+            "maximum": 4.705843777296293
+          },
+          "after_mib_per_second": {
+            "median": 4.746042740426035,
+            "minimum": 4.742939528052213,
+            "maximum": 4.779621190625146
+          }
+        },
+        "decode_zlib6": {
+          "before_seconds": 0.013265368063002825,
+          "after_seconds": 0.013176840730011463,
+          "speedup": 1.0067184035084928,
+          "before_mib_per_second": {
+            "median": 4.711516461749207,
+            "minimum": 4.702477363207429,
+            "maximum": 4.71575825297137
+          },
+          "after_mib_per_second": {
+            "median": 4.743170330476145,
+            "minimum": 4.740005753649305,
+            "maximum": 4.746324533223331
+          }
+        }
+      }
+    },
+    {
+      "workload": "float32",
+      "input_bytes": 65536,
+      "input_sha256": "986d74fe12be3248d7fce7d2baef85d4157cfad82d49592a0d5bec5d80044745",
+      "frozen_stream_sha256": "7644f639d2d272af5cdd3d0b5a9e2200b3928ff276c11a15172184713a54e2b6",
+      "stdlib_stream_sha256": "59a8430be875d80e8254ff2bb819a73304678bb9be1741d24d23dad558b4775f",
+      "encoded_bytes": {
+        "before": 60672,
+        "after": 60672
+      },
+      "encoded_sha256": {
+        "before": "7644f639d2d272af5cdd3d0b5a9e2200b3928ff276c11a15172184713a54e2b6",
+        "after": "7644f639d2d272af5cdd3d0b5a9e2200b3928ff276c11a15172184713a54e2b6"
+      },
+      "encoded_percent": {
+        "before": 92.578125,
+        "after": 92.578125
+      },
+      "encoded_size_after_over_before": 1.0,
+      "compression_ratio": {
+        "before": 1.080168776371308,
+        "after": 1.080168776371308
+      },
+      "timings": {
+        "compress": {
+          "before_seconds": 0.01608189707621932,
+          "after_seconds": 0.011839375831186771,
+          "speedup": 1.3583399416933013,
+          "before_mib_per_second": {
+            "median": 3.886357418144419,
+            "minimum": 3.882724574377102,
+            "maximum": 3.888554944832402
+          },
+          "after_mib_per_second": {
+            "median": 5.2789945087616195,
+            "minimum": 5.273202148259244,
+            "maximum": 5.280777208846786
+          }
+        },
+        "decode_frozen": {
+          "before_seconds": 0.014072318095713854,
+          "after_seconds": 0.013885744847357273,
+          "speedup": 1.0134363154737132,
+          "before_mib_per_second": {
+            "median": 4.441343606284472,
+            "minimum": 4.439339738412555,
+            "maximum": 4.443437986754146
+          },
+          "after_mib_per_second": {
+            "median": 4.501018900105669,
+            "minimum": 4.494099176690667,
+            "maximum": 4.5057689388341755
+          }
+        },
+        "decode_zlib6": {
+          "before_seconds": 0.007613346911966801,
+          "after_seconds": 0.007581348065286875,
+          "speedup": 1.0042207330944797,
+          "before_mib_per_second": {
+            "median": 8.20926731996953,
+            "minimum": 8.194298644810274,
+            "maximum": 8.211946951466523
+          },
+          "after_mib_per_second": {
+            "median": 8.243916446228356,
+            "minimum": 8.218113476911713,
+            "maximum": 8.254663191801779
+          }
+        }
+      }
+    },
+    {
+      "workload": "random",
+      "input_bytes": 65536,
+      "input_sha256": "250e579ca4e8adfbf6280783d0c77775c63f9039e9ed2d48216cca4859543c5b",
+      "frozen_stream_sha256": "f97afd8a307ee49891d0b3602dc67bbdfdfc0c553e35f50746c3305410c7666a",
+      "stdlib_stream_sha256": "20072388f16aaefee6422a48d48aac609bb506685fccf8f7b413ffa8a0361986",
+      "encoded_bytes": {
+        "before": 65552,
+        "after": 65552
+      },
+      "encoded_sha256": {
+        "before": "f97afd8a307ee49891d0b3602dc67bbdfdfc0c553e35f50746c3305410c7666a",
+        "after": "f97afd8a307ee49891d0b3602dc67bbdfdfc0c553e35f50746c3305410c7666a"
+      },
+      "encoded_percent": {
+        "before": 100.0244140625,
+        "after": 100.0244140625
+      },
+      "encoded_size_after_over_before": 1.0,
+      "compression_ratio": {
+        "before": 0.9997559189650964,
+        "after": 0.9997559189650964
+      },
+      "timings": {
+        "compress": {
+          "before_seconds": 0.007730480283498764,
+          "after_seconds": 0.00788289774209261,
+          "speedup": 0.9806647931280428,
+          "before_mib_per_second": {
+            "median": 8.084879297009593,
+            "minimum": 8.076569242529303,
+            "maximum": 8.088181593898918
+          },
+          "after_mib_per_second": {
+            "median": 7.928556483267108,
+            "minimum": 7.920451403738183,
+            "maximum": 7.941526371585824
+          }
+        },
+        "decode_frozen": {
+          "before_seconds": 0.001111467368900776,
+          "after_seconds": 0.0009836340323090553,
+          "speedup": 1.1299602620413969,
+          "before_mib_per_second": {
+            "median": 56.231970230319526,
+            "minimum": 55.573293230891025,
+            "maximum": 56.82210299529777
+          },
+          "after_mib_per_second": {
+            "median": 63.53989181655587,
+            "minimum": 61.62299969789435,
+            "maximum": 63.73011628972576
+          }
+        },
+        "decode_zlib6": {
+          "before_seconds": 0.0010771211236715317,
+          "after_seconds": 0.0009470246732234955,
+          "speedup": 1.1373738764431682,
+          "before_mib_per_second": {
+            "median": 58.025043448186416,
+            "minimum": 57.54492606110704,
+            "maximum": 58.43983973401629
+          },
+          "after_mib_per_second": {
+            "median": 65.99616859744704,
+            "minimum": 65.7181046111662,
+            "maximum": 66.10385405487668
+          }
+        }
+      }
+    },
+    {
+      "workload": "zeros",
+      "input_bytes": 1048576,
+      "input_sha256": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+      "frozen_stream_sha256": "76dbb9ae45c184eddfcb43d40ede365b60554b60ee50384a1b08ffde89d321b4",
+      "stdlib_stream_sha256": "1e6d5d105f8ee78fd7a403adeac8aef4913dc356ac3f66d3ab300309a1ca8a66",
+      "encoded_bytes": {
+        "before": 1602,
+        "after": 1602
+      },
+      "encoded_sha256": {
+        "before": "76dbb9ae45c184eddfcb43d40ede365b60554b60ee50384a1b08ffde89d321b4",
+        "after": "76dbb9ae45c184eddfcb43d40ede365b60554b60ee50384a1b08ffde89d321b4"
+      },
+      "encoded_percent": {
+        "before": 0.15277862548828125,
+        "after": 0.15277862548828125
+      },
+      "encoded_size_after_over_before": 1.0,
+      "compression_ratio": {
+        "before": 654.541822721598,
+        "after": 654.541822721598
+      },
+      "timings": {
+        "compress": {
+          "before_seconds": 0.005796816200017929,
+          "after_seconds": 0.0031339293345808983,
+          "speedup": 1.8496958869026763,
+          "before_mib_per_second": {
+            "median": 172.50848836589077,
+            "minimum": 171.46741679076024,
+            "maximum": 172.70552016886103
+          },
+          "after_mib_per_second": {
+            "median": 319.0882413861863,
+            "minimum": 315.9659351552041,
+            "maximum": 319.1596604085631
+          }
+        },
+        "decode_frozen": {
+          "before_seconds": 0.0020138868130743504,
+          "after_seconds": 0.0018596937879920006,
+          "speedup": 1.082913125847906,
+          "before_mib_per_second": {
+            "median": 496.55223595879477,
+            "minimum": 495.748568262616,
+            "maximum": 498.78077030453846
+          },
+          "after_mib_per_second": {
+            "median": 537.7229339889054,
+            "minimum": 536.2551570159565,
+            "maximum": 541.4096847395932
+          }
+        },
+        "decode_zlib6": {
+          "before_seconds": 0.03143816674128175,
+          "after_seconds": 0.03104559425264597,
+          "speedup": 1.0126450305779642,
+          "before_mib_per_second": {
+            "median": 31.808470520225683,
+            "minimum": 31.79804229179231,
+            "maximum": 31.81845771449604
+          },
+          "after_mib_per_second": {
+            "median": 32.21068960259221,
+            "minimum": 32.190775425097605,
+            "maximum": 32.22151502230984
+          }
+        }
+      }
+    },
+    {
+      "workload": "text",
+      "input_bytes": 1048576,
+      "input_sha256": "713690bc078c3724bbe9cd57c9d02efc88e49c83d149405a1b1b9422e953eb97",
+      "frozen_stream_sha256": "6b4af526e647b6c98aecb01ecd231224098fa76ce8d90755ddbcb4c6d9190685",
+      "stdlib_stream_sha256": "4537d379d37d887d2901fd1207544153763a559d14d7cf0bb2d81ddc15e2fc28",
+      "encoded_bytes": {
+        "before": 138343,
+        "after": 138343
+      },
+      "encoded_sha256": {
+        "before": "6b4af526e647b6c98aecb01ecd231224098fa76ce8d90755ddbcb4c6d9190685",
+        "after": "6b4af526e647b6c98aecb01ecd231224098fa76ce8d90755ddbcb4c6d9190685"
+      },
+      "encoded_percent": {
+        "before": 13.193416595458984,
+        "after": 13.193416595458984
+      },
+      "encoded_size_after_over_before": 1.0,
+      "compression_ratio": {
+        "before": 7.579537815429765,
+        "after": 7.579537815429765
+      },
+      "timings": {
+        "compress": {
+          "before_seconds": 0.01229565218091011,
+          "after_seconds": 0.006931756157428026,
+          "speedup": 1.7738148748545008,
+          "before_mib_per_second": {
+            "median": 81.32956148129925,
+            "minimum": 81.281552357376,
+            "maximum": 81.41302577387319
+          },
+          "after_mib_per_second": {
+            "median": 144.26358592092225,
+            "minimum": 144.10610907187578,
+            "maximum": 144.49562018497062
+          }
+        },
+        "decode_frozen": {
+          "before_seconds": 0.0049381679855287075,
+          "after_seconds": 0.004772254265844822,
+          "speedup": 1.0347663201584492,
+          "before_mib_per_second": {
+            "median": 202.50424913257268,
+            "minimum": 202.15476955216283,
+            "maximum": 202.71155535459926
+          },
+          "after_mib_per_second": {
+            "median": 209.54457669136204,
+            "minimum": 208.43572220446015,
+            "maximum": 209.79918113705867
+          }
+        },
+        "decode_zlib6": {
+          "before_seconds": 0.027926472015678883,
+          "after_seconds": 0.027668734081089497,
+          "speedup": 1.0093151328800958,
+          "before_mib_per_second": {
+            "median": 35.808318338190574,
+            "minimum": 35.801984957183414,
+            "maximum": 35.82309697710646
+          },
+          "after_mib_per_second": {
+            "median": 36.14187758172359,
+            "minimum": 36.11938281083396,
+            "maximum": 36.164782249640716
+          }
+        }
+      }
+    },
+    {
+      "workload": "uint32",
+      "input_bytes": 1048576,
+      "input_sha256": "21b9bf484e8bb6ca346d2cd113f24594cadb15c31c3e6ea4bd99897b1e728282",
+      "frozen_stream_sha256": "e4ec30e814d297285e424bb499878dd59f74a0b30780804f92fc17448231a3bd",
+      "stdlib_stream_sha256": "657dd10cc22e7529cb70e89bc58f46044a8f2d3f2e62dc0ce58eaab42307839c",
+      "encoded_bytes": {
+        "before": 363025,
+        "after": 363025
+      },
+      "encoded_sha256": {
+        "before": "e4ec30e814d297285e424bb499878dd59f74a0b30780804f92fc17448231a3bd",
+        "after": "e4ec30e814d297285e424bb499878dd59f74a0b30780804f92fc17448231a3bd"
+      },
+      "encoded_percent": {
+        "before": 34.62076187133789,
+        "after": 34.62076187133789
+      },
+      "encoded_size_after_over_before": 1.0,
+      "compression_ratio": {
+        "before": 2.8884401900695544,
+        "after": 2.8884401900695544
+      },
+      "timings": {
+        "compress": {
+          "before_seconds": 0.017308910842984915,
+          "after_seconds": 0.011494303122162819,
+          "speedup": 1.5058686602418394,
+          "before_mib_per_second": {
+            "median": 57.77371026238127,
+            "minimum": 57.71371195518748,
+            "maximum": 57.78594974050615
+          },
+          "after_mib_per_second": {
+            "median": 86.99961967001228,
+            "minimum": 86.90122668641865,
+            "maximum": 87.02047948872172
+          }
+        },
+        "decode_frozen": {
+          "before_seconds": 0.013504091184586287,
+          "after_seconds": 0.013286950066685677,
+          "speedup": 1.0163424350065895,
+          "before_mib_per_second": {
+            "median": 74.05163267420843,
+            "minimum": 74.0389974557283,
+            "maximum": 74.15429355593074
+          },
+          "after_mib_per_second": {
+            "median": 75.26181666831853,
+            "minimum": 75.17254542617871,
+            "maximum": 75.28634702639101
+          }
+        },
+        "decode_zlib6": {
+          "before_seconds": 0.013779231812804937,
+          "after_seconds": 0.013695322908461094,
+          "speedup": 1.0061268292032752,
+          "before_mib_per_second": {
+            "median": 72.57298618568181,
+            "minimum": 72.47649349203382,
+            "maximum": 72.61627765348662
+          },
+          "after_mib_per_second": {
+            "median": 73.01762847681313,
+            "minimum": 72.94345108879332,
+            "maximum": 73.04129138122525
+          }
+        }
+      }
+    },
+    {
+      "workload": "float32",
+      "input_bytes": 1048576,
+      "input_sha256": "771faa5e16b684f46956cb2e4535bad7a5c56969d3e2d66b2160d1c198f60637",
+      "frozen_stream_sha256": "6320944e26eb1000c4b7a5a27bf7d4eb9e7a7240fc69fc290a7c7b1906f6f055",
+      "stdlib_stream_sha256": "b1110a595bd73af699ccf3539843e69cf942dd7c0c75edd00edbace297b3b6c6",
+      "encoded_bytes": {
+        "before": 971298,
+        "after": 971298
+      },
+      "encoded_sha256": {
+        "before": "6320944e26eb1000c4b7a5a27bf7d4eb9e7a7240fc69fc290a7c7b1906f6f055",
+        "after": "6320944e26eb1000c4b7a5a27bf7d4eb9e7a7240fc69fc290a7c7b1906f6f055"
+      },
+      "encoded_percent": {
+        "before": 92.63019561767578,
+        "after": 92.63019561767578
+      },
+      "encoded_size_after_over_before": 1.0,
+      "compression_ratio": {
+        "before": 1.0795615763648232,
+        "after": 1.0795615763648232
+      },
+      "timings": {
+        "compress": {
+          "before_seconds": 0.016210429836064577,
+          "after_seconds": 0.011956458911299706,
+          "speedup": 1.3557885287210385,
+          "before_mib_per_second": {
+            "median": 61.6886788390536,
+            "minimum": 61.4484638611178,
+            "maximum": 61.76154908060152
+          },
+          "after_mib_per_second": {
+            "median": 83.63680312194514,
+            "minimum": 83.55740889050597,
+            "maximum": 83.96044402765168
+          }
+        },
+        "decode_frozen": {
+          "before_seconds": 0.014576524030417204,
+          "after_seconds": 0.01440204307436943,
+          "speedup": 1.0121150141786681,
+          "before_mib_per_second": {
+            "median": 68.60346114843803,
+            "minimum": 68.5602502169681,
+            "maximum": 68.66647281097131
+          },
+          "after_mib_per_second": {
+            "median": 69.43459305295706,
+            "minimum": 69.42314529361478,
+            "maximum": 69.48989845401839
+          }
+        },
+        "decode_zlib6": {
+          "before_seconds": 0.008101613260805607,
+          "after_seconds": 0.008060123771429062,
+          "speedup": 1.005147500280779,
+          "before_mib_per_second": {
+            "median": 123.43220637769151,
+            "minimum": 123.38597408811613,
+            "maximum": 123.72659435101839
+          },
+          "after_mib_per_second": {
+            "median": 124.06757369467786,
+            "minimum": 123.88323378371986,
+            "maximum": 124.27903996473978
+          }
+        }
+      }
+    },
+    {
+      "workload": "random",
+      "input_bytes": 1048576,
+      "input_sha256": "94679c0fa91369ce1a6a0a6c160154e1aabb3f4d82cba268e43a9354c8c53d34",
+      "frozen_stream_sha256": "9f4b712d3611b61f8658874157470cc39cb4517f98e075ff3671a718e6477549",
+      "stdlib_stream_sha256": "5f5d1c25c305ff952ec03358a413be4d53104f1a45a5e48dc030bb5fa9201f6a",
+      "encoded_bytes": {
+        "before": 1048742,
+        "after": 1048742
+      },
+      "encoded_sha256": {
+        "before": "9f4b712d3611b61f8658874157470cc39cb4517f98e075ff3671a718e6477549",
+        "after": "9f4b712d3611b61f8658874157470cc39cb4517f98e075ff3671a718e6477549"
+      },
+      "encoded_percent": {
+        "before": 100.01583099365234,
+        "after": 100.01583099365234
+      },
+      "encoded_size_after_over_before": 1.0,
+      "compression_ratio": {
+        "before": 0.9998417151215456,
+        "after": 0.9998417151215456
+      },
+      "timings": {
+        "compress": {
+          "before_seconds": 0.007736651226878166,
+          "after_seconds": 0.007892115972936153,
+          "speedup": 0.9803012593085161,
+          "before_mib_per_second": {
+            "median": 129.25488957365243,
+            "minimum": 129.04047881923367,
+            "maximum": 129.34214356286202
+          },
+          "after_mib_per_second": {
+            "median": 126.70873102083468,
+            "minimum": 126.55065647732148,
+            "maximum": 126.74669178286825
+          }
+        },
+        "decode_frozen": {
+          "before_seconds": 0.0015306510031223297,
+          "after_seconds": 0.001390665303915739,
+          "speedup": 1.10066095617143,
+          "before_mib_per_second": {
+            "median": 653.3167900194946,
+            "minimum": 648.1914785790327,
+            "maximum": 656.2419853831872
+          },
+          "after_mib_per_second": {
+            "median": 719.0802827857065,
+            "minimum": 705.6535347843017,
+            "maximum": 725.4250137907808
+          }
+        },
+        "decode_zlib6": {
+          "before_seconds": 0.0015738718211650848,
+          "after_seconds": 0.0014249002560973167,
+          "speedup": 1.104548767136718,
+          "before_mib_per_second": {
+            "median": 635.3757571310562,
+            "minimum": 627.87329815072,
+            "maximum": 646.0270307589424
+          },
+          "after_mib_per_second": {
+            "median": 701.8035092076668,
+            "minimum": 698.7231401947004,
+            "maximum": 705.8680840014068
+          }
+        }
+      }
+    },
+    {
+      "workload": "zeros",
+      "input_bytes": 67108864,
+      "input_sha256": "3b6a07d0d404fab4e23b6d34bc6696a6a312dd92821332385e5af7c01c421351",
+      "frozen_stream_sha256": "99d306210f5e927bb4c7443a5758371edde455d54ce117a12c26329ea85389a4",
+      "stdlib_stream_sha256": "1d2eca6d790a9d26a8f807b9f370da1c871cfc5349a227388adbd81bba6333a5",
+      "encoded_bytes": {
+        "before": 102402,
+        "after": 102402
+      },
+      "encoded_sha256": {
+        "before": "99d306210f5e927bb4c7443a5758371edde455d54ce117a12c26329ea85389a4",
+        "after": "99d306210f5e927bb4c7443a5758371edde455d54ce117a12c26329ea85389a4"
+      },
+      "encoded_percent": {
+        "before": 0.15259087085723877,
+        "after": 0.15259087085723877
+      },
+      "encoded_size_after_over_before": 1.0,
+      "compression_ratio": {
+        "before": 655.3472002499951,
+        "after": 655.3472002499951
+      },
+      "timings": {
+        "compress": {
+          "before_seconds": 0.07326834788545966,
+          "after_seconds": 0.03805547719821334,
+          "speedup": 1.9253036167130109,
+          "before_mib_per_second": {
+            "median": 873.5013392147334,
+            "minimum": 873.1099721702336,
+            "maximum": 875.1456003824385
+          },
+          "after_mib_per_second": {
+            "median": 1681.755287593785,
+            "minimum": 1681.4356804175688,
+            "maximum": 1682.2818735171443
+          }
+        },
+        "decode_frozen": {
+          "before_seconds": 0.010667606256902218,
+          "after_seconds": 0.009690454229712486,
+          "speedup": 1.1008365556480961,
+          "before_mib_per_second": {
+            "median": 5999.47152704388,
+            "minimum": 5893.903587370774,
+            "maximum": 6027.521981589253
+          },
+          "after_mib_per_second": {
+            "median": 6604.437571539808,
+            "minimum": 6440.321512070048,
+            "maximum": 6695.468514494943
+          }
+        },
+        "decode_zlib6": {
+          "before_seconds": 0.12589251389726996,
+          "after_seconds": 0.12426785519346595,
+          "speedup": 1.0130738452134276,
+          "before_mib_per_second": {
+            "median": 508.3701803923376,
+            "minimum": 507.780704853532,
+            "maximum": 508.54622987580586
+          },
+          "after_mib_per_second": {
+            "median": 515.0165334419094,
+            "minimum": 514.9628900243188,
+            "maximum": 515.056149406335
+          }
+        }
+      }
+    },
+    {
+      "workload": "text",
+      "input_bytes": 67108864,
+      "input_sha256": "6df94f72745a92553e849f8ec118de0e5e530ccfb585fe873ed0034c66198bc2",
+      "frozen_stream_sha256": "ac97967fbd7931dfa0958831145fbd815a24d9303dfee22a7683a7ba7891e4a2",
+      "stdlib_stream_sha256": "b271b2d5e1cf828c747fb5f3187671873ccfe2e47c8d1291d8ecbbcf2928f6a6",
+      "encoded_bytes": {
+        "before": 8844221,
+        "after": 8844221
+      },
+      "encoded_sha256": {
+        "before": "ac97967fbd7931dfa0958831145fbd815a24d9303dfee22a7683a7ba7891e4a2",
+        "after": "ac97967fbd7931dfa0958831145fbd815a24d9303dfee22a7683a7ba7891e4a2"
+      },
+      "encoded_percent": {
+        "before": 13.178916275501251,
+        "after": 13.178916275501251
+      },
+      "encoded_size_after_over_before": 1.0,
+      "compression_ratio": {
+        "before": 7.587877326900809,
+        "after": 7.587877326900809
+      },
+      "timings": {
+        "compress": {
+          "before_seconds": 0.15764990635216236,
+          "after_seconds": 0.08759861486032605,
+          "speedup": 1.7996849219994113,
+          "before_mib_per_second": {
+            "median": 405.96281647662494,
+            "minimum": 405.8537630252211,
+            "maximum": 406.0290546843114
+          },
+          "after_mib_per_second": {
+            "median": 730.6051597053961,
+            "minimum": 730.4912814611727,
+            "maximum": 730.7556020587537
+          }
+        },
+        "decode_frozen": {
+          "before_seconds": 0.022004670929163694,
+          "after_seconds": 0.020901129115372896,
+          "speedup": 1.0527981913177664,
+          "before_mib_per_second": {
+            "median": 2908.473396672257,
+            "minimum": 2857.8754348161456,
+            "maximum": 2930.6640519076072
+          },
+          "after_mib_per_second": {
+            "median": 3062.035531512393,
+            "minimum": 3041.0368853544483,
+            "maximum": 3065.802141473748
+          }
+        },
+        "decode_zlib6": {
+          "before_seconds": 0.07173722609877586,
+          "after_seconds": 0.07085060607641935,
+          "speedup": 1.012513937021233,
+          "before_mib_per_second": {
+            "median": 892.1448943659686,
+            "minimum": 891.727927559271,
+            "maximum": 892.2865845073342
+          },
+          "after_mib_per_second": {
+            "median": 903.3091393878791,
+            "minimum": 903.1755482178993,
+            "maximum": 903.5947194821626
+          }
+        }
+      }
+    },
+    {
+      "workload": "uint32",
+      "input_bytes": 67108864,
+      "input_sha256": "d5f530811c8d9d406ad550cfcda607b89df0716df2e0561686c46283f4a1f3bd",
+      "frozen_stream_sha256": "b9a773e07a84a228107ca985eec60852a2ec11b9e2d1d4518e7eaafea89f068f",
+      "stdlib_stream_sha256": "b612612d6d78be110c8a9a1ed1a84a7928163186115f9df0ff15aa3aa954e332",
+      "encoded_bytes": {
+        "before": 23233621,
+        "after": 23233621
+      },
+      "encoded_sha256": {
+        "before": "b9a773e07a84a228107ca985eec60852a2ec11b9e2d1d4518e7eaafea89f068f",
+        "after": "b9a773e07a84a228107ca985eec60852a2ec11b9e2d1d4518e7eaafea89f068f"
+      },
+      "encoded_percent": {
+        "before": 34.6207931637764,
+        "after": 34.6207931637764
+      },
+      "encoded_size_after_over_before": 1.0,
+      "compression_ratio": {
+        "before": 2.888437579316629,
+        "after": 2.888437579316629
+      },
+      "timings": {
+        "compress": {
+          "before_seconds": 0.2249134350568056,
+          "after_seconds": 0.15135124092921615,
+          "speedup": 1.4860362800856914,
+          "before_mib_per_second": {
+            "median": 284.5539217514318,
+            "minimum": 284.5439084727571,
+            "maximum": 284.5775901065201
+          },
+          "after_mib_per_second": {
+            "median": 422.8574513632926,
+            "minimum": 422.8034640504818,
+            "maximum": 422.92108906899193
+          }
+        },
+        "decode_frozen": {
+          "before_seconds": 0.04419700661674142,
+          "after_seconds": 0.04604947613552213,
+          "speedup": 0.9597721912551416,
+          "before_mib_per_second": {
+            "median": 1448.0618688723002,
+            "minimum": 1366.8308507687807,
+            "maximum": 1512.717489569858
+          },
+          "after_mib_per_second": {
+            "median": 1389.809512960583,
+            "minimum": 1340.1496754207658,
+            "maximum": 1524.6885438507825
+          }
+        },
+        "decode_zlib6": {
+          "before_seconds": 0.036796712316572666,
+          "after_seconds": 0.03679811395704746,
+          "speedup": 0.9999619099914623,
+          "before_mib_per_second": {
+            "median": 1739.2858212274414,
+            "minimum": 1725.5195228942366,
+            "maximum": 1745.9555550316068
+          },
+          "after_mib_per_second": {
+            "median": 1739.2195718156613,
+            "minimum": 1723.679002022391,
+            "maximum": 1763.305365092436
+          }
+        }
+      }
+    },
+    {
+      "workload": "float32",
+      "input_bytes": 67108864,
+      "input_sha256": "ebf74d853aa2cf26a0062aff6f8df5185fb462acc7ab392d5dd05fa96abfb155",
+      "frozen_stream_sha256": "4a09b44e31c4a17883b246506e829d766534ae58d639575ab47caac4fc0d39c9",
+      "stdlib_stream_sha256": "b8581bcf642664df95b56c0c1771b164e83e07380d39259b54759a85dfad485f",
+      "encoded_bytes": {
+        "before": 62161999,
+        "after": 62161999
+      },
+      "encoded_sha256": {
+        "before": "4a09b44e31c4a17883b246506e829d766534ae58d639575ab47caac4fc0d39c9",
+        "after": "4a09b44e31c4a17883b246506e829d766534ae58d639575ab47caac4fc0d39c9"
+      },
+      "encoded_percent": {
+        "before": 92.62859672307968,
+        "after": 92.62859672307968
+      },
+      "encoded_size_after_over_before": 1.0,
+      "compression_ratio": {
+        "before": 1.079580211054667,
+        "after": 1.079580211054667
+      },
+      "timings": {
+        "compress": {
+          "before_seconds": 0.23054618015885353,
+          "after_seconds": 0.16913035279139876,
+          "speedup": 1.363127175896118,
+          "before_mib_per_second": {
+            "median": 277.6016499423326,
+            "minimum": 277.55610520008213,
+            "maximum": 277.96360426387605
+          },
+          "after_mib_per_second": {
+            "median": 378.4063531099946,
+            "minimum": 378.228048785042,
+            "maximum": 378.61579208521295
+          }
+        },
+        "decode_frozen": {
+          "before_seconds": 0.06315894983708858,
+          "after_seconds": 0.06635752180591226,
+          "speedup": 0.9517978989905755,
+          "before_mib_per_second": {
+            "median": 1013.3164051188439,
+            "minimum": 975.8320229271151,
+            "maximum": 1023.5807533835135
+          },
+          "after_mib_per_second": {
+            "median": 964.4724254047985,
+            "minimum": 946.0189028598519,
+            "maximum": 1042.7598168230943
+          }
+        },
+        "decode_zlib6": {
+          "before_seconds": 0.05896203592419624,
+          "after_seconds": 0.05929657118394971,
+          "speedup": 0.9943582697435291,
+          "before_mib_per_second": {
+            "median": 1085.4442014566923,
+            "minimum": 1076.864267661102,
+            "maximum": 1093.8020162528248
+          },
+          "after_mib_per_second": {
+            "median": 1079.3204180636233,
+            "minimum": 1074.8249284392161,
+            "maximum": 1082.0069879730197
+          }
+        }
+      }
+    },
+    {
+      "workload": "random",
+      "input_bytes": 67108864,
+      "input_sha256": "3f9dbeff358e92d166721b8b1a166104c2d648d4438f96e65ef20675056f24e1",
+      "frozen_stream_sha256": "f941e023ea1420b0c8f4230d823656b3e2f84aca375c58ec8374e9ac3e365e84",
+      "stdlib_stream_sha256": "cd2c1d775a195edfc630a92aff6cb404774e1ce9c29143d4ef1089152ef2986a",
+      "encoded_bytes": {
+        "before": 67119110,
+        "after": 67119110
+      },
+      "encoded_sha256": {
+        "before": "f941e023ea1420b0c8f4230d823656b3e2f84aca375c58ec8374e9ac3e365e84",
+        "after": "f941e023ea1420b0c8f4230d823656b3e2f84aca375c58ec8374e9ac3e365e84"
+      },
+      "encoded_percent": {
+        "before": 100.01526772975922,
+        "after": 100.01526772975922
+      },
+      "encoded_size_after_over_before": 1.0,
+      "compression_ratio": {
+        "before": 0.9998473460092067,
+        "after": 0.9998473460092067
+      },
+      "timings": {
+        "compress": {
+          "before_seconds": 0.1090724403038621,
+          "after_seconds": 0.11041319975629449,
+          "speedup": 0.9878568916090491,
+          "before_mib_per_second": {
+            "median": 586.7660045168518,
+            "minimum": 586.5929902081929,
+            "maximum": 587.2129512750832
+          },
+          "after_mib_per_second": {
+            "median": 579.6408413238786,
+            "minimum": 579.4011519395394,
+            "maximum": 580.1849405587475
+          }
+        },
+        "decode_frozen": {
+          "before_seconds": 0.0285957008600235,
+          "after_seconds": 0.027908258140087128,
+          "speedup": 1.0246322331005293,
+          "before_mib_per_second": {
+            "median": 2238.098667813082,
+            "minimum": 2220.3299323610045,
+            "maximum": 2278.257478340973
+          },
+          "after_mib_per_second": {
+            "median": 2293.228035900638,
+            "minimum": 2273.8611184077026,
+            "maximum": 2303.114254658107
+          }
+        },
+        "decode_zlib6": {
+          "before_seconds": 0.03060949733480811,
+          "after_seconds": 0.03014614898711443,
+          "speedup": 1.0153700675960877,
+          "before_mib_per_second": {
+            "median": 2090.854328640716,
+            "minimum": 2034.771969405111,
+            "maximum": 2169.962869764275
+          },
+          "after_mib_per_second": {
+            "median": 2122.9909010054967,
+            "minimum": 2078.1675387153887,
+            "maximum": 2209.2950281352905
+          }
+        }
+      }
+    }
+  ],
+  "profiles": {
+    "before": "optimisation-before.json",
+    "after": "optimisation-after.json"
+  },
+  "script_sha256": "5f4e9bc4d0d21ab70081cdb2e7f1bfbfc34955a502a0a81ab98cbb5a88cf0559",
+  "renderer": {
+    "matplotlib": "3.11.1",
+    "numpy": "2.5.2",
+    "backend": "Agg"
+  },
+  "plotted_input_bytes": 67108864,
+  "exports_sha256": {
+    "optimisation-throughput.png": "69f66573a2940deb7b22a9a85208fbabbd8a73622fbc61a7911e53379a186169",
+    "optimisation-throughput.svg": "1257522946b584c5f5dd5238826570eeab8f2c6d97cad79f62ee305de940a16b",
+    "optimisation-throughput.pdf": "14702593ede4b5eaf655286840b48a1d77a2301c1efa8b117748b9aaab8c783f"
+  }
+}

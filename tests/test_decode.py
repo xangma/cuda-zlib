@@ -538,6 +538,81 @@ def test_bad_stream_fails_without_cpu_inflation(
         decoder(payload, expected, cuda_device)
 
 
+@pytest.mark.parametrize("length", [0, 4095, 4096, 4097])
+@pytest.mark.parametrize("encoding", ["stored", "local-fixed", "literal-dynamic"])
+def test_resolved_emission_skips_refinement_and_checks_fused_checksum(
+    decoder, cuda_device, forbid_cpu_inflation, monkeypatch, length, encoding,
+):
+    from cuda_zlib import _codec
+
+    raw = (bytes(index % 251 for index in range(length))
+           if encoding == "stored" else b"A" * length)
+    if encoding == "stored":
+        payload = _wrap(_stored(raw), raw)
+    elif encoding == "local-fixed":
+        payload = _compressed(raw, strategy=zlib.Z_FIXED)
+    else:
+        payload = _wrap(_bits(_dynamic_literal_fields(raw)), raw)
+    kernels = _codec._module(cuda_device)
+    write = kernels["write_adler_parts"]
+    writes = []
+
+    def forbidden_refinement(*args, **kwargs):
+        pytest.fail("resolved local/literal roots entered refinement")
+
+    def counted_write(*args, **kwargs):
+        writes.append(1)
+        return write(*args, **kwargs)
+
+    monkeypatch.setitem(kernels, "refine_roots", forbidden_refinement)
+    monkeypatch.setitem(kernels, "write_adler_parts", counted_write)
+    _assert_bytes(decoder(payload, length, cuda_device), raw, cuda_device)
+    assert len(writes) == 1
+    bad_checksum = payload[:-1] + bytes((payload[-1] ^ 1,))
+    with pytest.raises(GWFFormatError, match="Adler32"):
+        decoder(bad_checksum, length, cuda_device)
+    assert len(writes) == 2
+
+
+def test_external_emission_still_refines_cross_block_history(
+    decoder, cuda_device, forbid_cpu_inflation, monkeypatch,
+):
+    from cuda_zlib import _codec
+
+    payload, _, raw = _distance_window_stream()
+    kernels = _codec._module(cuda_device)
+    refine = kernels["refine_roots"]
+    rounds = []
+
+    def counted_refinement(*args, **kwargs):
+        rounds.append(1)
+        return refine(*args, **kwargs)
+
+    monkeypatch.setitem(kernels, "refine_roots", counted_refinement)
+    _assert_bytes(decoder(payload, len(raw), cuda_device), raw, cuda_device)
+    assert rounds
+
+
+def test_external_reference_flag_does_not_hide_another_blocks_error(
+    decoder, cuda_device, forbid_cpu_inflation,
+):
+    # Both dynamic blocks describe three bytes from distance one. The first
+    # has no preceding history and must fail; the second requires refinement.
+    literal = [0] * 258
+    literal[256] = literal[257] = 1
+    lengths = [0] * 19
+    lengths[0] = lengths[1] = 1
+    length_codes, literal_codes = _codes(lengths), _codes(literal)
+    fields = []
+    for final in [False, True]:
+        fields += _dynamic_header(258, 1, lengths, final)
+        fields += [length_codes[width] for width in literal + [1]]
+        fields += [literal_codes[257], (0, 1), literal_codes[256]]
+    payload = _wrap(_bits(fields), b"A" * 6)
+    with pytest.raises(GWFFormatError, match="Deflate output emission"):
+        decoder(payload, 6, cuda_device)
+
+
 def test_returned_array_survives_subsequent_decode(
     decoder, cuda_device, forbid_cpu_inflation,
 ):
@@ -548,4 +623,3 @@ def test_returned_array_survives_subsequent_decode(
     del second
     gc.collect()
     _assert_bytes(first, first_raw, cuda_device)
-

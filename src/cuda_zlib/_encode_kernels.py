@@ -3,9 +3,9 @@
 
 """Independent RFC 1951 encoder with bounded per-chunk Huffman trees.
 
-Chunks have no shared history. A histogram pass and deterministic replay use
-the same greedy matcher. Complete stored, fixed and dynamic extents determine
-the representation; empty stored blocks align nonfinal compressed chunks.
+Chunks have no shared history. One greedy pass caches tokens and collects
+histograms. Complete stored, fixed and dynamic extents determine the
+representation; empty stored blocks align nonfinal compressed chunks.
 """
 
 KERNEL_NAMES = ("encode_chunks", "pack_chunks", "write_wrapper")
@@ -184,14 +184,14 @@ __device__ enc_u32 enc_rle(enc_u32 nll, enc_u32 ndist, const enc_u8* ll,
   return size;
 }
 
-// Both passes intentionally preserve the original one-candidate matcher.
-// No token indexes are saved: the emission pass reads fresh input again.
-template<bool Collect> __device__ void enc_parse(
+// Preserve the original one-candidate matcher and its insertion order. A
+// literal consumes one byte; a match consumes at least three, so n token slots
+// suffice. Match tokens hold the already-classified symbols and extra values.
+__device__ enc_u32 enc_collect(
     const enc_u8* data, enc_u32 n, enc_u32* last,
-    enc_u32* ll_freq, enc_u32* d_freq, enc_u32& extra_bits, BitWriter& w,
-    bool dynamic, const enc_u8* ll_lengths, const enc_u16* ll_codes,
-    const enc_u8* d_lengths, const enc_u16* d_codes) {
-  enc_u32 pos = 0;
+    enc_u32* ll_freq, enc_u32* d_freq, enc_u32& extra_bits,
+    enc_u32* tokens) {
+  enc_u32 pos = 0, count = 0;
   while (pos < n) {
     enc_u32 match = 0, distance = 0;
     if (n - pos >= 3) {
@@ -212,27 +212,42 @@ template<bool Collect> __device__ void enc_parse(
       enc_u32 li = 0, di = 0;
       while (li < 28u && match >= enc_lb[li+1u]) ++li;
       while (di < 29u && distance >= enc_db[di+1u]) ++di;
-      if (Collect) {
-        ++ll_freq[257u+li]; ++d_freq[di]; extra_bits += enc_le[li] + enc_de[di];
-      } else {
-        if (dynamic) w.put(ll_codes[257u+li], ll_lengths[257u+li]);
-        else fixed_symbol(w, 257u+li);
-        w.put(match - enc_lb[li], enc_le[li]);
-        w.put(dynamic ? d_codes[di] : enc_reverse(di, 5), dynamic ? d_lengths[di] : 5u);
-        w.put(distance - enc_db[di], enc_de[di]);
-      }
+      ++ll_freq[257u+li]; ++d_freq[di]; extra_bits += enc_le[li] + enc_de[di];
+      tokens[count++] = 0x80000000u | li | (di << 5) |
+                         ((match - enc_lb[li]) << 10) |
+                         ((distance - enc_db[di]) << 15);
       for (enc_u32 j = 1; j < match && n - (pos + j) >= 3; ++j)
         last[enc_hash(data, pos + j)] = pos + j + 1u;
       pos += match;
     } else {
-      if (Collect) ++ll_freq[data[pos]];
-      else if (dynamic) w.put(ll_codes[data[pos]], ll_lengths[data[pos]]);
-      else fixed_symbol(w, data[pos]);
+      ++ll_freq[data[pos]];
+      tokens[count++] = data[pos];
       ++pos;
     }
   }
-  if (Collect) ++ll_freq[256];
-  else if (dynamic) w.put(ll_codes[256], ll_lengths[256]);
+  ++ll_freq[256];
+  return count;
+}
+
+__device__ void enc_emit(
+    const enc_u32* tokens, enc_u32 count, BitWriter& w, bool dynamic,
+    const enc_u8* ll_lengths, const enc_u16* ll_codes,
+    const enc_u8* d_lengths, const enc_u16* d_codes) {
+  for (enc_u32 i = 0; i < count; ++i) {
+    enc_u32 token = tokens[i];
+    if (token & 0x80000000u) {
+      enc_u32 li = token & 31u, di = (token >> 5) & 31u;
+      if (dynamic) w.put(ll_codes[257u+li], ll_lengths[257u+li]);
+      else fixed_symbol(w, 257u+li);
+      w.put((token >> 10) & 31u, enc_le[li]);
+      w.put(dynamic ? d_codes[di] : enc_reverse(di, 5), dynamic ? d_lengths[di] : 5u);
+      w.put((token >> 15) & 8191u, enc_de[di]);
+    } else {
+      if (dynamic) w.put(ll_codes[token], ll_lengths[token]);
+      else fixed_symbol(w, token);
+    }
+  }
+  if (dynamic) w.put(ll_codes[256], ll_lengths[256]);
   else fixed_symbol(w, 256);
 }
 
@@ -241,12 +256,13 @@ __device__ enc_u32 enc_extent(enc_u32 bits, bool final) {
 }
 extern "C" __global__ void encode_chunks(
     const enc_u8* input, enc_u32 total, enc_u32 chunk_bytes, enc_u32 chunks,
-    enc_u32 slot_bytes, enc_u8* scratch, enc_u32* sizes, enc_u32* status) {
+    enc_u32 slot_bytes, enc_u8* scratch, enc_u32* sizes, enc_u32* status,
+    enc_u32* tokens) {
   __shared__ enc_u32 last[8192];
   __shared__ enc_u32 freq[335], weight[571];
   __shared__ enc_u16 codes[335], parent[571], heap[286];
   __shared__ enc_u8 lengths[335], rle_symbols[316], rle_extras[316];
-  __shared__ enc_u32 extra_bits, nll, ndist, ncl, rle_size, mode, extent;
+  __shared__ enc_u32 extra_bits, nll, ndist, ncl, rle_size, mode, extent, token_count;
   enc_u32 chunk = blockIdx.x;
   if (chunk >= chunks) return;
   enc_u32 start = chunk * chunk_bytes;
@@ -263,33 +279,41 @@ extern "C" __global__ void encode_chunks(
   BitWriter w = {slot, 0, slot_bytes, 0, 0, 0};
   if (!threadIdx.x) {
     extra_bits = 0; mode = 0; extent = n + 5u; status[chunk] = 0;
-    enc_parse<true>(data, n, last, freq, freq+286, extra_bits, w, false,
-                    lengths, codes, lengths+286, codes+286);
-    bool trees = enc_tree(freq, 286, 15, lengths, codes, parent, heap, weight) &&
-                 enc_tree(freq+286, 30, 15, lengths+286, codes+286, parent, heap, weight);
-    nll = 286; ndist = 30;
-    while (nll > 257u && !lengths[nll-1u]) --nll;
-    while (ndist > 1u && !lengths[286u+ndist-1u]) --ndist;
-    rle_size = enc_rle(nll, ndist, lengths, lengths+286, rle_symbols, rle_extras, freq+316);
-    trees = trees && enc_tree(freq+316, 19, 7, lengths+316, codes+316, parent, heap, weight);
-    ncl = 19;
-    while (ncl > 4u && !lengths[316u+enc_cl_order[ncl-1u]]) --ncl;
+    token_count = enc_collect(data, n, last, freq, freq+286, extra_bits, tokens+start);
+    enc_u32 fixed_bits = 3u + extra_bits;
+    for (enc_u32 i = 0; i < 286u; ++i)
+      fixed_bits += freq[i] * (i <= 143u ? 8u : i <= 255u ? 9u : i <= 279u ? 7u : 8u);
+    for (enc_u32 i = 0; i < 30u; ++i) fixed_bits += freq[286u+i] * 5u;
+    enc_u32 fixed_extent = enc_extent(fixed_bits, final);
+    if (fixed_extent < extent) { extent = fixed_extent; mode = 1; }
+
+    bool trees = enc_tree(freq, 286, 15, lengths, codes, parent, heap, weight);
+    enc_u32 ll_bits = 0, distance_tokens = 0;
+    for (enc_u32 i = 0; i < 286u; ++i) ll_bits += freq[i] * lengths[i];
+    for (enc_u32 i = 0; i < 30u; ++i) distance_tokens += freq[286u+i];
+    // Dynamic coding needs at least 17 + 3*4 header bits and one bit per
+    // distance token. If even this lower bound cannot improve the complete
+    // stored/fixed extent, avoid the remaining trees without changing ties.
+    bool consider_dynamic = enc_extent(29u + extra_bits + ll_bits + distance_tokens, final) < extent;
+    if (trees && consider_dynamic) {
+      trees = enc_tree(freq+286, 30, 15, lengths+286, codes+286, parent, heap, weight);
+      nll = 286; ndist = 30;
+      while (nll > 257u && !lengths[nll-1u]) --nll;
+      while (ndist > 1u && !lengths[286u+ndist-1u]) --ndist;
+      rle_size = enc_rle(nll, ndist, lengths, lengths+286, rle_symbols, rle_extras, freq+316);
+      trees = trees && enc_tree(freq+316, 19, 7, lengths+316, codes+316, parent, heap, weight);
+      ncl = 19;
+      while (ncl > 4u && !lengths[316u+enc_cl_order[ncl-1u]]) --ncl;
+    }
     if (!trees) { mode = 3; status[chunk] = 1; }
-    else {
-      enc_u32 fixed_bits = 3u + extra_bits, dynamic_bits = 17u + 3u*ncl + extra_bits;
-      for (enc_u32 i = 0; i < 286u; ++i) {
-        fixed_bits += freq[i] * (i <= 143u ? 8u : i <= 255u ? 9u : i <= 279u ? 7u : 8u);
-        dynamic_bits += freq[i] * lengths[i];
-      }
+    else if (consider_dynamic) {
+      enc_u32 dynamic_bits = 17u + 3u*ncl + extra_bits + ll_bits;
       for (enc_u32 i = 0; i < 30u; ++i) {
-        fixed_bits += freq[286u+i] * 5u;
         dynamic_bits += freq[286u+i] * lengths[286u+i];
       }
       for (enc_u32 i = 0; i < 19u; ++i)
         dynamic_bits += freq[316u+i] * (lengths[316u+i] + (i == 16u ? 2u : i == 17u ? 3u : i == 18u ? 7u : 0u));
-      enc_u32 fixed_extent = enc_extent(fixed_bits, final);
       enc_u32 dynamic_extent = enc_extent(dynamic_bits, final);
-      if (fixed_extent < extent) { extent = fixed_extent; mode = 1; }
       if (dynamic_extent < extent) { extent = dynamic_extent; mode = 2; }
     }
   }
@@ -306,8 +330,6 @@ extern "C" __global__ void encode_chunks(
     for (enc_u32 i = threadIdx.x; i < n; i += blockDim.x) slot[5u+i] = data[i];
     return;
   }
-  for (enc_u32 i = threadIdx.x; i < 8192u; i += blockDim.x) last[i] = 0;
-  __syncthreads();
   if (threadIdx.x) return;
   bool dynamic = mode == 2u;
   w.put((final ? 1u : 0u) | (dynamic ? 4u : 2u), 3);
@@ -320,8 +342,8 @@ extern "C" __global__ void encode_chunks(
       if (symbol >= 16u) w.put(rle_extras[i], symbol == 16u ? 2u : symbol == 17u ? 3u : 7u);
     }
   }
-  enc_parse<false>(data, n, last, freq, freq+286, extra_bits, w, dynamic,
-                   lengths, codes, lengths+286, codes+286);
+  enc_emit(tokens+start, token_count, w, dynamic, lengths, codes,
+           lengths+286, codes+286);
   if (!final) {
     w.put(0, 3); // Nonfinal empty stored block realigns the next chunk.
     w.align();
