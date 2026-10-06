@@ -123,6 +123,29 @@ def compile_kernels(device=0):
     load_backend(_select_device(device))
 
 
+def workspace_pool_stats(device=0):
+    """Return retention, reserved/live bytes and pool count for a CUDA device.
+
+    Scratch pools retain up to a 1 GiB release threshold by default. Set
+    CUDA_ZLIB_WORKSPACE_RETENTION_BYTES before the first backend load to change
+    it; zero disables retention. The threshold is not a hard allocation cap.
+    Concurrent operations may change these diagnostic values during the call.
+    """
+    from ._ffi import workspace_pool_stats as stats
+    return stats(_select_device(device))
+
+
+def trim_workspace_pool(device=0):
+    """Try to release unused codec scratch memory on the requested device.
+
+    This does not wait for pending operations or change JAX's allocation pool.
+    Complete outstanding codec results first to make their scratch eligible.
+    CUDA may retain pages containing live or pending allocations.
+    """
+    from ._ffi import trim_workspace_pool as trim
+    trim(_select_device(device))
+
+
 def compress_zlib_padded(data, device=0, *, chunk_bytes=32768):
     """Return ``(buffer, [encoded_length, status])`` on CUDA, also under jax.jit.
 

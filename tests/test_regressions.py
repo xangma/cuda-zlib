@@ -741,3 +741,132 @@ def test_jit_explicit_device_rejects_other_device_input(cuda_device, operation):
         result, metadata = run(source)
         result.block_until_ready()
         metadata.block_until_ready()
+
+
+@pytest.mark.parametrize("value,expected", [(None, 1 << 30), ("0", 0),
+                                            ("536870912", 1 << 29),
+                                            (str((1 << 64) - 1), (1 << 64) - 1)])
+def test_workspace_retention_environment(monkeypatch, value, expected):
+    from cuda_zlib import _ffi
+    if value is None:
+        monkeypatch.delenv("CUDA_ZLIB_WORKSPACE_RETENTION_BYTES", raising=False)
+    else:
+        monkeypatch.setenv("CUDA_ZLIB_WORKSPACE_RETENTION_BYTES", value)
+    assert _ffi._workspace_retention() == expected
+
+
+@pytest.mark.parametrize("value", ["", "-1", "1.5", "1GiB", " 0", "١", str(1 << 64)])
+def test_workspace_retention_rejects_invalid_environment(monkeypatch, value):
+    from cuda_zlib import _ffi
+    monkeypatch.setenv("CUDA_ZLIB_WORKSPACE_RETENTION_BYTES", value)
+    with pytest.raises(ValueError, match="CUDA_ZLIB_WORKSPACE_RETENTION_BYTES"):
+        _ffi._workspace_retention()
+
+
+def test_workspace_pool_configures_native_abi(monkeypatch):
+    import ctypes
+    from types import SimpleNamespace
+    from cuda_zlib import _ffi
+    calls = []
+    class Function:
+        def __call__(self, *args):
+            calls.append(args)
+            return 0
+    library = SimpleNamespace(CudaZlibSetWorkspaceRetention=Function(),
+                              CudaZlibWorkspacePoolStats=Function(),
+                              CudaZlibTrimWorkspacePool=Function())
+    monkeypatch.setenv("CUDA_ZLIB_WORKSPACE_RETENTION_BYTES", "0")
+    _ffi._configure_workspace_pool(library)
+    assert calls == [(0,)]
+    assert library.CudaZlibSetWorkspaceRetention.argtypes == [ctypes.c_uint64]
+    assert library.CudaZlibWorkspacePoolStats.argtypes == [
+        ctypes.c_int, ctypes.POINTER(ctypes.c_uint64)]
+    with pytest.raises(codec.BackendUnavailable, match="workspace pool.*123"):
+        _ffi._check_pool_error(123)
+
+
+def _framework_pool_settings(device):
+    """Read the runtime dependency through the already-loaded native library."""
+    import ctypes
+    from cuda_zlib import _ffi
+    library = _ffi._backend(device)[0]
+    get_pool = library.cudaDeviceGetMemPool
+    get_pool.argtypes = [ctypes.POINTER(ctypes.c_void_p), ctypes.c_int]
+    get_pool.restype = ctypes.c_int
+    get_attribute = library.cudaMemPoolGetAttribute
+    get_attribute.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p]
+    get_attribute.restype = ctypes.c_int
+    pool, retention = ctypes.c_void_p(), ctypes.c_uint64()
+    assert get_pool(ctypes.byref(pool), int(device.local_hardware_id)) == 0
+    # cudaMemPoolAttrReleaseThreshold = 4 in the CUDA runtime ABI.
+    assert get_attribute(pool, 4, ctypes.byref(retention)) == 0
+    return pool.value, retention.value
+
+
+def test_workspace_pool_retention_trim_and_error_recovery(cuda_device):
+    import jax
+    device = jax.devices("gpu")[cuda_device]
+    framework_before = _framework_pool_settings(device)
+    raw = bytes(range(256)) * 4097
+    payload = zlib.compress(raw)
+    output, metadata = codec.decompress_zlib_checked(payload, len(raw), device)
+    jax.block_until_ready((output, metadata))
+    assert int(np.asarray(metadata)[0]) == 0
+    _assert_bytes(output, raw, device)
+    bad = payload[:-1] + bytes((payload[-1] ^ 1,))
+    _, error = codec.decompress_zlib_checked(bad, len(raw), device)
+    assert int(np.asarray(error)[0]) == 21
+    recovered = codec.decompress_zlib(payload, len(raw), device)
+    _assert_bytes(recovered, raw, device)
+    before = codec.workspace_pool_stats(device)
+    assert before["pool_count"] >= 1
+    assert before["used_bytes"] == 0
+    if before["retention_bytes"]:
+        assert before["reserved_bytes"] > 0
+    codec.trim_workspace_pool(device)
+    after = codec.workspace_pool_stats(device)
+    assert after["retention_bytes"] == before["retention_bytes"]
+    assert after["pool_count"] == before["pool_count"]
+    assert after["reserved_bytes"] <= before["reserved_bytes"]
+    assert after["used_bytes"] == 0
+    assert _framework_pool_settings(device) == framework_before
+
+
+def test_workspace_pool_concurrent_calls_and_trim(cuda_device):
+    raws = [bytes((i,)) * size + bytes(range(256)) for i, size in
+            enumerate((4097, 32769, 262144, 1048577), 1)]
+    payloads = [zlib.compress(raw) for raw in raws]
+    barrier = threading.Barrier(5)
+    def decode(index):
+        barrier.wait(timeout=30)
+        raw = raws[index]
+        decoded = codec.decompress_zlib(payloads[index], len(raw), cuda_device)
+        assert np.asarray(decoded).tobytes() == raw
+    def trim():
+        barrier.wait(timeout=30)
+        for _ in range(4):
+            codec.trim_workspace_pool(cuda_device)
+    # Warm backend registration before racing actual native invocations.
+    codec.compile_kernels(cuda_device)
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = [executor.submit(decode, i) for i in range(4)]
+        futures.append(executor.submit(trim))
+        for future in futures:
+            future.result(timeout=60)
+    assert codec.workspace_pool_stats(cuda_device)["used_bytes"] == 0
+
+
+def test_workspace_pool_separate_devices(cuda_device):
+    import jax
+    devices = jax.devices("gpu")
+    if len(devices) < 2:
+        pytest.skip("two CUDA devices required for pool isolation")
+    first, second = devices[cuda_device], devices[1 if cuda_device == 0 else 0]
+    raw = bytes(range(256)) * 4097
+    payload = zlib.compress(raw)
+    for device in (first, second):
+        _assert_bytes(codec.decompress_zlib(payload, len(raw), device), raw, device)
+    second_before = codec.workspace_pool_stats(second)
+    codec.trim_workspace_pool(first)
+    assert codec.workspace_pool_stats(second) == second_before
+    assert codec.workspace_pool_stats(first)["used_bytes"] == 0

@@ -65,9 +65,9 @@ asynchronous pipeline.
 ## Performance
 
 On an RTX 3090 with an AMD Threadripper PRO 3995WX, warm **64 MiB**
-compression measured **3.40–12.14×** the throughput of the same CPU's
+compression measured **3.89–12.57×** the throughput of the same CPU's
 single-threaded stdlib zlib level 1. Decoding identical stdlib level-6 streams
-measured **0.89–3.65×** CPU throughput: GPU decoding was faster for zeros,
+measured **0.98–4.16×** CPU throughput: GPU decoding was faster for zeros,
 synthetic text, uint32 and float32; CPU decoding was faster for random bytes.
 Both comparisons include GPU uploads, downloads, codec validation and conversion
 to host bytes. Host-array output is measured separately in the benchmark tables.
@@ -76,6 +76,10 @@ At **64 KiB**, CPU compression and decompression were faster for every measured
 workload. At **1 MiB**, compression depended on the workload and CPU
 decompression was faster throughout. Compression sizes differ between codecs;
 these results cover five synthetic workloads and the recorded hardware.
+
+The run used a 1 GiB private-workspace retention threshold and ended with
+544 MiB reserved and no live scratch. Retaining unused pages allows workspace
+reuse between calls and keeps GPU memory reserved.
 
 ![64 MiB GPU speedup over same-host CPU, including transfers](benchmarks/figures/cpu-speedup.png)
 
@@ -93,7 +97,7 @@ python -m pip install ".[cuda12]"
 ```
 
 Codec calls require Python 3.12 or later, Linux, an NVIDIA GPU, JAX/JAXlib 0.11.2 or later, and a
-compatible CUDA toolkit containing `nvcc`. Set `CUDACXX=/path/to/nvcc` or
+compatible CUDA toolkit (12.0 or later) containing `nvcc`. Set `CUDACXX=/path/to/nvcc` or
 `CUDA_HOME=/path/to/cuda` when the compiler is not on `PATH`. The `cuda12` extra
 installs JAX's CUDA 12 runtime; the toolkit compiler is installed separately.
 The `jax` extra installs JAX without selecting its GPU runtime. For an existing
@@ -118,7 +122,16 @@ bounded subset, not a complete implementation of all RFC 1950 features.
 
 Input/output bounds are 256 MiB; candidate and block limits are 262144.
 Each invocation uses its own temporary workspace, allocated and freed on XLA's
-stream. Compression conservatively requires its worst-case encoded extent to
+stream. Private CUDA pools reuse freed workspace allocations, with one pool per
+CUDA context and device. The default release threshold is 1 GiB per pool;
+it is a retention policy, not a memory limit. Set
+`CUDA_ZLIB_WORKSPACE_RETENTION_BYTES=0` before loading the backend to disable
+retention, or set another nonnegative byte count. Pool handles live for the
+backend's process lifetime. `workspace_pool_stats(device)` reports retained and
+live bytes; `trim_workspace_pool(device)` asks CUDA to release unused pages.
+Complete outstanding calls first to make their scratch eligible for trimming.
+
+Compression conservatively requires its worst-case encoded extent to
 fit the decoder input limit. Each 256–65535 byte chunk has fresh LZ77 history and
 one hash candidate. Exact bit costs select stored, fixed or dynamic Huffman
 coding; stored blocks bound expansion. There are no zlib compression levels or
