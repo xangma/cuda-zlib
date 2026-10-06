@@ -6,7 +6,7 @@
 This prototype parallelizes independent Deflate blocks and fixed-code tiles.
 Fresh fixed summaries are requested only when the exact boundary chain needs
 them. No host-generated block index, CPU inflation, or transcoding is used. The caller
-compiles ``CUDA_SOURCE`` lazily with CuPy RawModule, sorts candidate metadata on
+compiles ``CUDA_SOURCE`` into a native JAX FFI library, sorts candidate metadata on
 device, resolves backward roots on device, and verifies the original checksum.
 
 Bit offsets use uint64; counts, output offsets, sizes and roots use uint32.

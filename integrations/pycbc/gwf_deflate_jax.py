@@ -1,7 +1,7 @@
 # Copyright (c) 2026 xangma
 # SPDX-License-Identifier: MIT
 
-"""Proposed PyCBC adapter; copy here only during an approved migration."""
+"""PyCBC adapter for the JAX CUDA byte codec."""
 
 import numpy as np
 from .gwf_jax import CompressionKind, GWFFormatError, _raw_kernel
@@ -26,14 +26,6 @@ def decompress_zlib(payload, expected_bytes, device=None):
         from pycbc import scheme
         device = getattr(scheme.mgr.state, "jax_device", None)
     try:
-        # Preserve CPU admission and the old explicit optional-dependency error.
-        # Ordinal mapping happens only after the backend is available.
-        if device is not None and getattr(device, "platform", None) == "gpu":
-            try:
-                import cupy  # noqa: F401
-            except ImportError as exc:
-                raise GWFDeflateUnavailable(
-                    "direct CUDA GWF decoding requires JAX and CuPy") from exc
         return bridge.decompress_zlib(payload, expected_bytes, device=device)
     except codec.CodecError as exc:
         raise GWFFormatError(str(exc)) from exc
