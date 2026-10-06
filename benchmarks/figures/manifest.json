@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "source": "results/rtx3090-ffi-20261006-2.json",
-  "source_sha256": "6e36801da45d5d3f29c3b4bc4f1829844c27507f96b5c096a4665c959d17ce92",
-  "script_sha256": "68191bf2521168723dce3bd8602bdbee4bf674e19185f6a87193e1a83c5cf9b4",
+  "source": "results/rtx3090-ffi-20261006-3.json",
+  "source_sha256": "56f79083467a58383612a6d25997678fa5144a75c47bd83b432223d1b5212f13",
+  "script_sha256": "a796b49569a76f3e5029dfaf8ffad0184b2bb93304d2c0ea09624061b9d1c259",
   "renderer": {
     "matplotlib": "3.11.1",
     "numpy": "2.5.2",
     "backend": "Agg"
   },
-  "source_created_utc": "2026-10-06T21:06:16.278561+00:00",
+  "source_created_utc": "2026-10-06T22:20:17.371573+00:00",
   "validated_cases": 15,
   "validated_timing_keys": [
     "cpu_compress_level1",
@@ -46,9 +46,9 @@
   "figures": {
     "compression-throughput": {
       "exports_sha256": {
-        "compression-throughput.png": "b57a25526cb73521c0009921ebd39e58e6b2db7e5dc553da313333bc3c70fd89",
-        "compression-throughput.svg": "ab97f444425821c19e0b2c3d6c4db2d3d9465b4bd98648ec35e8516c4af6adbd",
-        "compression-throughput.pdf": "3ad1da67a5793481642e5845e27a14636f5c627416b74b3390b8564bbb3783ca"
+        "compression-throughput.png": "8f4984633ab3f98fc9cf13db37a0dd2043d3a795f4d4520dee5a4f0b5ec0cbf4",
+        "compression-throughput.svg": "334b962615c7546b5aaf3b4fd287a590722e40bff5acfa2c115c919612dc7d43",
+        "compression-throughput.pdf": "07255143b4fd6096db7a095637469745421cf5fa9991bf84577b137b83cae14f"
       },
       "workloads": [
         "zeros",
@@ -120,9 +120,9 @@
     },
     "decompression-throughput": {
       "exports_sha256": {
-        "decompression-throughput.png": "dce4928645965a710f27c22c2a7a81b2236695a50ae95a5c7ba3a54a83d4d21a",
-        "decompression-throughput.svg": "9f11a4179b6645af3698c276e00d8df60d3523740a33ed5306eb9195639e2816",
-        "decompression-throughput.pdf": "a2401fa1754b4d10589dbf5fe96e3daef851525860d3089493e9cfa9177866aa"
+        "decompression-throughput.png": "a42d1af7ecadbc8bcdd7cf7a2d1a049e499622bb4af983486d992d47d5fa8211",
+        "decompression-throughput.svg": "d3a3d4006c94a9bb38ba24b0f011e4c3d0980f664252fa60f42c65ba650952fe",
+        "decompression-throughput.pdf": "dddfe50bb2c57eda00758d90dec88831deb37cdcd54039f28ae219b0a5e00ed8"
       },
       "workloads": [
         "zeros",
@@ -160,9 +160,9 @@
     },
     "decode-stream-layout": {
       "exports_sha256": {
-        "decode-stream-layout.png": "aa2b8329543b3cd5b1ca1254d0f790b974b920273d8b0a8754e462ceb2463e21",
-        "decode-stream-layout.svg": "29303f5d2288a9d5b939fe807142a189b4bd4689c5a5b5db700dd5efcc6fd5c2",
-        "decode-stream-layout.pdf": "e7968cc40b8f98a02b938574d30df8e1a45fb648edfb386f8fa42b4ffd8f3388"
+        "decode-stream-layout.png": "298c9133912d8c05e7fec0642ba19f993d26a5f7f971890a13aec11c02c76acb",
+        "decode-stream-layout.svg": "a614d3617fed393d4da6e39841f9d5bf90c6102fb053e180c5f4e3a86ac11fb7",
+        "decode-stream-layout.pdf": "5dd60d431f368f4776fe0261e60af45df3c8b347b3ab6df7839413c0f15d5b76"
       },
       "workloads": [
         "zeros",
@@ -198,9 +198,9 @@
     },
     "cpu-speedup": {
       "exports_sha256": {
-        "cpu-speedup.png": "a596d3101e09a434383bd6603c9d2bf6505f97595e0c3ed71aff482da92fcd6d",
-        "cpu-speedup.svg": "9b31212abca777a58010f8987be2c7cf67ff56abb8a6c2f0f4169256bc7bf9bb",
-        "cpu-speedup.pdf": "3319acae017e026e581a0a6d33f58ffab6a0aeca5c954dbd08b88934853a3003"
+        "cpu-speedup.png": "55461b3ea9957bbc18a4d7665a734b2a90119eb4361be9646ff62863b918c821",
+        "cpu-speedup.svg": "dab69b219efb8746d9b34a3259db9c74f5199a791d3b9e19643e2432784105f7",
+        "cpu-speedup.pdf": "0a1f33ed0dad42a49bbaa03c6bb4d50448ea40ae02b7703585279c5e014d5e42"
       },
       "workloads": [
         "zeros",
