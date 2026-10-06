@@ -370,6 +370,23 @@ __device__ FixedSummary scan_fixed_region(
     return info;
 }
 
+// Overlapping DEFLATE matches repeat the distance-byte seed preceding the
+// match. Read only that seed so emission never depends on its own stores.
+__device__ __forceinline__ void emit_match_roots(
+    u32* roots, u32 prefix, u32 begin, u32 distance, u32 length) {
+    u32 first = begin - distance;
+    if (distance == 1) {
+        u32 value = first < prefix ? first : roots[first];
+        for (u32 j = 0; j < length; ++j) roots[begin + j] = value;
+    } else {
+        u32 source = first;
+        for (u32 j = 0; j < length; ++j) {
+            roots[begin + j] = source < prefix ? source : roots[source];
+            if (++source == begin) source = first;
+        }
+    }
+}
+
 __device__ BlockInfo emit_fixed_segment(
     const u8* data, u32 bytes, u64 start, u64 end, u32 limit, u32 prefix,
     u32* roots, DecodeTables& tables, u32 window_bytes, u32 final) {
@@ -393,10 +410,8 @@ __device__ BlockInfo emit_fixed_segment(
         else {
             if (distance > prefix + result.size) { r.error = 6; break; }
             if (distance > result.size) result.external = 1;
-            for (u32 j = 0; j < size; ++j) {
-                u32 dest = prefix + result.size + j, source = dest - distance;
-                roots[dest] = source < prefix ? source : roots[source];
-            }
+            emit_match_roots(roots, prefix, prefix + result.size,
+                             distance, size);
         }
         result.size += size;
     }
@@ -488,11 +503,8 @@ __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
             if (roots) {
                 if (distance > prefix + produced) { r.error = 6; break; }
                 if (distance > produced) result.external = 1;
-                for (u32 j = 0; j < length; ++j) {
-                    u32 dest = prefix + produced + j;
-                    u32 source = dest - distance;
-                    roots[dest] = source < prefix ? source : roots[source];
-                }
+                emit_match_roots(roots, prefix, prefix + produced,
+                                 distance, length);
             }
             produced += length;
         }
