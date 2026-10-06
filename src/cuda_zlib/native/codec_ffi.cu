@@ -343,6 +343,10 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
       data, length, block_starts, block_ends, prefix, block_sizes, blocks,
       expected, window, roots, emission);
   CUDA_TRY(cudaGetLastError());
+  decoder::emit_blocks_warp<<<blocks, 32, 0, stream>>>(
+      data, length, block_starts, block_ends, prefix, block_sizes, blocks,
+      expected, window, roots, emission);
+  CUDA_TRY(cudaGetLastError());
   decoder::emit_stored<<<blocks, 256, 0, stream>>>(
       data, length, block_starts, block_ends, prefix, block_sizes, blocks,
       expected, window, roots, emission);

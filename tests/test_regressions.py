@@ -16,8 +16,8 @@ import pytest
 
 import cuda_zlib as codec
 from test_decode import (
-    _assert_bytes, _codes, _compressed, _dynamic_literal_fields, _header,
-    _stored, _wrap, cuda_device,
+    _assert_bytes, _codes, _compressed, _dynamic_header, _dynamic_literal_fields,
+    _header, _stored, _wrap, cuda_device,
 )
 
 
@@ -64,20 +64,21 @@ class _Writer:
         return bytes(self.data) + (bytes((self.pending,)) if self.width else b"")
 
 
-def _literals(writer, raw):
+def _literals(writer, raw, codes=_FIXED):
     for value in raw:
-        writer.put(*_FIXED[value])
+        writer.put(*codes[value])
 
 
-def _match(writer, output, length, distance):
+def _match(writer, output, length, distance,
+           literal_codes=_FIXED, distance_codes=_DISTANCE):
     assert 3 <= length <= 258 and 1 <= distance <= min(32768, len(output))
     length_symbol = max(index for index, base in enumerate(_LENGTH_BASE)
                         if base <= length)
     distance_symbol = max(index for index, base in enumerate(_DISTANCE_BASE)
                           if base <= distance)
-    writer.put(*_FIXED[257 + length_symbol])
+    writer.put(*literal_codes[257 + length_symbol])
     writer.put(length - _LENGTH_BASE[length_symbol], _LENGTH_EXTRA[length_symbol])
-    writer.put(*_DISTANCE[distance_symbol])
+    writer.put(*distance_codes[distance_symbol])
     writer.put(distance - _DISTANCE_BASE[distance_symbol],
                _DISTANCE_EXTRA[distance_symbol])
     # The independent oracle repeats the preceding history for overlapping
@@ -195,6 +196,109 @@ def _match_without_history():
     return _wrap(writer.finish(), b"\x00" * 3)
 
 
+def _match_block_header(writer, kind, final=True):
+    if kind == "fixed":
+        writer.put(2 | int(final), 3)
+        return _FIXED, _DISTANCE
+    assert kind == "dynamic"
+    # Complete trees covering every literal and usable length/distance.
+    literal_lengths = [8] * 226 + [9] * 60
+    distance_lengths = [4] * 2 + [5] * 28
+    code_lengths = [0] * 19
+    for symbol in (4, 5, 8, 9):
+        code_lengths[symbol] = 2
+    writer.fields(_dynamic_header(286, 30, code_lengths, final=final))
+    length_codes = _codes(code_lengths)
+    writer.fields(length_codes[width]
+                  for width in literal_lengths + distance_lengths)
+    return _codes(literal_lengths), _codes(distance_lengths)
+
+
+def _warp_match_stream(kind, tail="valid", block_size=0, following=None):
+    writer = _Writer()
+    prefix = bytes(range(256)) * 128
+    writer.aligned(_stored(prefix, final=False))
+    output = bytearray(prefix)
+    literal_codes, distance_codes = _match_block_header(
+        writer, kind, final=following is None)
+
+    def match(length, distance):
+        _match(writer, output, length, distance, literal_codes, distance_codes)
+
+    # First copy external roots, then immediately reuse roots written by that
+    # cooperative copy. Later literal runs exercise leader-to-warp ordering.
+    match(258, 32768)
+    match(3, 2)
+    match(258, 3)
+    match(258, 1)
+    lengths = (3, 7, 31, 32, 33, 63, 65, 127, 255, 257, 258)
+    distances = (1, 2, 3, 7, 31, 32, 33, 257, 258, 32768)
+    for index, length in enumerate(lengths * 2):
+        literals = bytes((19 * index + 13 * j) & 255
+                         for j in range(1 + (7 * index) % 35)) + b"\x00\x7f\xff"
+        _literals(writer, literals, literal_codes)
+        output.extend(literals)
+        match(length, distances[index % len(distances)])
+        # Non-warp tails and repeated consumption of newly written roots.
+        match(32 + index % 3, 1 + index % 3)
+    while len(output) - len(prefix) < block_size:
+        length = min(258, block_size - (len(output) - len(prefix)))
+        if length >= 3:
+            match(length, 1)
+        else:
+            literals = bytes((output[-1],)) * length
+            _literals(writer, literals, literal_codes)
+            output.extend(literals)
+    if tail == "valid":
+        writer.put(*literal_codes[256])
+    elif tail == "reserved-distance":
+        assert kind == "fixed"
+        writer.put(*literal_codes[257])
+        writer.put(*distance_codes[30])
+        writer.put(*literal_codes[256])
+    else:
+        assert tail == "missing-eob"
+        if kind == "fixed" and writer.bits % 8 == 1:
+            # Seven zero padding bits would accidentally encode a fixed EOB.
+            _literals(writer, b"\xff", literal_codes)
+            output.append(255)
+    if following is not None:
+        assert tail == "valid"
+        literal_codes, distance_codes = _match_block_header(writer, following)
+        _match(writer, output, 3, 1, literal_codes, distance_codes)
+        writer.put(*literal_codes[256])
+    raw = bytes(output)
+    return _wrap(writer.finish(), raw), raw
+
+
+def _warp_history_stream(kind, invalid=False, block_size=262):
+    writer = _Writer()
+    literal_codes, distance_codes = _match_block_header(writer, kind)
+    output = bytearray(b"\xff")
+    _literals(writer, output, literal_codes)
+    _match(writer, output, 258, 1, literal_codes, distance_codes)
+    if invalid:
+        # Metadata can validate this token's size/window, but only emission
+        # knows that 259 bytes of history cannot supply distance 32768.
+        writer.put(*literal_codes[257])
+        writer.put(*distance_codes[29])
+        writer.put(8191, 13)
+        output.extend(b"\xff" * 3)  # Exact declared size, not a valid copy.
+    else:
+        _match(writer, output, 3, 1, literal_codes, distance_codes)
+    while len(output) < block_size:
+        length = min(258, block_size - len(output))
+        if length >= 3:
+            _match(writer, output, length, 1, literal_codes, distance_codes)
+        else:
+            literals = b"\xff" * length
+            _literals(writer, literals, literal_codes)
+            output.extend(literals)
+    writer.put(*literal_codes[256])
+    raw = bytes(output)
+    return _wrap(writer.finish(), raw), raw
+
+
 @contextlib.contextmanager
 def _no_cpu_codec(monkeypatch):
     def forbidden(*args, **kwargs):
@@ -290,6 +394,125 @@ def test_distance_one_without_history_fails_then_recovers(cuda_device, monkeypat
             codec.decompress_zlib(invalid, 3, cuda_device)
         recovered = codec.decompress_zlib(payload, len(raw), cuda_device)
     _assert_bytes(recovered, raw, cuda_device)
+
+
+def test_warp_match_fixture_oracles():
+    for kind in ("fixed", "dynamic"):
+        payload, raw = _warp_match_stream(kind)
+        assert _inflate_exact(payload) == raw
+        with pytest.raises(zlib.error):
+            zlib.decompress(_warp_match_stream(kind, "missing-eob")[0])
+        payload, raw = _warp_history_stream(kind)
+        assert raw == b"\xff" * 262 and _inflate_exact(payload) == raw
+        with pytest.raises(zlib.error):
+            zlib.decompress(_warp_history_stream(kind, invalid=True)[0])
+    with pytest.raises(zlib.error):
+        zlib.decompress(_warp_match_stream("fixed", "reserved-distance")[0])
+    for size in (_MIB, _MIB + 1):
+        payload, raw = _warp_match_stream("dynamic", block_size=size)
+        assert len(raw) == 32768 + size and _inflate_exact(payload) == raw
+    payload, raw = _warp_history_stream("dynamic", block_size=_MIB + 1)
+    assert len(raw) == _MIB + 1 and _inflate_exact(payload) == raw
+    with pytest.raises(zlib.error):
+        zlib.decompress(_warp_history_stream(
+            "dynamic", invalid=True, block_size=_MIB + 1)[0])
+    for kind in ("fixed", "dynamic"):
+        payload, raw = _warp_match_stream(
+            "dynamic", block_size=_MIB + 1, following=kind)
+        assert len(raw) == 32768 + _MIB + 4 and _inflate_exact(payload) == raw
+
+
+@pytest.mark.parametrize("kind", ["fixed", "dynamic"])
+def test_mixed_literal_match_order_and_warp_tails(cuda_device, monkeypatch, kind):
+    payload, raw = _warp_match_stream(kind)
+    assert _inflate_exact(payload) == raw
+    with _no_cpu_codec(monkeypatch):
+        result = codec.decompress_zlib(payload, len(raw), cuda_device)
+    _assert_bytes(result, raw, cuda_device)
+
+
+@pytest.mark.parametrize("kind,tail", [
+    ("fixed", "missing-eob"), ("dynamic", "missing-eob"),
+    ("fixed", "reserved-distance"),
+])
+def test_error_after_cooperative_match_then_fresh_recovery(
+    cuda_device, monkeypatch, kind, tail,
+):
+    invalid, invalid_raw = _warp_match_stream(kind, tail)
+    payload, raw = _warp_match_stream(kind)
+    with pytest.raises(zlib.error):
+        zlib.decompress(invalid)
+    assert _inflate_exact(payload) == raw
+    with _no_cpu_codec(monkeypatch):
+        with pytest.raises(codec.CodecError):
+            codec.decompress_zlib(invalid, len(invalid_raw), cuda_device)
+        recovered = codec.decompress_zlib(payload, len(raw), cuda_device)
+    _assert_bytes(recovered, raw, cuda_device)
+
+
+@pytest.mark.parametrize("kind", ["fixed", "dynamic"])
+def test_bad_history_after_cooperative_match_status_then_recovery(
+    cuda_device, monkeypatch, kind,
+):
+    invalid, invalid_raw = _warp_history_stream(kind, invalid=True)
+    payload, raw = _warp_history_stream(kind)
+    with pytest.raises(zlib.error):
+        zlib.decompress(invalid)
+    assert _inflate_exact(payload) == raw
+    with _no_cpu_codec(monkeypatch):
+        _, bad_metadata = codec.decompress_zlib_checked(
+            invalid, len(invalid_raw), cuda_device)
+        np.testing.assert_array_equal(np.asarray(bad_metadata), [6, 0])
+        recovered, metadata = codec.decompress_zlib_checked(
+            payload, len(raw), cuda_device)
+        np.testing.assert_array_equal(np.asarray(metadata), [0, 0])
+    _assert_bytes(recovered, raw, cuda_device)
+
+
+@pytest.mark.parametrize("block_size", [_MIB, _MIB + 1])
+def test_large_dynamic_matches_on_both_emitter_paths(
+    cuda_device, monkeypatch, block_size,
+):
+    # One accepted dynamic block spans the dispatch boundary. Its leading
+    # copies combine prior stored-block roots, local seeds, and warp tails.
+    payload, raw = _warp_match_stream("dynamic", block_size=block_size)
+    assert len(raw) == 32768 + block_size and _inflate_exact(payload) == raw
+    with _no_cpu_codec(monkeypatch):
+        result = codec.decompress_zlib(payload, len(raw), cuda_device)
+    _assert_bytes(result, raw, cuda_device)
+
+
+def test_large_warp_history_error_status_then_recovery(cuda_device, monkeypatch):
+    # The later tokens make metadata select the large-block emitter, but it
+    # must reject distance 32768 after only 259 bytes of valid local history.
+    invalid, invalid_raw = _warp_history_stream(
+        "dynamic", invalid=True, block_size=_MIB + 1)
+    payload, raw = _warp_history_stream("dynamic", block_size=_MIB + 1)
+    with pytest.raises(zlib.error):
+        zlib.decompress(invalid)
+    assert _inflate_exact(payload) == raw
+    with _no_cpu_codec(monkeypatch):
+        _, bad_metadata = codec.decompress_zlib_checked(
+            invalid, len(invalid_raw), cuda_device)
+        np.testing.assert_array_equal(np.asarray(bad_metadata), [6, 0])
+        recovered, metadata = codec.decompress_zlib_checked(
+            payload, len(raw), cuda_device)
+        np.testing.assert_array_equal(np.asarray(metadata), [0, 0])
+    _assert_bytes(recovered, raw, cuda_device)
+
+
+@pytest.mark.parametrize("following", ["fixed", "dynamic"])
+def test_small_block_copies_large_block_before_its_emission(
+    cuda_device, monkeypatch, following,
+):
+    # The serial emitter runs first, so it must retain an external index to
+    # the large predecessor rather than read roots the warp has not written.
+    payload, raw = _warp_match_stream(
+        "dynamic", block_size=_MIB + 1, following=following)
+    assert len(raw) == 32768 + _MIB + 4 and _inflate_exact(payload) == raw
+    with _no_cpu_codec(monkeypatch):
+        result = codec.decompress_zlib(payload, len(raw), cuda_device)
+    _assert_bytes(result, raw, cuda_device)
 
 
 @pytest.mark.parametrize("size", [_MIB, 4 * _MIB], ids=["1MiB", "4MiB"])
