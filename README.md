@@ -25,6 +25,25 @@ stream-aware DLPack. The core does not import JAX; base package import
 does not initialize CUDA. `compile_kernels(0)` loads both kernel modules for
 separately measured startup.
 
+## Performance
+
+On an RTX 3090 with an AMD Threadripper PRO 3995WX, warm **64 MiB**
+compression measured **3.53–13.63×** the throughput of the same CPU's
+single-threaded stdlib zlib level 1. Decoding identical stdlib level-6 streams
+measured **1.30–3.98×** CPU throughput. Both comparisons include GPU uploads,
+downloads and conversion to host bytes.
+
+At **64 KiB**, CPU compression and decompression were faster for every measured
+workload. At **1 MiB**, compression depended on the workload and CPU
+decompression was faster throughout. Compression sizes differ between codecs;
+these results cover five synthetic workloads and the recorded hardware.
+
+![64 MiB GPU speedup over same-host CPU, including transfers](benchmarks/figures/cpu-speedup.png)
+
+See [BENCHMARKS.md](BENCHMARKS.md) for per-workload ratios, compressed sizes,
+startup costs, timing scopes and reproduction commands. Measurements use
+[source snapshot 07e25f1](https://github.com/xangma/cuda-zlib/tree/07e25f1c8eea8356e0c3903f62bc8f328c523a28).
+
 ## Installation
 
 For the tested CUDA 12 / CuPy 13 configuration, install the release wheel:
@@ -72,11 +91,6 @@ Compression caches match tokens in a workspace of four bytes per input byte
 reference workspace when every match resolves within its emitted segment, and
 gathers output bytes while calculating checksum partials.
 
-See [BENCHMARKS.md](BENCHMARKS.md) for measured compression ratios, startup costs,
-warm timings and CPU baselines. Compression remains experimental; measurements
-depend on the workload and CUDA environment and do not establish a general
-compatibility or performance guarantee.
-
 `CodecError` means malformed input, integrity failure, or a codec workspace limit.
 `UnsupportedStream` means an unsupported wrapper feature. `BackendUnavailable`
 means an absent optional backend or invalid device argument. A nonexistent
@@ -97,6 +111,5 @@ calls inside CUDA operations.
 
 ## License
 
-[MIT](LICENSE). The code was originally developed for xangma in an unmerged
-development branch and is released independently with the owner's authorization.
-See [PROVENANCE.md](PROVENANCE.md). Dependencies retain their own licenses.
+[MIT](LICENSE), copyright xangma. See [PROVENANCE.md](PROVENANCE.md) for
+ownership and dependency information. Dependencies retain their own licenses.

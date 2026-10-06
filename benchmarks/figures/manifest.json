@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "source": "results/rtx3090-optimised.json",
+  "source": "results/rtx3090-20261006.json",
   "source_sha256": "d89695d18986da2a08ddc97a37bb9eb321cf3ac2c29fbc43b03085bbac75f55e",
-  "script_sha256": "286f637ac67f2cdde14ac1a8bf63fa87feb85e4eedd1fc7b60ae7ff736870f72",
+  "script_sha256": "94bc46f7daaf27c2cfbba7fe245f5a17d1af9bce4389b3d5d01f2ae67c37cee1",
   "renderer": {
     "matplotlib": "3.11.1",
     "numpy": "2.5.2",
@@ -15,8 +15,8 @@
     "cpu": 5
   },
   "throughput_units": "MiB/s; uncompressed bytes / 2**20 / seconds",
-  "point_statistic": "stored throughput at median elapsed time, checked against recorded timing samples",
-  "error_bars": "sample throughput minimum and maximum, from inverse individual elapsed times; not confidence intervals",
+  "point_statistic": "Defined separately for each figure's metric",
+  "error_bars": "Defined per figure; encoded-size and cpu-speedup have no error bars",
   "size_units": "100 * complete encoded bytes / uncompressed input bytes",
   "timing_scope": {
     "clock": "perf_counter; deviceSynchronize before and after CUDA calls",
@@ -65,7 +65,9 @@
           "label": "CPU zlib level 6",
           "json_key": "cpu_compress_level6"
         }
-      ]
+      ],
+      "point_statistic": "uncompressed MiB / median elapsed seconds, checked against recorded timing samples",
+      "error_bars": "sample throughput minimum and maximum from inverse individual elapsed times; not confidence intervals"
     },
     "encoded-size": {
       "exports_sha256": {
@@ -97,7 +99,9 @@
           "label": "CPU zlib level 6",
           "json_key": "zlib6"
         }
-      ]
+      ],
+      "point_statistic": "100 * complete encoded bytes / uncompressed input bytes",
+      "error_bars": null
     },
     "decompression-throughput": {
       "exports_sha256": {
@@ -131,7 +135,9 @@
           "label": "CPU zlib",
           "json_key": "cpu_decompress_level6"
         }
-      ]
+      ],
+      "point_statistic": "uncompressed MiB / median elapsed seconds, checked against recorded timing samples",
+      "error_bars": "sample throughput minimum and maximum from inverse individual elapsed times; not confidence intervals"
     },
     "decode-stream-layout": {
       "exports_sha256": {
@@ -166,6 +172,46 @@
         {
           "label": "CPU \u00b7 level-6 stream",
           "json_key": "cpu_decompress_level6"
+        }
+      ],
+      "point_statistic": "uncompressed MiB / median elapsed seconds, checked against recorded timing samples",
+      "error_bars": "sample throughput minimum and maximum from inverse individual elapsed times; not confidence intervals"
+    },
+    "cpu-speedup": {
+      "exports_sha256": {
+        "cpu-speedup.png": "c70a2a88461741203963c32d967ee88fe13c87ceae6cfe47df561db6ad3b20e9",
+        "cpu-speedup.svg": "1ff8bc0c2efa885408862cf85267e261841b4eb7a4b44b65a9aa45a789dd8513",
+        "cpu-speedup.pdf": "250c6f4f9dc88600beb155844c94ef5fa7af4993ce0729c22b36633d23748505"
+      },
+      "workloads": [
+        "zeros",
+        "text",
+        "uint32",
+        "float32",
+        "random"
+      ],
+      "input_bytes": [
+        67108864
+      ],
+      "metric": "cpu_speedup_ratio",
+      "point_statistic": "CPU median elapsed seconds / CUDA median elapsed seconds; greater than 1 favors CUDA",
+      "axis_scale": "linear",
+      "reference_ratio": 1,
+      "error_bars": null,
+      "cuda_timing_scope": "Host-to-host; copies and host/device transfers included",
+      "cpu_timing_scope": "Same-host, single-thread stdlib zlib",
+      "series": [
+        {
+          "label": "Host-to-host compression",
+          "numerator_timing_key": "cpu_compress_level1",
+          "denominator_timing_key": "cuda_compress_host_host",
+          "ratio_formula": "timings.cpu_compress_level1.median_seconds / timings.cuda_compress_host_host.median_seconds"
+        },
+        {
+          "label": "Host-to-host decompression",
+          "numerator_timing_key": "cpu_decompress_level6",
+          "denominator_timing_key": "cuda_decompress_level6_host_host",
+          "ratio_formula": "timings.cpu_decompress_level6.median_seconds / timings.cuda_decompress_level6_host_host.median_seconds"
         }
       ]
     }
