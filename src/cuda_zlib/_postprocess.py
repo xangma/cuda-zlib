@@ -8,18 +8,27 @@ extern "C" __global__ void refine_roots(
     const unsigned int* input, unsigned int* output, unsigned int size,
     unsigned int* pending, unsigned int* status) {
   unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i >= size) return;
-  unsigned int value = input[i];
-  for (int step = 0; step < 32 && !(value & 0x80000000u); ++step) {
-    if (value >= i) { atomicExch(status, 6u); return; }
-    unsigned int next = input[value];
-    if (!(next & 0x80000000u) && next >= value) {
-      atomicExch(status, 6u); return;
+  int unresolved = 0;
+  if (i < size) {
+    unsigned int value = input[i];
+    bool valid = true;
+    for (int step = 0; step < 32 && !(value & 0x80000000u); ++step) {
+      if (value >= i) { atomicExch(status, 6u); valid = false; break; }
+      unsigned int next = input[value];
+      if (!(next & 0x80000000u) && next >= value) {
+        atomicExch(status, 6u); valid = false; break;
+      }
+      value = next;
     }
-    value = next;
+    if (valid) {
+      output[i] = value;
+      unresolved = !(value & 0x80000000u);
+    }
   }
-  output[i] = value;
-  if (!(value & 0x80000000u)) atomicExch(pending, 1u);
+  // Include inactive and invalid threads in the barrier, but only valid
+  // unresolved roots in the vote. Signal pending once per block.
+  int block_pending = __syncthreads_or(unresolved);
+  if (threadIdx.x == 0 && block_pending) atomicExch(pending, 1u);
 }
 // Resolved roots hold tagged literals. Gather the returned bytes while making
 // checksum partials, avoiding a separate gather launch and output read.

@@ -50,9 +50,9 @@ asynchronous pipeline.
 ## Performance
 
 On an RTX 3090 with an AMD Threadripper PRO 3995WX, warm **64 MiB**
-compression measured **3.38–12.14×** the throughput of the same CPU's
+compression measured **3.41–12.12×** the throughput of the same CPU's
 single-threaded stdlib zlib level 1. Decoding identical stdlib level-6 streams
-measured **0.86–2.48×** CPU throughput: GPU decoding was faster for zeros,
+measured **0.96–2.49×** CPU throughput: GPU decoding was faster for zeros,
 uint32 and float32, slower for synthetic text, and roughly equal for random
 bytes. Both comparisons include GPU uploads, downloads and conversion to host
 bytes.

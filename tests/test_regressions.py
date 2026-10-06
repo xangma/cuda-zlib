@@ -145,6 +145,56 @@ def _window_matches():
     return _wrap(writer.finish(), raw), raw
 
 
+_SEED_BOUNDARIES = [
+    (distance, length)
+    for distance in (2, 3, 7, 31, 257)
+    for length in sorted({distance - 1, distance, distance + 1, 258})
+    if 3 <= length <= 258
+]
+
+
+def _seed_match_stream(kind, distance=3, length=258, value=ord("R")):
+    writer = _Writer()
+    if kind == "referenced":
+        prefix = b"pq"
+        assert distance == 3
+    elif kind == "mixed":
+        # The seed ends with a local literal; wrapping returns to a root in
+        # the preceding block. The 257-byte seed includes every byte value.
+        prefix = (b"pq" if distance == 3 else
+                  bytes((19 + 41 * index) & 255 for index in range(distance - 1)))
+    elif kind == "external":
+        assert distance == 1
+        prefix = bytes((value,))
+    else:
+        assert kind == "local" and distance == 1
+        prefix = b""
+    if prefix:
+        writer.aligned(_stored(prefix, final=False))
+    output = bytearray(prefix)
+    writer.put(3, 3)
+    if kind == "referenced":
+        # These three local roots are references into the preceding block,
+        # rather than tagged literals. The next match must preserve them.
+        _match(writer, output, 3, 2)
+    elif kind != "external":
+        _literals(writer, bytes((value,)))
+        output.append(value)
+    _match(writer, output, length, distance)
+    writer.put(*_FIXED[256])
+    raw = bytes(output)
+    return _wrap(writer.finish(), raw), raw
+
+
+def _match_without_history():
+    writer = _Writer()
+    writer.put(3, 3)
+    writer.put(*_FIXED[257])  # Length 3 with distance 1 and no preceding byte.
+    writer.put(*_DISTANCE[0])
+    writer.put(*_FIXED[256])
+    return _wrap(writer.finish(), b"\x00" * 3)
+
+
 @contextlib.contextmanager
 def _no_cpu_codec(monkeypatch):
     def forbidden(*args, **kwargs):
@@ -179,6 +229,67 @@ def test_bit_aligned_chain_fixture_oracles():
     for kind, alignment in [("stored", 0)] + [("dynamic", n) for n in range(8)]:
         payload, raw = _chained_fixed(kind, alignment)
         assert _inflate_exact(payload) == raw
+
+
+def test_overlap_seed_fixture_oracles():
+    assert _seed_match_stream("mixed")[1] == b"pqR" * 87
+    assert _seed_match_stream("referenced")[1] == b"pqpqp" + b"pqp" * 86
+    cases = [_seed_match_stream("mixed", distance, length)
+             for distance, length in _SEED_BOUNDARIES]
+    cases.append(_seed_match_stream("referenced"))
+    cases.extend(_seed_match_stream(kind, 1, length, value)
+                 for kind in ("local", "external")
+                 for value in (0x00, 0x7f, 0xff)
+                 for length in (3, 258))
+    for payload, raw in cases:
+        assert _inflate_exact(payload) == raw
+    with pytest.raises(zlib.error):
+        _inflate_exact(_match_without_history())
+
+
+@pytest.mark.parametrize("distance,length", _SEED_BOUNDARIES)
+def test_overlap_seed_crosses_block_prefix_and_wrap(
+    cuda_device, monkeypatch, distance, length,
+):
+    payload, raw = _seed_match_stream("mixed", distance, length)
+    assert _inflate_exact(payload) == raw
+    with _no_cpu_codec(monkeypatch):
+        result = codec.decompress_zlib(payload, len(raw), cuda_device)
+    _assert_bytes(result, raw, cuda_device)
+
+
+def test_overlap_local_seed_contains_prior_block_references(cuda_device, monkeypatch):
+    payload, raw = _seed_match_stream("referenced")
+    assert _inflate_exact(payload) == raw
+    with _no_cpu_codec(monkeypatch):
+        result = codec.decompress_zlib(payload, len(raw), cuda_device)
+    _assert_bytes(result, raw, cuda_device)
+
+
+@pytest.mark.parametrize("kind", ["local", "external"])
+@pytest.mark.parametrize("value", [0x00, 0x7f, 0xff])
+@pytest.mark.parametrize("length", [3, 258])
+def test_distance_one_seed_preserves_literal_tags(
+    cuda_device, monkeypatch, kind, value, length,
+):
+    payload, raw = _seed_match_stream(kind, 1, length, value)
+    assert _inflate_exact(payload) == raw
+    with _no_cpu_codec(monkeypatch):
+        result = codec.decompress_zlib(payload, len(raw), cuda_device)
+    _assert_bytes(result, raw, cuda_device)
+
+
+def test_distance_one_without_history_fails_then_recovers(cuda_device, monkeypatch):
+    invalid = _match_without_history()
+    payload, raw = _seed_match_stream("local", 1, 258, 0xff)
+    with pytest.raises(zlib.error):
+        _inflate_exact(invalid)
+    assert _inflate_exact(payload) == raw
+    with _no_cpu_codec(monkeypatch):
+        with pytest.raises(codec.CodecError):
+            codec.decompress_zlib(invalid, 3, cuda_device)
+        recovered = codec.decompress_zlib(payload, len(raw), cuda_device)
+    _assert_bytes(recovered, raw, cuda_device)
 
 
 @pytest.mark.parametrize("size", [_MIB, 4 * _MIB], ids=["1MiB", "4MiB"])
