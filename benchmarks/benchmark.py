@@ -188,6 +188,7 @@ def main():
             "gpu_snapshot_before": gpu_snapshot(),
             "codec_sha256": {str(p.relative_to(module_root)): hashlib.sha256(p.read_bytes()).hexdigest()
                              for p in sorted([*module_root.glob("*.py"), *module_root.glob("native/*.cu")])},
+            "workspace_pool_before": cuda_zlib.workspace_pool_stats(device),
         },
         "startup": {"imports_and_cuda_init_seconds": init_seconds,
                     "compile_kernels_seconds": compile_seconds},
@@ -276,6 +277,7 @@ def main():
             del payload, resident, encoded, encoded_host, cpu_streams, external, decoded_host, decoded_array, compressed
             gc.collect()
     report["environment"]["gpu_snapshot_after"] = gpu_snapshot()
+    report["environment"]["workspace_pool_after"] = cuda_zlib.workspace_pool_stats(device)
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     print(f"complete {len(report['cases'])} cases", flush=True)
 

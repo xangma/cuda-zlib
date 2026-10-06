@@ -4,6 +4,11 @@
 // Fresh CUDA codec execution on the stream supplied by XLA. Generated headers
 // contain the unchanged CUDA_SOURCE strings, with no host codec implementation.
 #include <cuda_runtime.h>
+#include <cuda.h>
+#include <dlfcn.h>
+#if CUDA_VERSION < 12000
+#error "CUDA byte codec workspace pools require CUDA toolkit 12.0 or newer"
+#endif
 #include <cub/device/device_radix_sort.cuh>
 #include <xla/ffi/api/ffi.h>
 
@@ -12,8 +17,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
+#include <mutex>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace encoder {
 #include "encoder.cuh"
@@ -57,21 +64,177 @@ enum Status : U32 {
     if (error != cudaSuccess) return error;       \
   } while (false)
 
-// Per-invocation ownership; no private stream, lock, retained workspace or
-// stream-derived metadata. All frees follow the final use on the XLA stream.
+// Driver symbols are resolved from the real driver, never the toolkit stub.
+// These process-lifetime objects deliberately make no CUDA calls at teardown.
+struct Driver {
+  decltype(&cuStreamGetCtx) stream_context = nullptr;
+  decltype(&cuCtxGetCurrent) current_context = nullptr;
+  decltype(&cuCtxGetDevice) context_device = nullptr;
+  decltype(&cuCtxGetId) context_id = nullptr;
+  decltype(&cuCtxPushCurrent) push_context = nullptr;
+  decltype(&cuCtxPopCurrent) pop_context = nullptr;
+  bool ready = false;
+
+  Driver() {
+    void* handle = dlopen("libcuda.so.1", RTLD_NOW | RTLD_LOCAL);
+    if (!handle) return;
+#define LOAD_DRIVER(member, symbol) \
+    member = reinterpret_cast<decltype(member)>(dlsym(handle, symbol))
+    LOAD_DRIVER(stream_context, "cuStreamGetCtx");
+    LOAD_DRIVER(current_context, "cuCtxGetCurrent");
+    LOAD_DRIVER(context_device, "cuCtxGetDevice");
+    LOAD_DRIVER(context_id, "cuCtxGetId");
+    LOAD_DRIVER(push_context, "cuCtxPushCurrent_v2");
+    LOAD_DRIVER(pop_context, "cuCtxPopCurrent_v2");
+#undef LOAD_DRIVER
+    ready = stream_context && current_context && context_device && context_id &&
+            push_context && pop_context;
+  }
+  static Driver& Get() {
+    static Driver* driver = new Driver;
+    return *driver;
+  }
+};
+
+cudaError_t DriverError(CUresult result) {
+  return result == CUDA_SUCCESS ? cudaSuccess : cudaErrorInvalidResourceHandle;
+}
+
+class ScopedContext {
+ public:
+  cudaError_t Enter(CUcontext context) {
+    Driver& driver = Driver::Get();
+    if (!driver.ready) return cudaErrorInsufficientDriver;
+    CUcontext current = nullptr;
+    CUDA_TRY(DriverError(driver.current_context(&current)));
+    if (current != context) {
+      CUDA_TRY(DriverError(driver.push_context(context)));
+      pushed_ = true;
+    }
+    return cudaSuccess;
+  }
+  ~ScopedContext() noexcept {
+    if (pushed_) {
+      CUcontext previous;
+      Driver::Get().pop_context(&previous);
+    }
+  }
+ private:
+  bool pushed_ = false;
+};
+
+struct Pool {
+  CUcontext context;
+  U64 context_id;
+  int device;
+  cudaMemPool_t handle;
+};
+struct PoolRegistry {
+  std::mutex mutex;
+  std::vector<Pool> pools;
+  U64 retention = 1ull << 30;
+};
+PoolRegistry& Pools() {
+  static PoolRegistry* registry = new PoolRegistry;
+  return *registry;
+}
+
+cudaError_t GetPool(CUcontext context, cudaMemPool_t* result) {
+  Driver& driver = Driver::Get();
+  U64 id;
+  int device;
+  CUDA_TRY(DriverError(driver.context_id(context, &id)));
+  CUDA_TRY(DriverError(driver.context_device(&device)));
+  PoolRegistry& registry = Pools();
+  std::lock_guard<std::mutex> lock(registry.mutex);
+  for (const Pool& pool : registry.pools) {
+    if (pool.context_id == id && pool.device == device) {
+      *result = pool.handle;
+      return cudaSuccess;
+    }
+  }
+  cudaMemPoolProps properties{};
+  properties.allocType = cudaMemAllocationTypePinned;
+  properties.handleTypes = cudaMemHandleTypeNone;
+  properties.location.type = cudaMemLocationTypeDevice;
+  properties.location.id = device;
+  cudaMemPool_t handle;
+  CUDA_TRY(cudaMemPoolCreate(&handle, &properties));
+  cudaError_t error = cudaMemPoolSetAttribute(
+      handle, cudaMemPoolAttrReleaseThreshold, &registry.retention);
+  if (error != cudaSuccess) {
+    cudaMemPoolDestroy(handle);
+    return error;
+  }
+  try {
+    registry.pools.push_back({context, id, device, handle});
+  } catch (...) {
+    cudaMemPoolDestroy(handle);
+    throw;
+  }
+  *result = handle;
+  return cudaSuccess;
+}
+
+cudaError_t InspectPools(int device, U64* stats, bool trim) {
+  std::vector<Pool> pools;
+  {
+    PoolRegistry& registry = Pools();
+    std::lock_guard<std::mutex> lock(registry.mutex);
+    stats[0] = registry.retention;
+    stats[1] = stats[2] = stats[3] = 0;
+    for (const Pool& pool : registry.pools)
+      if (pool.device == device) pools.push_back(pool);
+  }
+  Driver& driver = Driver::Get();
+  if (!pools.empty() && !driver.ready) return cudaErrorInsufficientDriver;
+  for (const Pool& pool : pools) {
+    U64 id;
+    CUDA_TRY(DriverError(driver.context_id(pool.context, &id)));
+    if (id != pool.context_id) return cudaErrorInvalidResourceHandle;
+    ScopedContext context;
+    CUDA_TRY(context.Enter(pool.context));
+    if (trim) CUDA_TRY(cudaMemPoolTrimTo(pool.handle, 0));
+    U64 reserved, used;
+    CUDA_TRY(cudaMemPoolGetAttribute(
+        pool.handle, cudaMemPoolAttrReservedMemCurrent, &reserved));
+    CUDA_TRY(cudaMemPoolGetAttribute(
+        pool.handle, cudaMemPoolAttrUsedMemCurrent, &used));
+    stats[1] += reserved;
+    stats[2] += used;
+    ++stats[3];
+  }
+  return cudaSuccess;
+}
+
+// Every invocation owns its pointers; allocation reuse and dependencies are
+// managed by CUDA. All frees follow the final use on the supplied XLA stream.
 class Workspace {
  public:
-  explicit Workspace(cudaStream_t stream) : stream_(stream) {}
+  explicit Workspace(cudaStream_t stream) : stream_(stream) {
+    Driver& driver = Driver::Get();
+    if (!driver.ready) {
+      error_ = cudaErrorInsufficientDriver;
+      return;
+    }
+    CUcontext context = nullptr;
+    error_ = DriverError(driver.stream_context(
+        reinterpret_cast<CUstream>(stream), &context));
+    if (error_ == cudaSuccess) error_ = context_.Enter(context);
+    if (error_ == cudaSuccess) error_ = GetPool(context, &pool_);
+  }
   Workspace(const Workspace&) = delete;
   Workspace& operator=(const Workspace&) = delete;
   ~Workspace() noexcept { Release(); }
+  cudaError_t error() const { return error_; }
 
   template <typename T>
   cudaError_t Allocate(T** result, std::size_t elements) {
     if (count_ == allocations_.size()) return cudaErrorMemoryAllocation;
     void* pointer = nullptr;
-    CUDA_TRY(cudaMallocAsync(&pointer, std::max<std::size_t>(1, elements) *
-                                          sizeof(T), stream_));
+    CUDA_TRY(error_);
+    CUDA_TRY(cudaMallocFromPoolAsync(
+        &pointer, std::max<std::size_t>(1, elements) * sizeof(T), pool_, stream_));
     allocations_[count_++] = pointer;
     *result = static_cast<T*>(pointer);
     return cudaSuccess;
@@ -88,6 +251,9 @@ class Workspace {
 
  private:
   cudaStream_t stream_;
+  ScopedContext context_;
+  cudaMemPool_t pool_ = nullptr;
+  cudaError_t error_ = cudaSuccess;
   std::array<void*, 32> allocations_{};
   std::size_t count_ = 0;
 };
@@ -400,7 +566,8 @@ ffi::Error Execute(cudaStream_t stream, ffi::ResultBuffer<ffi::U32> metadata,
     if (!IsVector(*metadata) || metadata->element_count() != 2)
       return ffi::Error::InvalidArgument("codec metadata must have shape (2,)");
     Workspace workspace(stream);
-    cudaError_t error = function(workspace);
+    cudaError_t error = workspace.error();
+    if (error == cudaSuccess) error = function(workspace);
     cudaError_t release = workspace.Release();
     return RuntimeError(error == cudaSuccess ? release : error);
   } catch (const std::exception&) {
@@ -431,6 +598,38 @@ ffi::Error DecompressImpl(cudaStream_t stream, std::int64_t max_candidates,
 
 #undef CUDA_TRY
 }  // namespace
+
+// Configuration is installed once, before this library registers its handlers.
+extern "C" int CudaZlibSetWorkspaceRetention(U64 bytes) noexcept {
+  try {
+    PoolRegistry& registry = Pools();
+    std::lock_guard<std::mutex> lock(registry.mutex);
+    if (!registry.pools.empty()) return cudaErrorInvalidValue;
+    registry.retention = bytes;
+    return cudaSuccess;
+  } catch (...) {
+    return cudaErrorUnknown;
+  }
+}
+
+extern "C" int CudaZlibWorkspacePoolStats(int device, U64* stats) noexcept {
+  if (device < 0 || !stats) return cudaErrorInvalidValue;
+  try {
+    return InspectPools(device, stats, false);
+  } catch (...) {
+    return cudaErrorUnknown;
+  }
+}
+
+extern "C" int CudaZlibTrimWorkspacePool(int device) noexcept {
+  if (device < 0) return cudaErrorInvalidValue;
+  try {
+    U64 stats[4];
+    return InspectPools(device, stats, true);
+  } catch (...) {
+    return cudaErrorUnknown;
+  }
+}
 
 XLA_FFI_DEFINE_HANDLER_SYMBOL(
     CudaZlibCompress, CompressImpl,

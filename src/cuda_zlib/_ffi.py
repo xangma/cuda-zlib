@@ -18,6 +18,28 @@ from ._errors import BackendUnavailable
 _BUILD_LOCK = threading.Lock()
 
 
+def _workspace_retention():
+    value = os.environ.get("CUDA_ZLIB_WORKSPACE_RETENTION_BYTES", str(1 << 30))
+    if not value.isascii() or not value.isdecimal() or int(value) >= 1 << 64:
+        raise ValueError("CUDA_ZLIB_WORKSPACE_RETENTION_BYTES must be an integer in [0, 2**64-1]")
+    return int(value)
+
+
+def _configure_workspace_pool(library):
+    library.CudaZlibSetWorkspaceRetention.argtypes = [ctypes.c_uint64]
+    library.CudaZlibSetWorkspaceRetention.restype = ctypes.c_int
+    library.CudaZlibWorkspacePoolStats.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_uint64)]
+    library.CudaZlibWorkspacePoolStats.restype = ctypes.c_int
+    library.CudaZlibTrimWorkspacePool.argtypes = [ctypes.c_int]
+    library.CudaZlibTrimWorkspacePool.restype = ctypes.c_int
+    _check_pool_error(library.CudaZlibSetWorkspaceRetention(_workspace_retention()))
+
+
+def _check_pool_error(code):
+    if code:
+        raise BackendUnavailable(f"native CUDA workspace pool operation failed (CUDA error {code})")
+
+
 def _nvcc():
     configured = os.environ.get("CUDACXX")
     if configured:
@@ -54,7 +76,8 @@ def _compile_library(architecture):
                 "sources": {k: hashlib.sha256(v.encode()).hexdigest() for k,v in sources.items()},
                 "headers": {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
                             for p in sorted((include / "xla/ffi/api").glob("*.h"))},
-                "flags": ["-O3", "-lineinfo", "--std=c++17", "--cudart=shared"]}
+                "flags": ["-O3", "-lineinfo", "--std=c++17", "--cudart=shared",
+                          "-Xcompiler=-pthread", "-ldl"]}
     key = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
     cache = Path(os.environ.get("CUDA_ZLIB_CACHE_DIR", str(
         Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "cuda-zlib")))
@@ -75,7 +98,7 @@ def _compile_library(architecture):
             command = [nvcc, "-shared", "-Xcompiler=-fPIC", "-O3", "-lineinfo",
                        "--std=c++17", "--cudart=shared", f"-arch={architecture}",
                        f"-I{include}", str(build / "codec_ffi.cu"), "-o", str(build / "codec_ffi.so"),
-                       f"-Xlinker=-rpath={toolkit / 'lib64'}"]
+                       f"-Xlinker=-rpath={toolkit / 'lib64'}", "-Xcompiler=-pthread", "-ldl"]
             try:
                 result = subprocess.run(command, capture_output=True, text=True, timeout=600)
             except (OSError, subprocess.SubprocessError) as exc:
@@ -92,11 +115,13 @@ def _compile_library(architecture):
 @functools.lru_cache(maxsize=None)
 def _load_library_cached(architecture):
     import jax
+    _workspace_retention()  # Reject invalid configuration before compiling.
     path = _compile_library(architecture)
     try:
         library = ctypes.CDLL(str(path))
     except OSError as exc:
         raise BackendUnavailable(f"could not load native CUDA library: {exc}") from exc
+    _configure_workspace_pool(library)
     names = tuple(f"cuda_zlib_{operation}_{architecture}" for operation in ("compress", "decompress"))
     for name, symbol in zip(names, ("CudaZlibCompress", "CudaZlibDecompress")):
         jax.ffi.register_ffi_target(name, jax.ffi.pycapsule(getattr(library, symbol)), platform="CUDA")
@@ -109,7 +134,7 @@ def _load_library(architecture):
 
 
 @functools.lru_cache(maxsize=None)
-def load_backend(device):
+def _backend(device):
     # Query architecture through the CUDA runtime; no GPU array library needed.
     try:
         import jax
@@ -130,6 +155,22 @@ def load_backend(device):
             code = driver.cuDeviceGetAttribute(ctypes.byref(value), attribute, handle.value)
             if code:
                 raise BackendUnavailable(f"CUDA architecture query failed ({code})")
-        return _load_library(f"sm_{major.value}{minor.value}")[1]
+        return _load_library(f"sm_{major.value}{minor.value}")
     except (ImportError, OSError) as exc:
         raise BackendUnavailable(f"native CUDA FFI unavailable: {exc}") from exc
+
+
+def load_backend(device):
+    return _backend(device)[1]
+
+
+def workspace_pool_stats(device):
+    library = _backend(device)[0]
+    values = (ctypes.c_uint64 * 4)()
+    _check_pool_error(library.CudaZlibWorkspacePoolStats(int(device.local_hardware_id), values))
+    return dict(zip(("retention_bytes", "reserved_bytes", "used_bytes", "pool_count"), values))
+
+
+def trim_workspace_pool(device):
+    library = _backend(device)[0]
+    _check_pool_error(library.CudaZlibTrimWorkspacePool(int(device.local_hardware_id)))

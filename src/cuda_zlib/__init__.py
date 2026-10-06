@@ -5,10 +5,11 @@
 
 from ._codec import (compress_zlib, decompress_zlib, compile_kernels,
                      compress_zlib_padded, decompress_zlib_checked,
-                     decompress_zlib_host)
+                     decompress_zlib_host, workspace_pool_stats, trim_workspace_pool)
 from ._errors import BackendUnavailable, CodecError, UnsupportedStream
 
 __all__ = ["compress_zlib", "decompress_zlib", "compile_kernels",
            "compress_zlib_padded", "decompress_zlib_checked", "decompress_zlib_host",
+           "workspace_pool_stats", "trim_workspace_pool",
            "BackendUnavailable", "CodecError", "UnsupportedStream"]
 __version__ = "0.1.0a1"
