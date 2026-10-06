@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "source": "results/rtx3090.json",
+  "source_sha256": "f501668597d99ca1176cb73e3848fa222371005e40fe1ec58debb8a75a478491",
+  "script_sha256": "864f74077e8a4257e49fbb0879875d16848cc1465ec364e28b60e73072af903b",
+  "renderer": {
+    "matplotlib": "3.11.1",
+    "numpy": "2.5.2",
+    "backend": "Agg"
+  },
+  "source_created_utc": "2026-10-06T11:15:10.215086+00:00",
+  "validated_cases": 15,
+  "samples_per_measurement": {
+    "cuda": 5,
+    "cpu": 3
+  },
+  "throughput_units": "MiB/s; uncompressed bytes / 2**20 / seconds",
+  "point_statistic": "stored throughput at median elapsed time, checked against recorded timing samples",
+  "error_bars": "sample throughput minimum and maximum, from inverse individual elapsed times; not confidence intervals",
+  "size_units": "100 * complete encoded bytes / uncompressed input bytes",
+  "timing_scope": {
+    "clock": "perf_counter; deviceSynchronize before and after CUDA calls",
+    "warmup_calls_per_measurement": 1,
+    "throughput_denominator": "uncompressed input bytes / 2**20",
+    "compression_chunk_bytes": 32768,
+    "timing_includes": "API allocations; transfers only for named host workflows",
+    "timing_excludes": "payload generation, initial resident uploads, validation",
+    "cpu": "single-threaded stdlib zlib; levels 1 and 6; no level equivalence implied"
+  },
+  "cold_startup_excluded": true,
+  "figures": {
+    "compression-throughput": {
+      "exports_sha256": {
+        "compression-throughput.png": "443106527b95bcb1e875ca0ec15c4df2d3e66c200e5dae47b1f6f02437a62bb2",
+        "compression-throughput.svg": "5ef7540e501d84aadada76e2abc5047b635c5ffc809785d65a6e1c7d93c9a61b",
+        "compression-throughput.pdf": "b0971901604f439db2800f46209203949770adf52716fbf6a9fae9dbf2fec98b"
+      },
+      "workloads": [
+        "zeros",
+        "text",
+        "uint32",
+        "float32",
+        "random"
+      ],
+      "input_bytes": [
+        65536,
+        1048576,
+        67108864
+      ],
+      "metric": "throughput_mib_per_second",
+      "series": [
+        {
+          "label": "CUDA resident",
+          "json_key": "cuda_compress_device_device"
+        },
+        {
+          "label": "CUDA host \u2192 host",
+          "json_key": "cuda_compress_host_host"
+        },
+        {
+          "label": "CPU zlib level 1",
+          "json_key": "cpu_compress_level1"
+        },
+        {
+          "label": "CPU zlib level 6",
+          "json_key": "cpu_compress_level6"
+        }
+      ]
+    },
+    "encoded-size": {
+      "exports_sha256": {
+        "encoded-size.png": "7e6ed95611d2fba0d3e71fbcc5d90efdaecfd9f90598db62de6ee907ff95c145",
+        "encoded-size.svg": "11558a584180283b4d0e487eaee576117cb1e8f48b81e9ff3511ec2ba30b6833",
+        "encoded-size.pdf": "1dd6f9963f398b85c1367b35dd1e9b797d88779f1ce609048044d13f87959d1b"
+      },
+      "workloads": [
+        "zeros",
+        "text",
+        "uint32",
+        "float32",
+        "random"
+      ],
+      "input_bytes": [
+        67108864
+      ],
+      "metric": "encoded_percent",
+      "series": [
+        {
+          "label": "CUDA codec",
+          "json_key": "cuda"
+        },
+        {
+          "label": "CPU zlib level 1",
+          "json_key": "zlib1"
+        },
+        {
+          "label": "CPU zlib level 6",
+          "json_key": "zlib6"
+        }
+      ]
+    },
+    "decompression-throughput": {
+      "exports_sha256": {
+        "decompression-throughput.png": "ba8982c891db147aea679f383bf0ba03dcee15f4350373516a93bd78ca1a53f7",
+        "decompression-throughput.svg": "ad0581c00f8431779df16ae445e6e81aaedd6adca03245ba8cdb50b6d7108fb4",
+        "decompression-throughput.pdf": "b9a5d919fea62eab997b19574ccb7c1cb0f4a4bd4022dde389af34b32fd24203"
+      },
+      "workloads": [
+        "zeros",
+        "text",
+        "uint32",
+        "float32",
+        "random"
+      ],
+      "input_bytes": [
+        65536,
+        1048576,
+        67108864
+      ],
+      "metric": "throughput_mib_per_second",
+      "series": [
+        {
+          "label": "CUDA resident",
+          "json_key": "cuda_decompress_level6_device_device"
+        },
+        {
+          "label": "CUDA host \u2192 host",
+          "json_key": "cuda_decompress_level6_host_host"
+        },
+        {
+          "label": "CPU zlib",
+          "json_key": "cpu_decompress_level6"
+        }
+      ]
+    },
+    "decode-stream-layout": {
+      "exports_sha256": {
+        "decode-stream-layout.png": "1f9a7995c5bd668b1d868627c2a7d9175e7d0ac900f54c7b385f78b4e53a8d5f",
+        "decode-stream-layout.svg": "a660baa045802a5b47c611d203a2d7b247202a16d5e520e3ad12cff99595c44d",
+        "decode-stream-layout.pdf": "fdfcd61f842e547d296f3c2dff04a51e3cb499df3b5b27b8d63f138571c74e1a"
+      },
+      "workloads": [
+        "zeros",
+        "text",
+        "uint32",
+        "float32",
+        "random"
+      ],
+      "input_bytes": [
+        67108864
+      ],
+      "metric": "throughput_mib_per_second",
+      "series": [
+        {
+          "label": "CUDA \u00b7 codec stream",
+          "json_key": "cuda_decompress_codec_device_device"
+        },
+        {
+          "label": "CUDA \u00b7 level-6 stream",
+          "json_key": "cuda_decompress_level6_device_device"
+        },
+        {
+          "label": "CPU \u00b7 codec stream",
+          "json_key": "cpu_decompress_codec"
+        },
+        {
+          "label": "CPU \u00b7 level-6 stream",
+          "json_key": "cpu_decompress_level6"
+        }
+      ]
+    }
+  }
+}

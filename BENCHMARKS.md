@@ -41,6 +41,50 @@ With a fresh CuPy cache, imports and CUDA initialization took
 0.356 s, and `compile_kernels` took
 12.323 s. These startup costs are excluded from the warmed tables.
 
+### Plots
+
+The figures use the recorded RTX 3090 run and its same-host CPU baselines.
+Throughput points are medians; error bars show the observed sample range, not
+confidence intervals. Logarithmic axes make small and large values visible.
+Lines connect measured sizes; intermediate sizes were not measured.
+
+![Compression throughput across input sizes](benchmarks/figures/compression-throughput.png)
+
+[Compression SVG](benchmarks/figures/compression-throughput.svg) ·
+[Compression PDF](benchmarks/figures/compression-throughput.pdf)
+
+![Compressed size at 64 MiB](benchmarks/figures/encoded-size.png)
+
+The size comparison uses 64 MiB inputs. Encoded percentage is compressed bytes
+divided by input bytes; values above 100% indicate expansion.
+[Size SVG](benchmarks/figures/encoded-size.svg) ·
+[Size PDF](benchmarks/figures/encoded-size.pdf)
+
+![Decompression throughput for identical stdlib level-6 streams](benchmarks/figures/decompression-throughput.png)
+
+These CPU and CUDA workflows decode identical stdlib level-6 streams.
+[Decompression SVG](benchmarks/figures/decompression-throughput.svg) ·
+[Decompression PDF](benchmarks/figures/decompression-throughput.pdf)
+
+![Resident decompression by compressed stream layout at 64 MiB](benchmarks/figures/decode-stream-layout.png)
+
+The layout comparison uses 64 MiB inputs and resident GPU timings. Each CPU/CUDA
+pair decodes the same stream; codec-produced and stdlib level-6 streams are shown
+separately.
+[Layout SVG](benchmarks/figures/decode-stream-layout.svg) ·
+[Layout PDF](benchmarks/figures/decode-stream-layout.pdf)
+
+To regenerate the figures from a current checkout:
+
+```sh
+python -m pip install matplotlib
+python benchmarks/plot_results.py
+```
+
+The script reads the existing JSON without running CUDA benchmarks. PNG, SVG
+and PDF exports and a source-hash manifest are in
+[benchmarks/figures](benchmarks/figures).
+
 ### 64 MiB encoded size
 
 Encoded percentage is compressed bytes divided by input bytes; lower is better.
