@@ -4,11 +4,12 @@ These results compare cuda-zlib on an **RTX 3090** with **single-threaded stdlib
 zlib on the same AMD Threadripper PRO 3995WX CPU**, using five synthetic workloads
 at 64 KiB, 1 MiB and 64 MiB.
 
-For warm **64 MiB** inputs, CUDA compression achieved **3.41–12.12×** CPU zlib
-level-1 throughput. CUDA decompression achieved **0.96–2.49×** CPU throughput
-on identical stdlib level-6 streams; CPU was faster for generated text and
-slightly faster for random bytes. **Both comparisons include uploads,
-downloads and conversion to host bytes.** At **64 KiB**, CPU compression and
+For warm **64 MiB** inputs, CUDA compression achieved **3.40–12.14×** CPU zlib
+level-1 throughput. CUDA decompression achieved **0.89–3.65×** CPU throughput
+on identical stdlib level-6 streams; CUDA was faster for zeros, generated text,
+integer counters and Gaussian float32, and CPU was faster for random bytes.
+**Both comparisons include uploads, downloads, codec validation and conversion
+to host bytes.** At **64 KiB**, CPU compression and
 decompression were faster for every workload. At **1 MiB**, compression was
 mixed and CPU decompression was faster for every workload.
 
@@ -19,11 +20,21 @@ single-threaded CPU baselines do not measure parallel CPU compression.
 ## GPU versus CPU, including transfers
 
 **Speedup = CPU median elapsed time / CUDA median elapsed time.** Above 1× favors
-CUDA; below 1× favors CPU. Each CUDA workflow starts and finishes with host bytes.
+CUDA; below 1× favors CPU. The CUDA workflows used in these ratios start and
+finish with Python `bytes`.
 Compression includes upload, encoding, download and host conversion; decompression
-includes upload, decoding, download and host conversion. Allocations and
-synchronization are included; startup is excluded. CPU and CUDA decompression
-use identical stdlib level-6 compressed bytes.
+includes upload, decoding, download and host conversion. Allocations, codec
+validation and synchronization are included; startup is excluded. CPU and CUDA
+decompression use identical stdlib level-6 compressed bytes.
+
+The bytes-returning decompression workflow uses
+`decompress_zlib_host(payload, expected_bytes, device).tobytes()`. The separate
+host-array workflow returns a completed, read-only, contiguous NumPy `uint8`
+array backed by JAX-owned pinned host memory. Its timing includes upload,
+decoding and the transfer to host memory, and excludes the final copy into
+Python `bytes`. CPU speedup ratios use the bytes-returning workflow so both
+outputs have the same type. A `memoryview` of the host array shares its storage
+without another copy.
 
 ![64 MiB GPU speedup over same-host CPU, including transfers](benchmarks/figures/cpu-speedup.png)
 
@@ -34,11 +45,11 @@ use identical stdlib level-6 compressed bytes.
 
 | Workload | Compression vs CPU level 1 | Compression vs CPU level 6 | Decompression vs CPU, identical level-6 stream |
 | --- | ---: | ---: | ---: |
-| Zero bytes | 3.41× | 7.89× | 1.88× |
-| Generated text | 3.55× | 11.36× | 0.96× |
-| Integer counters | 6.05× | 43.39× | 2.00× |
-| Gaussian float32 | 12.12× | 13.55× | 2.49× |
-| Uniform random bytes | 9.90× | 10.01× | 0.99× |
+| Zero bytes | 3.40× | 7.85× | 3.24× |
+| Generated text | 3.55× | 11.35× | 1.74× |
+| Integer counters | 5.90× | 43.37× | 3.16× |
+| Gaussian float32 | 12.14× | 13.50× | 3.65× |
+| Uniform random bytes | 9.89× | 9.94× | 0.89× |
 
 ### Smaller inputs
 
@@ -47,11 +58,11 @@ decompression, with the same host-to-host CUDA timing scope as above.
 
 | Workload | 64 KiB compression | 1 MiB compression | 64 KiB decompression | 1 MiB decompression |
 | --- | ---: | ---: | ---: | ---: |
-| Zero bytes | 0.03× | 0.67× | 0.12× | 0.38× |
-| Generated text | 0.04× | 0.74× | 0.02× | 0.06× |
-| Integer counters | 0.09× | 1.54× | 0.02× | 0.32× |
-| Gaussian float32 | 0.24× | 4.07× | 0.05× | 0.76× |
-| Uniform random bytes | 0.24× | 4.07× | 0.02× | 0.26× |
+| Zero bytes | 0.03× | 0.66× | 0.12× | 0.38× |
+| Generated text | 0.04× | 0.73× | 0.02× | 0.07× |
+| Integer counters | 0.09× | 1.54× | 0.02× | 0.33× |
+| Gaussian float32 | 0.24× | 4.04× | 0.05× | 0.79× |
+| Uniform random bytes | 0.24× | 4.02× | 0.02× | 0.26× |
 
 Only these three sizes were measured; they do not identify an exact crossover
 size. Launch and transfer costs make small inputs less favorable to CUDA.
@@ -67,8 +78,10 @@ Each workload runs at 64 KiB, 1 MiB and 64 MiB with seed `20261006`:
 - `float32`: seeded Gaussian samples encoded as little-endian 32-bit floats.
 - `random`: seeded uniformly distributed bytes, representing incompressible input.
 
-Generation and validation occur outside timed regions. Payload SHA-256 hashes,
-all timing samples and software versions are recorded in the result JSON.
+Payload generation and post-timing oracle comparisons occur outside timed
+regions. Codec framing, bounds, status and checksum validation remain included.
+Payload SHA-256 hashes, all timing samples and software versions are recorded in
+the result JSON.
 
 ## Recorded CUDA results
 
@@ -77,7 +90,7 @@ GPU), with an AMD Ryzen Threadripper PRO 3995WX CPU, Linux x86_64, Python
 3.13.3, NumPy 2.2.5, JAX and JAXlib 0.11.2, the JAX typed CUDA FFI backend,
 CUDA 12.6, NVIDIA driver 610.57.04 and stdlib zlib 1.3.1. The native library
 was built with `nvcc` 12.6.85 for `sm_86`. The installed wheel's source snapshot is
-[b8f736e](https://github.com/xangma/cuda-zlib/tree/b8f736e3512f450c3a871c85bf3e6d6c46e1e583);
+[94a863c](https://github.com/xangma/cuda-zlib/tree/94a863c29be9518da856474d64fc026f232058d7);
 its nine codec source SHA-256 hashes, native build flags and FFI header hashes
 are recorded in the raw results.
 All 15 workload/size cases passed byte-exact validation, including stdlib
@@ -89,7 +102,7 @@ below come from the same run and host. These are single-run measurements on a
 shared workstation; recorded utilization snapshots do not establish isolation.
 
 With a fresh native library cache, imports and CUDA initialization took
-1.310 s, and `compile_kernels` took 29.892 s for the native build and FFI
+1.714 s, and `compile_kernels` took 33.293 s for the native build and FFI
 registration. These startup costs and each workflow's initial XLA compilation
 are excluded from the warmed tables.
 
@@ -116,6 +129,8 @@ divided by input bytes; values above 100% indicate expansion.
 ![Decompression throughput for identical stdlib level-6 streams](benchmarks/figures/decompression-throughput.png)
 
 These CPU and CUDA workflows decode identical stdlib level-6 streams.
+CUDA host-array output and host-byte output are separate timing series;
+CPU output is Python `bytes`.
 [Decompression SVG](benchmarks/figures/decompression-throughput.svg) ·
 [Decompression PDF](benchmarks/figures/decompression-throughput.pdf)
 
@@ -160,28 +175,30 @@ workspace allocations remain included in both workflows.
 
 | Workload | CUDA resident | CUDA host-to-host | CPU level 1 | CPU level 6 |
 | --- | ---: | ---: | ---: | ---: |
-| Zero bytes | 1414.4 | 1243.8 | 364.5 | 157.7 |
-| Generated text | 678.9 | 608.1 | 171.2 | 53.5 |
-| Integer counters | 402.8 | 296.9 | 49.1 | 6.8 |
-| Gaussian float32 | 360.8 | 210.5 | 17.4 | 15.5 |
-| Uniform random bytes | 547.4 | 253.5 | 25.6 | 25.3 |
+| Zero bytes | 1405.6 | 1236.9 | 364.0 | 157.6 |
+| Generated text | 675.4 | 608.5 | 171.4 | 53.6 |
+| Integer counters | 402.2 | 296.5 | 50.3 | 6.8 |
+| Gaussian float32 | 359.1 | 210.8 | 17.4 | 15.6 |
+| Uniform random bytes | 543.3 | 252.9 | 25.6 | 25.5 |
 
 ### 64 MiB decompression throughput
 
 Each CPU/CUDA pair decodes the **same compressed stream**. Codec-produced and
 stdlib level-6 streams have different block layouts and must be compared separately.
 Host-to-host level-6 decoding includes both transfers and host byte conversion.
+Host-array decoding includes both transfers and returns the NumPy view of
+completed pinned host storage, without the final copy to Python `bytes`.
 
-| Workload | CUDA resident, codec stream | CPU, codec stream | CUDA resident, level-6 stream | CUDA host-to-host, level-6 stream | CPU, level-6 stream |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Zero bytes | 3571.9 | 178.1 | 1219.4 | 338.6 | 180.0 |
-| Generated text | 2169.5 | 271.9 | 1113.5 | 329.8 | 342.2 |
-| Integer counters | 1258.8 | 168.3 | 1227.2 | 338.0 | 168.7 |
-| Gaussian float32 | 901.1 | 122.9 | 850.7 | 297.8 | 119.8 |
-| Uniform random bytes | 1771.2 | 557.3 | 1669.5 | 552.6 | 556.7 |
+| Workload | CUDA resident, codec stream | CPU, codec stream | CUDA resident, level-6 stream | CUDA host array, level-6 stream | CUDA host bytes, level-6 stream | CPU, level-6 stream |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Zero bytes | 3551.7 | 178.3 | 1464.8 | 1358.1 | 585.4 | 180.6 |
+| Generated text | 2145.7 | 241.3 | 1114.3 | 1039.0 | 513.7 | 294.7 |
+| Integer counters | 1281.1 | 168.4 | 1237.7 | 1107.3 | 534.7 | 169.1 |
+| Gaussian float32 | 909.2 | 122.9 | 859.4 | 759.5 | 438.0 | 119.9 |
+| Uniform random bytes | 1755.0 | 653.7 | 1654.1 | 1332.8 | 583.3 | 652.7 |
 
-For example, resident zero-byte decoding reaches 3571.9 MiB/s for this codec's
-stream and 1219.4 MiB/s for the level-6 stream. This difference is a property of
+For example, resident zero-byte decoding reaches 3551.7 MiB/s for this codec's
+stream and 1464.8 MiB/s for the level-6 stream. This difference is a property of
 the stream layout and decoder paths, not a general speedup over the CPU.
 
 [Raw RTX 3090 and same-host CPU results](benchmarks/results/rtx3090-ffi-20261006.json)
@@ -196,7 +213,7 @@ From this repository checkout, install the measured codec source snapshot and
 run the harness:
 
 ```sh
-python -m pip install "cuda-zlib[cuda12] @ git+https://github.com/xangma/cuda-zlib.git@b8f736e3512f450c3a871c85bf3e6d6c46e1e583" matplotlib
+python -m pip install "cuda-zlib[cuda12] @ git+https://github.com/xangma/cuda-zlib.git@94a863c29be9518da856474d64fc026f232058d7" matplotlib
 CUDACXX=/usr/local/cuda-12.6/bin/nvcc CUDA_ZLIB_CACHE_DIR="$(mktemp -d)" python benchmarks/benchmark.py \
   --sizes 65536 1048576 67108864 --samples 15 --cpu-samples 5 \
   --seed 20261006 --device 0 --output results-cuda.json
@@ -223,7 +240,10 @@ separately. `compile_kernels` builds or loads the native library and registers
 FFI targets; shape-specific XLA compilation remains lazy. One untimed warmup
 before each operation excludes that workflow's initial XLA compilation.
 CUDA API calls are synchronous, including status checks and temporary workspace;
-host-to-host workflows also copy the JAX output to NumPy and host bytes.
+host workflows include transfers and completed host output. Compression converts
+the JAX output to NumPy and Python `bytes`. Decompression uses
+`decompress_zlib_host`; the host-array measurement returns its NumPy array and
+the bytes-returning measurement additionally calls `.tobytes()`.
 Avoid other active GPU work during measurements; GPU utilization, memory usage
 and temperature are recorded before and after the run, but these snapshots do
 not prove isolation.
@@ -233,14 +253,16 @@ CUDA measurements include:
 - Compression with resident device input and output, host input to device
   output, and complete host input to host output.
 - Resident decompression of codec-produced streams and independent zlib
-  level-6 streams, plus complete host-to-host decoding of level-6 streams.
+  level-6 streams, plus level-6 decoding from host input to either a host array
+  or Python `bytes`.
 - Single-threaded stdlib zlib compression at levels 1 and 6 and CPU decoding
   of the same compressed streams used by the CUDA decoder.
 
-Resident uploads, workload generation and byte comparisons are excluded from
-resident timings. API allocations remain included; host workflows include their
-transfers and host copies. All CUDA and CPU results are checked against the
-original bytes. Stdlib zlib independently decodes the CUDA compressor's output,
+Initial resident uploads, workload generation and post-timing oracle comparisons
+are excluded from resident timings. API allocations and codec validation remain
+included; host workflows include their transfers and host copies. All CUDA and
+CPU results are checked against the original bytes. Stdlib zlib independently
+decodes the CUDA compressor's output,
 and CUDA decodes the stdlib level-6 output. A failed check stops the run.
 The CUDA compressor uses its default 32768-byte chunks; it has no compression
 level equivalent to zlib's levels 1 or 6.

@@ -21,6 +21,21 @@ codec status before returning. No CPU codec fallback occurs. Package import
 does not import JAX or initialize CUDA. `cuda_zlib.jax` also provides convenience
 wrappers requiring an explicit JAX device.
 
+For output on the host, use `decompress_zlib_host`:
+
+```python
+host = cuda_zlib.decompress_zlib_host(encoded, 5000, device=0)
+view = memoryview(host)
+assert view.readonly
+assert view == b"hello" * 1000
+```
+
+It accepts the same inputs and validates the same stream features and limits as
+`decompress_zlib`. It returns a completed, read-only, contiguous NumPy `uint8`
+array. Nonempty outputs use JAX-owned pinned host memory. The array retains its
+storage across subsequent calls. `memoryview(host)` shares that storage without
+another copy; `host.tobytes()` allocates and copies into a Python `bytes` object.
+
 For compiled workflows, use the fixed-shape interfaces:
 
 ```python
@@ -50,12 +65,12 @@ asynchronous pipeline.
 ## Performance
 
 On an RTX 3090 with an AMD Threadripper PRO 3995WX, warm **64 MiB**
-compression measured **3.41–12.12×** the throughput of the same CPU's
+compression measured **3.40–12.14×** the throughput of the same CPU's
 single-threaded stdlib zlib level 1. Decoding identical stdlib level-6 streams
-measured **0.96–2.49×** CPU throughput: GPU decoding was faster for zeros,
-uint32 and float32, slower for synthetic text, and roughly equal for random
-bytes. Both comparisons include GPU uploads, downloads and conversion to host
-bytes.
+measured **0.89–3.65×** CPU throughput: GPU decoding was faster for zeros,
+synthetic text, uint32 and float32; CPU decoding was faster for random bytes.
+Both comparisons include GPU uploads, downloads, codec validation and conversion
+to host bytes. Host-array output is measured separately in the benchmark tables.
 
 At **64 KiB**, CPU compression and decompression were faster for every measured
 workload. At **1 MiB**, compression depended on the workload and CPU

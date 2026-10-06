@@ -21,9 +21,12 @@ supported; block capacity is independent of output length. Speculative errors
 are local; only errors on the exact boundary chain invalidate the stream.
 
 ``discover`` maps threads to bytes. ``describe_candidates`` and ``emit_blocks``
-map one-thread CTAs to candidate/accepted blocks or fixed segments, using shared
-tables. ``fixed_summaries`` uses 32 threads per tile. ``emit_stored`` uses
-cooperative CTAs and follows ``emit_blocks`` without clearing block statuses.
+use one-thread CTAs with shared tables. ``emit_blocks`` owns accepted blocks or
+fixed segments of at most 1 MiB decoded output; ``emit_blocks_warp`` owns larger
+ones, with lane zero parsing and all lanes expanding long matches. Launch both
+emitters: their output and status writes are disjoint. ``fixed_summaries`` uses
+32 threads per tile. ``emit_stored`` uses cooperative CTAs and follows both
+emitters without clearing block statuses.
 Grid stride supports smaller grids. ``select_chain`` uses one CTA/thread.
 """
 
@@ -45,10 +48,11 @@ STATUS_MESSAGES = {
 
 FIXED_TILE_BYTES = 2048
 FIXED_ENTRY_COUNT = 32
+WARP_MIN_OUTPUT_BYTES = 1 << 20
 
 KERNEL_NAMES = (
     "discover", "describe_candidates", "fixed_summaries", "select_chain",
-    "emit_blocks", "emit_stored",
+    "emit_blocks", "emit_blocks_warp", "emit_stored",
 )
 
 CUDA_SOURCE = r'''
@@ -56,6 +60,8 @@ typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long long u64;
+
+const u32 WARP_MIN_OUTPUT_BYTES = 1u << 20;
 
 struct BitReader {
     const u8* data;
@@ -421,6 +427,106 @@ __device__ BlockInfo emit_fixed_segment(
     return result;
 }
 
+__device__ __forceinline__ void emit_warp_match(
+    u32* roots, u32 prefix, u32 begin, u32 distance, u32 length, u32 mask) {
+    u32 lane = threadIdx.x, first = begin - distance;
+    if (distance == 1) {
+        u32 value = 0;
+        if (!lane) value = first < prefix ? first : roots[first];
+        value = __shfl_sync(mask, value, 0);
+        for (u32 j = lane; j < length; j += 32) roots[begin + j] = value;
+    } else {
+        // Compute modulo only once per lane, then advance within the seed.
+        // Every source precedes begin, even when length exceeds distance.
+        u32 source = first + lane % distance, stride = 32 % distance;
+        for (u32 j = lane; j < length; j += 32) {
+            roots[begin + j] = source < prefix ? source : roots[source];
+            source += stride;
+            if (source >= begin) source -= distance;
+        }
+    }
+}
+
+__device__ __noinline__ BlockInfo emit_warp_block(
+    const u8* data, u32 bytes, u64 start, u64 end, u32 limit, u32 prefix,
+    u32* roots, DecodeTables& tables, u32 window_bytes, bool segment,
+    u32 final) {
+    const u32 mask = blockDim.x >= 32 ? 0xffffffffu : (1u << blockDim.x) - 1u;
+    const u32 lane = threadIdx.x;
+    BitReader r = {data, u64(bytes) * 8, start, 0};
+    BlockInfo result = {start, 0, 0, 0, 0};
+    if (!lane) {
+        u32 type = 1;
+        if (!segment) {
+            result.final = r.take(1);
+            type = r.take(2);
+        }
+        if (!r.error) {
+            if (type == 3) r.error = 2;
+            else if (type == 0) r.error = 12;  // Handled by emit_stored.
+            else r.error = type == 1 ? fixed_tables(tables.ll, tables.dd) :
+                dynamic_tables(r, tables.ll, tables.dd, tables.cl);
+        }
+    }
+    while (true) {
+        u32 length = 0, distance = 0, begin = 0;
+        if (!lane) {
+            // Literals and short matches remain serial: only a long match
+            // or termination makes the other lanes rendezvous with the parser.
+            while (!r.error && (!segment || r.pos < end)) {
+                u32 size, token_distance;
+                int symbol = fixed_token(r, tables, size, token_distance,
+                                         segment ? window_bytes : 32768);
+                if (r.error) break;
+                if (symbol == 256) {
+                    if (!segment || r.pos == end) break;
+                    if (final) { r.error = 12; break; }
+                    final = r.take(1);
+                    u32 type = r.take(2);
+                    if (!r.error && type != 1) r.error = 12;
+                    continue;
+                }
+                if (size > limit - result.size) { r.error = 7; break; }
+                if (!token_distance) {
+                    roots[prefix + result.size] = 0x80000000u | u32(symbol);
+                } else {
+                    if (token_distance > window_bytes ||
+                        token_distance > prefix + result.size) {
+                        r.error = 6; break;
+                    }
+                    if (token_distance > result.size) result.external = 1;
+                    if (size >= 32 && blockDim.x >= 32) {
+                        length = size;
+                        distance = token_distance;
+                        begin = prefix + result.size;
+                        result.size += size;
+                        break;
+                    }
+                    emit_match_roots(roots, prefix, prefix + result.size,
+                                     token_distance, size);
+                }
+                result.size += size;
+            }
+        }
+        length = __shfl_sync(mask, length, 0);
+        if (!length) break;  // Includes every parser error and EOB.
+        distance = __shfl_sync(mask, distance, 0);
+        begin = __shfl_sync(mask, begin, 0);
+        // Shuffles alone do not order memory. Publish the parser's literal
+        // and short-match roots before seed reads, and finish this match
+        // before the next token can consume any of its roots.
+        __syncwarp(mask);
+        emit_warp_match(roots, prefix, begin, distance, length, mask);
+        __syncwarp(mask);
+    }
+    if (!lane) {
+        result.end = r.pos;
+        result.status = r.error;
+        if (!result.status && r.pos != end) result.status = 12;
+    }
+    return result;
+}
+
 __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
                                             u64 start, u32 limit,
                                             u32 prefix, u32* roots,
@@ -763,6 +869,7 @@ extern "C" __global__ void emit_blocks(
     if (threadIdx.x) return;
     for (u64 i = blockIdx.x; i < count; i += gridDim.x) {
         u32 prefix = output_prefix[i], size = block_sizes[i];
+        if (size > WARP_MIN_OUTPUT_BYTES) continue;
         u32 err = 0, external = 0;
         if (!window_bytes || window_bytes > 32768) err = 6;
         else if (expected_bytes >= 0x80000000u ||
@@ -801,6 +908,62 @@ extern "C" __global__ void emit_blocks(
         // Separate planes preserve every error when another block requires
         // refinement. Local history has already been flattened to literals.
         block_status[count + i] = external;
+    }
+}
+
+extern "C" __global__ void emit_blocks_warp(
+    const u8* data, u32 input_bytes, const u64* block_starts,
+    const u64* block_ends, const u32* output_prefix, const u32* block_sizes,
+    u32 count, u32 expected_bytes, u32 window_bytes, u32* roots,
+    u32* block_status) {
+    __shared__ DecodeTables tables;
+    if (threadIdx.x >= 32) return;
+    for (u64 i = blockIdx.x; i < count; i += gridDim.x) {
+        u32 prefix = output_prefix[i], size = block_sizes[i];
+        if (size <= WARP_MIN_OUTPUT_BYTES) continue;
+        u32 err = 0, external = 0;
+        if (!window_bytes || window_bytes > 32768) err = 6;
+        else if (expected_bytes >= 0x80000000u ||
+                 prefix > expected_bytes || size > expected_bytes - prefix)
+            err = 7;
+        else {
+            u64 start = block_starts[i];
+            if (start & FIXED_SEGMENT) {
+                BlockInfo info = emit_warp_block(
+                    data, input_bytes, start & FIXED_POSITION, block_ends[i],
+                    size, prefix, roots, tables, window_bytes,
+                    true, u32((start & FIXED_FINAL) != 0));
+                if (!threadIdx.x) {
+                    err = info.status;
+                    external = info.external;
+                    if (!err && (info.end != block_ends[i] || info.size != size))
+                        err = 12;
+                }
+            } else {
+                BitReader r = {data, u64(input_bytes) * 8, start, 0};
+                r.take(1);
+                u32 type = r.take(2);
+                err = r.error;
+                // Stored roots are filled by the following cooperative kernel.
+                if (!err && type != 0) {
+                    BlockInfo info = emit_warp_block(
+                        data, input_bytes, start, block_ends[i], size, prefix,
+                        roots, tables, window_bytes, false, 0);
+                    if (!threadIdx.x) {
+                        err = info.status;
+                        external = info.external;
+                        if (!err && (info.end != block_ends[i] || info.size != size))
+                            err = 12;
+                    }
+                }
+            }
+        }
+        if (!threadIdx.x) {
+            block_status[i] = err;
+            // Separate planes preserve every error when another block requires
+            // refinement. Local history has already been flattened to literals.
+            block_status[count + i] = external;
+        }
     }
 }
 

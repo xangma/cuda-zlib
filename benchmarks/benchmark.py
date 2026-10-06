@@ -196,9 +196,11 @@ def main():
             "warmup_calls_per_measurement": 1,
             "throughput_denominator": "uncompressed input bytes / 2**20",
             "compression_chunk_bytes": CHUNK_BYTES,
-            "timing_includes": "API allocations; transfers only for named host workflows",
-            "timing_excludes": "payload generation, initial resident uploads, native build/registration, per-workflow XLA compilation in warmup, validation",
+            "timing_includes": "API allocations and codec validation; transfers only for named host workflows",
+            "timing_excludes": "payload generation, initial resident uploads, native build/registration, per-workflow XLA compilation in warmup, post-timing oracle comparisons",
             "cpu": "single-threaded stdlib zlib; levels 1 and 6; no level equivalence implied",
+            "host_decompression": "host_host returns bytes via pinned host transfer plus tobytes allocation/copy; host_array returns a completed read-only NumPy array backed by pinned host memory",
+            "consumer_outputs": "CPU decompression and CUDA host_host return bytes; CUDA host_array returns NumPy uint8 and is reported separately",
         },
         "cases": [],
     }
@@ -246,9 +248,13 @@ def main():
                 assert decoded_host == payload
                 del decoded_host
             decoded_host, times["cuda_decompress_level6_host_host"] = measure(
-                lambda: np.asarray(cuda_zlib.decompress_zlib(cpu_streams[6], size, args.device)).tobytes(),
+                lambda: cuda_zlib.decompress_zlib_host(cpu_streams[6], size, args.device).tobytes(),
                 args.samples, size)
             assert decoded_host == payload
+            decoded_array, times["cuda_decompress_level6_host_array"] = measure(
+                lambda: cuda_zlib.decompress_zlib_host(cpu_streams[6], size, args.device),
+                args.samples, size)
+            assert np.array_equal(decoded_array, np.frombuffer(payload, dtype=np.uint8))
             case = {
                 "workload": workload, "input_bytes": size,
                 "input_sha256": hashlib.sha256(payload).hexdigest(),
@@ -267,7 +273,7 @@ def main():
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(json.dumps(report, indent=2) + "\n")
             print(f"pass {workload} {size}: encoded={case['encoded_bytes']}", flush=True)
-            del payload, resident, encoded, encoded_host, cpu_streams, external, decoded_host, compressed
+            del payload, resident, encoded, encoded_host, cpu_streams, external, decoded_host, decoded_array, compressed
             gc.collect()
     report["environment"]["gpu_snapshot_after"] = gpu_snapshot()
     args.output.write_text(json.dumps(report, indent=2) + "\n")

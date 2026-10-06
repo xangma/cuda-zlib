@@ -203,3 +203,23 @@ def decompress_zlib(payload, expected_bytes, device=0):
     _check_value(int(np.asarray(metadata)[0]), "CUDA decompression")
     output.block_until_ready()
     return output
+
+
+def decompress_zlib_host(payload, expected_bytes, device=0) -> np.ndarray:
+    """Decode to a completed, read-only, contiguous NumPy uint8 array.
+
+    Uses the same CUDA decoding, limits and validation as decompress_zlib, then
+    transfers the result to JAX-owned pinned host memory. The returned array
+    retains that storage independently of subsequent calls. A memoryview shares
+    it without copying; tobytes() allocates and copies into a new bytes object.
+    This synchronous host API cannot be used inside jax.jit.
+    """
+    output = decompress_zlib(payload, expected_bytes, device)
+    jax = _jax()
+    sharding = jax.sharding.SingleDeviceSharding(
+        next(iter(output.devices())), memory_kind="pinned_host")
+    host = jax.device_put(output, sharding)
+    result = np.asarray(host.block_until_ready())
+    # JAX's empty-array conversion may create an owned, writable NumPy array.
+    result.flags.writeable = False
+    return result
