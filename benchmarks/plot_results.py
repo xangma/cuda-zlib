@@ -49,6 +49,10 @@ ENCODED_SIZE = (
     ("CPU zlib level 1", "zlib1", GREEN, "^"),
     ("CPU zlib level 6", "zlib6", PURPLE, "s"),
 )
+CPU_SPEEDUP = (
+    ("Host-to-host compression", "cpu_compress_level1", "cuda_compress_host_host", BLUE),
+    ("Host-to-host decompression", "cpu_decompress_level6", "cuda_decompress_level6_host_host", ORANGE),
+)
 ALL_KEYS = {series[1] for series in COMPRESSION + DECOMPRESSION + STREAM_LAYOUT}
 ALL_KEYS.add("cuda_compress_host_device")
 
@@ -144,17 +148,18 @@ def header(fig, title, subtitle):
     fig.text(0.065, 0.904, subtitle, fontsize=11, va="top", color="#475569")
 
 
-def footer(fig, report, additional, timing=True):
+def footer(fig, report, additional, timing=True, method=None):
     environment, args = report["environment"], report["arguments"]
     gpu = environment["gpu"].removeprefix("NVIDIA GeForce ")
     cpu = environment["cpu"].removeprefix("AMD Ryzen ").removesuffix(" 64-Cores")
     fig.text(0.065, 0.085, f"{gpu} + {cpu} · same workstation · {report['created_utc'][:10]}",
              fontsize=9, color="#475569")
-    if timing:
-        method = (f"Warm medians; {args['samples']} CUDA / {args['cpu_samples']} CPU samples; "
-                  "error bars = sample min–max, not confidence intervals. Cold startup excluded.")
-    else:
-        method = "Encoded percentages include all stream framing; lower is smaller. 100% means no size reduction. Labels rounded to 0.001%."
+    if method is None:
+        if timing:
+            method = (f"Warm medians; {args['samples']} CUDA / {args['cpu_samples']} CPU samples; "
+                      "error bars = sample min–max, not confidence intervals. Cold startup excluded.")
+        else:
+            method = "Encoded percentages include all stream framing; lower is smaller. 100% means no size reduction. Labels rounded to 0.001%."
     fig.text(0.065, 0.059, method, fontsize=9, color="#475569")
     fig.text(0.065, 0.033, additional, fontsize=9, color="#475569")
 
@@ -270,7 +275,7 @@ def decode_stream_layout(report, cases):
             ax.errorbar(median, index + offset, xerr=[[low], [high]],
                         marker=marker, color=color, markersize=6, linestyle="none",
                         capsize=3, elinewidth=1, zorder=3)
-            ax.annotate(f"{median:,.0f}", (median, index + offset),
+            ax.annotate(f"{median:,.0f}", (median + high, index + offset),
                         xytext=(8, 0), textcoords="offset points", fontsize=9.5,
                         va="center", color=color)
     handles = [Line2D([], [], color=color, marker=marker, linestyle="none", label=label)
@@ -279,6 +284,39 @@ def decode_stream_layout(report, cases):
                frameon=False, ncols=2, columnspacing=3.2, labelspacing=0.8)
     ax.set_xlabel("Throughput (MiB/s) · logarithmic scale", labelpad=9)
     footer(fig, report, "Codec stream: CUDA encoder output (independent 32 KiB chunks). Level-6 stream: single stdlib zlib stream. Transfers excluded.")
+    return fig
+
+
+def cpu_speedup(report, cases):
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6.5), sharey=True)
+    fig.subplots_adjust(left=0.17, right=0.97, top=0.78, bottom=0.22, wspace=0.14)
+    header(fig, "GPU speedup over CPU", "64 MiB inputs · CUDA host-to-host workflows include copies and transfers")
+    baselines = ("CPU: single-thread stdlib zlib level 1", "CPU: same stdlib level-6 bytes, single thread")
+    ratios = [[cases[(w, SIZES[-1])]["timings"][cpu]["median_seconds"] /
+               cases[(w, SIZES[-1])]["timings"][cuda]["median_seconds"]
+               for w in WORKLOADS] for _, cpu, cuda, _ in CPU_SPEEDUP]
+    limit = max(1, max(value for values in ratios for value in values)) * 1.19
+    for ax, (title, cpu, cuda, color), baseline, values in zip(axes, CPU_SPEEDUP, baselines, ratios):
+        ax.set_title(title, loc="left", pad=29)
+        ax.text(0, 1.045, baseline, transform=ax.transAxes, fontsize=9, color="#475569")
+        ax.barh(range(len(WORKLOADS)), values, height=0.56, color=color, alpha=0.9, zorder=3)
+        ax.set_xlim(0, limit)
+        ax.set_ylim(len(WORKLOADS) - 0.5, -0.6)
+        ax.set_yticks(range(len(WORKLOADS)), [LABELS[w] for w in WORKLOADS])
+        ax.tick_params(axis="y", length=0, pad=10)
+        ax.spines["left"].set_visible(False)
+        ax.grid(axis="x", zorder=0)
+        ax.axvline(1, color="#64748B", linestyle="--", linewidth=1, zorder=4)
+        ax.annotate("1×", (1, -0.6), xytext=(4, -4), textcoords="offset points",
+                    fontsize=9, color="#64748B", ha="left", va="top")
+        for index, value in enumerate(values):
+            ax.annotate(f"{value:.2f}×", (value, index), xytext=(7, 0),
+                        textcoords="offset points", fontsize=10, va="center", color=color)
+        ax.set_xlabel("Speedup over CPU (×) · linear scale", labelpad=10)
+    method = (f"Ratio of warm CPU / CUDA median time; {report['arguments']['samples']} CUDA / "
+              f"{report['arguments']['cpu_samples']} CPU samples. Values above 1× favor CUDA. No error bars; cold startup excluded.")
+    footer(fig, report, "Compression compares each encoder's output with no level equivalence implied. Decompression uses identical level-6 streams.",
+           method=method)
     return fig
 
 
@@ -303,7 +341,7 @@ def save_figure(fig, output, name):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, default=ROOT / "results" / "rtx3090.json")
+    parser.add_argument("--input", type=Path, default=ROOT / "results" / "rtx3090-ffi-20261006.json")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "figures")
     args = parser.parse_args()
     report, cases, source_hash = load_results(args.input)
@@ -322,13 +360,29 @@ def main():
          lambda: decode_stream_layout(report, cases)),
     )
     figures = {}
+    throughput_statistic = "uncompressed MiB / median elapsed seconds, checked against recorded timing samples"
+    throughput_errors = "sample throughput minimum and maximum from inverse individual elapsed times; not confidence intervals"
     for name, series, sizes, metric, render in specifications:
         print(f"Rendering {name}", flush=True)
         figures[name] = {
             "exports_sha256": save_figure(render(), args.output_dir, name),
             "workloads": list(WORKLOADS), "input_bytes": sizes, "metric": metric,
             "series": [{"label": s[0], "json_key": s[1]} for s in series],
+            "point_statistic": throughput_statistic if metric == "throughput_mib_per_second" else "100 * complete encoded bytes / uncompressed input bytes",
+            "error_bars": throughput_errors if metric == "throughput_mib_per_second" else None,
         }
+    print("Rendering cpu-speedup", flush=True)
+    figures["cpu-speedup"] = {
+        "exports_sha256": save_figure(cpu_speedup(report, cases), args.output_dir, "cpu-speedup"),
+        "workloads": list(WORKLOADS), "input_bytes": [SIZES[-1]], "metric": "cpu_speedup_ratio",
+        "point_statistic": "CPU median elapsed seconds / CUDA median elapsed seconds; greater than 1 favors CUDA",
+        "axis_scale": "linear", "reference_ratio": 1, "error_bars": None,
+        "cuda_timing_scope": "Host-to-host; copies and host/device transfers included",
+        "cpu_timing_scope": "Same-host, single-thread stdlib zlib",
+        "series": [{"label": label, "numerator_timing_key": cpu, "denominator_timing_key": cuda,
+                    "ratio_formula": f"timings.{cpu}.median_seconds / timings.{cuda}.median_seconds"}
+                   for label, cpu, cuda, color in CPU_SPEEDUP],
+    }
     try:
         source_name = args.input.resolve().relative_to(ROOT).as_posix()
     except ValueError:
@@ -340,8 +394,8 @@ def main():
         "source_created_utc": report["created_utc"], "validated_cases": len(cases),
         "samples_per_measurement": {"cuda": report["arguments"]["samples"], "cpu": report["arguments"]["cpu_samples"]},
         "throughput_units": "MiB/s; uncompressed bytes / 2**20 / seconds",
-        "point_statistic": "stored throughput at median elapsed time, checked against recorded timing samples",
-        "error_bars": "sample throughput minimum and maximum, from inverse individual elapsed times; not confidence intervals",
+        "point_statistic": "Defined separately for each figure's metric",
+        "error_bars": "Defined per figure; encoded-size and cpu-speedup have no error bars",
         "size_units": "100 * complete encoded bytes / uncompressed input bytes",
         "timing_scope": report["methodology"], "cold_startup_excluded": True,
         "figures": figures,

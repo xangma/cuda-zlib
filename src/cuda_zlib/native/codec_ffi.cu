@@ -1,0 +1,448 @@
+// Copyright (c) 2026 xangma
+// SPDX-License-Identifier: MIT
+
+// Fresh CUDA codec execution on the stream supplied by XLA. Generated headers
+// contain the unchanged CUDA_SOURCE strings, with no host codec implementation.
+#include <cuda_runtime.h>
+#include <cub/device/device_radix_sort.cuh>
+#include <xla/ffi/api/ffi.h>
+
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <string>
+#include <utility>
+
+namespace encoder {
+#include "encoder.cuh"
+}
+namespace decoder {
+#include "decoder.cuh"
+}
+namespace checksum {
+#include "postprocess.cuh"
+}
+
+namespace ffi = xla::ffi;
+
+namespace {
+using U8 = unsigned char;
+using U32 = unsigned int;
+using U64 = unsigned long long;
+constexpr U32 kMaxBytes = 1u << 28;
+constexpr U32 kMaxCandidates = 262144;
+constexpr U32 kMaxBlocks = 262144;
+constexpr U32 kFixedTileBytes = 2048;
+
+// Deflate statuses 1..13 come directly from the existing decoder kernels.
+// Compress metadata is [encoded extent, status]; decode is [status, 0].
+enum Status : U32 {
+  kTruncatedZlib = 14,
+  kInvalidHeader = 15,
+  kUnsupportedGzip = 16,
+  kUnsupportedDictionary = 17,
+  kCandidateOverflow = 18,
+  kInitialBlockMissing = 19,
+  kReferenceDepthExceeded = 20,
+  kAdlerMismatch = 21,
+  kCompressionOverflow = 22,
+  kInvalidBounds = 23,
+};
+
+#define CUDA_TRY(expression)                     \
+  do {                                           \
+    cudaError_t error = (expression);             \
+    if (error != cudaSuccess) return error;       \
+  } while (false)
+
+// Per-invocation ownership; no private stream, lock, retained workspace or
+// stream-derived metadata. All frees follow the final use on the XLA stream.
+class Workspace {
+ public:
+  explicit Workspace(cudaStream_t stream) : stream_(stream) {}
+  Workspace(const Workspace&) = delete;
+  Workspace& operator=(const Workspace&) = delete;
+  ~Workspace() noexcept { Release(); }
+
+  template <typename T>
+  cudaError_t Allocate(T** result, std::size_t elements) {
+    if (count_ == allocations_.size()) return cudaErrorMemoryAllocation;
+    void* pointer = nullptr;
+    CUDA_TRY(cudaMallocAsync(&pointer, std::max<std::size_t>(1, elements) *
+                                          sizeof(T), stream_));
+    allocations_[count_++] = pointer;
+    *result = static_cast<T*>(pointer);
+    return cudaSuccess;
+  }
+
+  cudaError_t Release() noexcept {
+    cudaError_t first = cudaSuccess;
+    while (count_) {
+      cudaError_t error = cudaFreeAsync(allocations_[--count_], stream_);
+      if (first == cudaSuccess) first = error;
+    }
+    return first;
+  }
+
+ private:
+  cudaStream_t stream_;
+  std::array<void*, 32> allocations_{};
+  std::size_t count_ = 0;
+};
+
+template <ffi::DataType Type>
+bool IsVector(const ffi::Buffer<Type>& buffer) {
+  auto dimensions = buffer.dimensions();
+  return dimensions.size() == 1 && dimensions[0] >= 0;
+}
+
+__global__ void SetMetadata(U32* metadata, U32 first, U32 second) {
+  if (!blockIdx.x && !threadIdx.x) {
+    metadata[0] = first;
+    metadata[1] = second;
+  }
+}
+
+cudaError_t SetStatus(cudaStream_t stream, U32* metadata, U32 status,
+                      bool compression = false) {
+  SetMetadata<<<1, 1, 0, stream>>>(metadata, compression ? 0u : status,
+                                 compression ? status : 0u);
+  return cudaGetLastError();
+}
+
+cudaError_t ReadWords(cudaStream_t stream, const U32* device, U32* host,
+                      std::size_t count) {
+  CUDA_TRY(cudaMemcpyAsync(host, device, count * sizeof(U32),
+                           cudaMemcpyDeviceToHost, stream));
+  return cudaStreamSynchronize(stream);
+}
+
+// A bounded serial device scan avoids reading per-chunk sizes/status on host.
+// No invalid or unwritten chunk size can reach packing after an encoder error.
+__global__ void CompressionPrefix(const U32* sizes, const U32* status,
+                                  U32 chunks, U32 slot_bytes, U64 capacity,
+                                  U64* ends, U32* metadata) {
+  if (blockIdx.x || threadIdx.x) return;
+  metadata[0] = 0;
+  metadata[1] = 0;
+  for (U32 i = 0; i < chunks; ++i) {
+    if (status[i]) { metadata[1] = kCompressionOverflow; return; }
+  }
+  U64 total = 6;
+  for (U32 i = 0; i < chunks; ++i) {
+    if (sizes[i] > slot_bytes || total + sizes[i] > capacity) {
+      metadata[1] = kCompressionOverflow;
+      return;
+    }
+    total += sizes[i];
+    ends[i] = total - 6;
+  }
+  metadata[0] = U32(total);
+}
+
+__global__ void EmissionStatus(const U32* input, U32 blocks, U32* result) {
+  __shared__ U32 errors[256], pending[256];
+  U32 error = 0, external = 0;
+  for (U32 i = threadIdx.x; i < blocks; i += blockDim.x) {
+    error = max(error, input[i]);
+    external = max(external, input[blocks + i]);
+  }
+  errors[threadIdx.x] = error;
+  pending[threadIdx.x] = external;
+  __syncthreads();
+  for (U32 stride = 128; stride; stride >>= 1) {
+    if (threadIdx.x < stride) {
+      errors[threadIdx.x] = max(errors[threadIdx.x], errors[threadIdx.x + stride]);
+      pending[threadIdx.x] = max(pending[threadIdx.x], pending[threadIdx.x + stride]);
+    }
+    __syncthreads();
+  }
+  if (!threadIdx.x) { result[0] = errors[0]; result[1] = pending[0]; }
+}
+
+__global__ void VerifyChecksum(const U32* actual, U32 expected, U32* metadata) {
+  if (!blockIdx.x && !threadIdx.x) {
+    metadata[0] = *actual == expected ? 0u : U32(kAdlerMismatch);
+    metadata[1] = 0;
+  }
+}
+
+cudaError_t Compress(cudaStream_t stream, std::int64_t chunk_bytes,
+                      ffi::Buffer<ffi::U8> input,
+                      ffi::ResultBuffer<ffi::U8> output,
+                      ffi::ResultBuffer<ffi::U32> metadata,
+                      Workspace& workspace) {
+  U32* result = metadata->typed_data();
+  if (!IsVector(*output) || output->element_count() > kMaxBytes)
+    return SetStatus(stream, result, kInvalidBounds, true);
+  const U64 capacity = U64(output->element_count());
+  if (capacity) CUDA_TRY(cudaMemsetAsync(output->typed_data(), 0, capacity, stream));
+  if (!IsVector(input) || input.element_count() > kMaxBytes ||
+      chunk_bytes < 256 || chunk_bytes > 65535)
+    return SetStatus(stream, result, kInvalidBounds, true);
+  const U64 size = U64(input.element_count());
+  const U32 chunk = U32(chunk_bytes);
+  const U32 chunks = U32(std::max<U64>(1, (size + chunk - 1) / chunk));
+  if (2u * U64(chunks) - 1 > kMaxBlocks ||
+      size + U64(chunks) * 5 + 6 > kMaxBytes ||
+      capacity != size + U64(chunks) * 5 + 6)
+    return SetStatus(stream, result, kInvalidBounds, true);
+  const U32 slot_bytes = (chunk * 9 + 7) / 8 + 16;
+  U8* scratch = nullptr;
+  U32 *tokens = nullptr, *sizes = nullptr, *status = nullptr, *adler = nullptr;
+  U64 *ends = nullptr, *partial_a = nullptr, *partial_b = nullptr;
+  CUDA_TRY(workspace.Allocate(&scratch, std::size_t(chunks) * slot_bytes));
+  CUDA_TRY(workspace.Allocate(&tokens, size));
+  CUDA_TRY(workspace.Allocate(&sizes, chunks));
+  CUDA_TRY(workspace.Allocate(&status, chunks));
+  CUDA_TRY(workspace.Allocate(&ends, chunks));
+  encoder::encode_chunks<<<chunks, 256, 0, stream>>>(
+      input.typed_data(), U32(size), chunk, chunks, slot_bytes, scratch,
+      sizes, status, tokens);
+  CUDA_TRY(cudaGetLastError());
+  CompressionPrefix<<<1, 1, 0, stream>>>(sizes, status, chunks, slot_bytes,
+                                         capacity, ends, result);
+  CUDA_TRY(cudaGetLastError());
+  std::array<U32, 2> host{};
+  CUDA_TRY(ReadWords(stream, result, host.data(), host.size()));
+  if (host[1]) return cudaSuccess;
+  encoder::pack_chunks<<<chunks, 256, 0, stream>>>(
+      scratch, slot_bytes, sizes, ends, output->typed_data());
+  CUDA_TRY(cudaGetLastError());
+  const U32 parts = U32(std::max<U64>(1, (size + 4095) / 4096));
+  CUDA_TRY(workspace.Allocate(&partial_a, parts));
+  CUDA_TRY(workspace.Allocate(&partial_b, parts));
+  CUDA_TRY(workspace.Allocate(&adler, 1));
+  checksum::adler_parts<<<parts, 256, 0, stream>>>(
+      input.typed_data(), U32(size), partial_a, partial_b);
+  CUDA_TRY(cudaGetLastError());
+  checksum::adler_finish<<<1, 256, 0, stream>>>(
+      partial_a, partial_b, parts, U32(size), adler);
+  CUDA_TRY(cudaGetLastError());
+  encoder::write_wrapper<<<1, 1, 0, stream>>>(
+      output->typed_data(), U64(host[0]), adler);
+  return cudaGetLastError();
+}
+
+cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
+                        std::int64_t max_blocks, ffi::Buffer<ffi::U8> input,
+                        ffi::ResultBuffer<ffi::U8> output,
+                        ffi::ResultBuffer<ffi::U32> metadata,
+                        Workspace& workspace) {
+  U32* result = metadata->typed_data();
+  if (!IsVector(*output) || output->element_count() > kMaxBytes)
+    return SetStatus(stream, result, kInvalidBounds);
+  const U32 expected = U32(output->element_count());
+  if (expected) CUDA_TRY(cudaMemsetAsync(output->typed_data(), 0, expected, stream));
+  if (!IsVector(input)) return SetStatus(stream, result, kInvalidBounds);
+  const U64 full_size = U64(input.element_count());
+  if (full_size > kMaxBytes || max_candidates < 1 ||
+      max_candidates > kMaxCandidates || max_blocks < 1 || max_blocks > kMaxBlocks)
+    return SetStatus(stream, result, kInvalidBounds);
+  if (full_size < 8) return SetStatus(stream, result, kTruncatedZlib);
+
+  // Only RFC 1950 framing bytes cross to host. Token parsing, index discovery,
+  // matching, output reconstruction and checksum computation remain on CUDA.
+  std::array<U8, 6> framing{};
+  CUDA_TRY(cudaMemcpyAsync(framing.data(), input.typed_data(), 2,
+                           cudaMemcpyDeviceToHost, stream));
+  CUDA_TRY(cudaMemcpyAsync(framing.data() + 2, input.typed_data() + full_size - 4,
+                           4, cudaMemcpyDeviceToHost, stream));
+  CUDA_TRY(cudaStreamSynchronize(stream));
+  const U32 cmf = framing[0], flg = framing[1];
+  if (cmf == 0x1f && flg == 0x8b)
+    return SetStatus(stream, result, kUnsupportedGzip);
+  if ((cmf & 15) != 8 || (cmf >> 4) > 7 || (cmf * 256 + flg) % 31)
+    return SetStatus(stream, result, kInvalidHeader);
+  if (flg & 32) return SetStatus(stream, result, kUnsupportedDictionary);
+  const U32 wanted_checksum = (U32(framing[2]) << 24) | (U32(framing[3]) << 16) |
+                             (U32(framing[4]) << 8) | U32(framing[5]);
+  const U8* data = input.typed_data() + 2;
+  const U32 length = U32(full_size - 6);
+  const U32 window = 1u << ((cmf >> 4) + 8);
+  const U32 candidate_capacity = U32(max_candidates);
+  const U32 block_capacity = U32(max_blocks);
+  U64 *unsorted = nullptr, *starts = nullptr, *ends = nullptr;
+  U32 *control = nullptr, *sizes = nullptr, *finals = nullptr, *status = nullptr;
+  CUDA_TRY(workspace.Allocate(&unsorted, candidate_capacity));
+  CUDA_TRY(workspace.Allocate(&starts, candidate_capacity));
+  CUDA_TRY(workspace.Allocate(&control, 4));
+  CUDA_TRY(cudaMemsetAsync(control, 0, 4 * sizeof(U32), stream));
+  decoder::discover<<<std::min<U32>(16384, (length + 127) / 128), 128, 0, stream>>>(
+      data, length, unsorted, control, candidate_capacity);
+  CUDA_TRY(cudaGetLastError());
+  std::array<U32, 2> host{};
+  CUDA_TRY(ReadWords(stream, control, host.data(), 1));
+  const U32 candidates = host[0];
+  if (candidates > candidate_capacity)
+    return SetStatus(stream, result, kCandidateOverflow);
+  if (!candidates) return SetStatus(stream, result, kInitialBlockMissing);
+
+  std::size_t sort_bytes = 0;
+  CUDA_TRY(cub::DeviceRadixSort::SortKeys(nullptr, sort_bytes, unsorted, starts,
+                                          int(candidates), 0, 64, stream));
+  U8* sort_workspace = nullptr;
+  CUDA_TRY(workspace.Allocate(&sort_workspace, sort_bytes));
+  CUDA_TRY(cub::DeviceRadixSort::SortKeys(sort_workspace, sort_bytes, unsorted,
+                                          starts, int(candidates), 0, 64, stream));
+  CUDA_TRY(workspace.Allocate(&ends, candidates));
+  CUDA_TRY(workspace.Allocate(&sizes, candidates));
+  CUDA_TRY(workspace.Allocate(&finals, candidates));
+  CUDA_TRY(workspace.Allocate(&status, candidates));
+  decoder::describe_candidates<<<candidates, 1, 0, stream>>>(
+      data, length, starts, candidates, expected, ends, sizes, finals, status);
+  CUDA_TRY(cudaGetLastError());
+  U64 *block_starts = nullptr, *block_ends = nullptr;
+  U32 *prefix = nullptr, *block_sizes = nullptr;
+  CUDA_TRY(workspace.Allocate(&block_starts, block_capacity));
+  CUDA_TRY(workspace.Allocate(&block_ends, block_capacity));
+  CUDA_TRY(workspace.Allocate(&prefix, block_capacity));
+  CUDA_TRY(workspace.Allocate(&block_sizes, block_capacity));
+
+  // Dummy summary columns are untouched unless the exact chain requests tiles.
+  decoder::select_chain<<<1, 1, 0, stream>>>(
+      data, length, starts, ends, sizes, finals, status, candidates, expected,
+      block_starts, block_ends, prefix, block_sizes, control, block_capacity,
+      control + 1, 0, ends, sizes, ends, sizes, status, status);
+  CUDA_TRY(cudaGetLastError());
+  CUDA_TRY(ReadWords(stream, control, host.data(), host.size()));
+  if (host[1] == 13) {
+    const U32 tiles = (length + kFixedTileBytes - 1) / kFixedTileBytes;
+    const std::size_t entries = std::size_t(tiles) * 32;
+    U64 *summary_ends = nullptr, *first_ends = nullptr;
+    U32 *summary_sizes = nullptr, *first_sizes = nullptr;
+    U32 *summary_flags = nullptr, *summary_status = nullptr;
+    CUDA_TRY(workspace.Allocate(&summary_ends, entries));
+    CUDA_TRY(workspace.Allocate(&summary_sizes, entries));
+    CUDA_TRY(workspace.Allocate(&first_ends, entries));
+    CUDA_TRY(workspace.Allocate(&first_sizes, entries));
+    CUDA_TRY(workspace.Allocate(&summary_flags, entries));
+    CUDA_TRY(workspace.Allocate(&summary_status, entries));
+    decoder::fixed_summaries<<<std::min<U32>(16384, tiles), 32, 0, stream>>>(
+        data, length, kFixedTileBytes, summary_ends, summary_sizes, first_ends,
+        first_sizes, summary_flags, summary_status);
+    CUDA_TRY(cudaGetLastError());
+    decoder::select_chain<<<1, 1, 0, stream>>>(
+        data, length, starts, ends, sizes, finals, status, candidates, expected,
+        block_starts, block_ends, prefix, block_sizes, control, block_capacity,
+        control + 1, kFixedTileBytes, summary_ends, summary_sizes, first_ends,
+        first_sizes, summary_flags, summary_status);
+    CUDA_TRY(cudaGetLastError());
+    CUDA_TRY(ReadWords(stream, control, host.data(), host.size()));
+  }
+  if (host[1]) return SetStatus(stream, result, host[1]);
+  const U32 blocks = host[0];
+  if (!blocks) return SetStatus(stream, result, kInitialBlockMissing);
+  if (blocks > block_capacity) return SetStatus(stream, result, 9);
+  U32 *roots = nullptr, *emission = nullptr;
+  CUDA_TRY(workspace.Allocate(&roots, expected));
+  CUDA_TRY(workspace.Allocate(&emission, std::size_t(blocks) * 2));
+  decoder::emit_blocks<<<blocks, 1, 0, stream>>>(
+      data, length, block_starts, block_ends, prefix, block_sizes, blocks,
+      expected, window, roots, emission);
+  CUDA_TRY(cudaGetLastError());
+  decoder::emit_stored<<<blocks, 256, 0, stream>>>(
+      data, length, block_starts, block_ends, prefix, block_sizes, blocks,
+      expected, window, roots, emission);
+  CUDA_TRY(cudaGetLastError());
+  EmissionStatus<<<1, 256, 0, stream>>>(emission, blocks, control + 2);
+  CUDA_TRY(cudaGetLastError());
+  CUDA_TRY(ReadWords(stream, control + 2, host.data(), host.size()));
+  if (host[0]) return SetStatus(stream, result, host[0]);
+  if (host[1]) {
+    U32* alternate = nullptr;
+    CUDA_TRY(workspace.Allocate(&alternate, expected));
+    bool resolved = false;
+    for (U32 round = 0; round < 28; ++round) {
+      CUDA_TRY(cudaMemsetAsync(control + 2, 0, 2 * sizeof(U32), stream));
+      checksum::refine_roots<<<std::max<U32>(1, (expected + 255) / 256),
+                               256, 0, stream>>>(
+          roots, alternate, expected, control + 2, control + 3);
+      CUDA_TRY(cudaGetLastError());
+      std::swap(roots, alternate);
+      CUDA_TRY(ReadWords(stream, control + 2, host.data(), host.size()));
+      if (host[1]) return SetStatus(stream, result, host[1]);
+      if (!host[0]) { resolved = true; break; }
+    }
+    if (!resolved) return SetStatus(stream, result, kReferenceDepthExceeded);
+  }
+  const U32 parts = std::max<U32>(1, (expected + 4095) / 4096);
+  U64 *partial_a = nullptr, *partial_b = nullptr;
+  CUDA_TRY(workspace.Allocate(&partial_a, parts));
+  CUDA_TRY(workspace.Allocate(&partial_b, parts));
+  checksum::write_adler_parts<<<parts, 256, 0, stream>>>(
+      roots, output->typed_data(), expected, partial_a, partial_b);
+  CUDA_TRY(cudaGetLastError());
+  checksum::adler_finish<<<1, 256, 0, stream>>>(
+      partial_a, partial_b, parts, expected, control + 2);
+  CUDA_TRY(cudaGetLastError());
+  VerifyChecksum<<<1, 1, 0, stream>>>(control + 2, wanted_checksum, result);
+  return cudaGetLastError();
+}
+
+ffi::Error RuntimeError(cudaError_t error) {
+  if (error == cudaSuccess) return ffi::Error::Success();
+  return ffi::Error::Internal(std::string("native CUDA codec: ") +
+                              cudaGetErrorString(error));
+}
+
+template <typename Function>
+ffi::Error Execute(cudaStream_t stream, ffi::ResultBuffer<ffi::U32> metadata,
+                    Function&& function) {
+  try {
+    // A malformed ABI result cannot safely receive the normal metadata status.
+    if (!IsVector(*metadata) || metadata->element_count() != 2)
+      return ffi::Error::InvalidArgument("codec metadata must have shape (2,)");
+    Workspace workspace(stream);
+    cudaError_t error = function(workspace);
+    cudaError_t release = workspace.Release();
+    return RuntimeError(error == cudaSuccess ? release : error);
+  } catch (const std::exception&) {
+    return ffi::Error::Internal("native CUDA codec handler exception");
+  } catch (...) {
+    return ffi::Error::Internal("native CUDA codec handler exception");
+  }
+}
+
+ffi::Error CompressImpl(cudaStream_t stream, std::int64_t chunk_bytes,
+                         ffi::Buffer<ffi::U8> input,
+                         ffi::ResultBuffer<ffi::U8> output,
+                         ffi::ResultBuffer<ffi::U32> metadata) {
+  return Execute(stream, metadata, [&](Workspace& workspace) {
+    return Compress(stream, chunk_bytes, input, output, metadata, workspace);
+  });
+}
+
+ffi::Error DecompressImpl(cudaStream_t stream, std::int64_t max_candidates,
+                           std::int64_t max_blocks, ffi::Buffer<ffi::U8> input,
+                           ffi::ResultBuffer<ffi::U8> output,
+                           ffi::ResultBuffer<ffi::U32> metadata) {
+  return Execute(stream, metadata, [&](Workspace& workspace) {
+    return Decompress(stream, max_candidates, max_blocks, input, output,
+                      metadata, workspace);
+  });
+}
+
+#undef CUDA_TRY
+}  // namespace
+
+XLA_FFI_DEFINE_HANDLER_SYMBOL(
+    CudaZlibCompress, CompressImpl,
+    ffi::Ffi::Bind()
+        .Ctx<ffi::PlatformStream<cudaStream_t>>()
+        .Attr<std::int64_t>("chunk_bytes")
+        .Arg<ffi::Buffer<ffi::U8>>()
+        .Ret<ffi::Buffer<ffi::U8>>()
+        .Ret<ffi::Buffer<ffi::U32>>());
+
+XLA_FFI_DEFINE_HANDLER_SYMBOL(
+    CudaZlibDecompress, DecompressImpl,
+    ffi::Ffi::Bind()
+        .Ctx<ffi::PlatformStream<cudaStream_t>>()
+        .Attr<std::int64_t>("max_candidates")
+        .Attr<std::int64_t>("max_blocks")
+        .Arg<ffi::Buffer<ffi::U8>>()
+        .Ret<ffi::Buffer<ffi::U8>>()
+        .Ret<ffi::Buffer<ffi::U32>>());

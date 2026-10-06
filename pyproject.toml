@@ -17,12 +17,15 @@ Source = "https://github.com/xangma/cuda-zlib"
 Issues = "https://github.com/xangma/cuda-zlib/issues"
 
 [project.optional-dependencies]
-cuda12 = ["cupy-cuda12x>=13.3,<14"]
+cuda12 = ["jax[cuda12]>=0.11.2"]
 jax = ["jax>=0.11.2"]
 test = ["pytest>=8"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+cuda_zlib = ["native/*.cu"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

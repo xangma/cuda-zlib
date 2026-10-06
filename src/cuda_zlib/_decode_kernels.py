@@ -6,7 +6,7 @@
 This prototype parallelizes independent Deflate blocks and fixed-code tiles.
 Fresh fixed summaries are requested only when the exact boundary chain needs
 them. No host-generated block index, CPU inflation, or transcoding is used. The caller
-compiles ``CUDA_SOURCE`` lazily with CuPy RawModule, sorts candidate metadata on
+compiles ``CUDA_SOURCE`` into a native JAX FFI library, sorts candidate metadata on
 device, resolves backward roots on device, and verifies the original checksum.
 
 Bit offsets use uint64; counts, output offsets, sizes and roots use uint32.
@@ -290,6 +290,7 @@ struct BlockInfo {
     u32 size;
     u32 final;
     u32 status;
+    u32 external;
 };
 
 // A fixed token spans at most 32 bits. After crossing a tile boundary, its
@@ -373,7 +374,7 @@ __device__ BlockInfo emit_fixed_segment(
     const u8* data, u32 bytes, u64 start, u64 end, u32 limit, u32 prefix,
     u32* roots, DecodeTables& tables, u32 window_bytes, u32 final) {
     BitReader r = {data, u64(bytes) * 8, start, 0};
-    BlockInfo result = {start, 0, 0, fixed_tables(tables.ll, tables.dd)};
+    BlockInfo result = {start, 0, 0, fixed_tables(tables.ll, tables.dd), 0};
     if (result.status) return result;
     while (r.pos < end && !r.error) {
         u32 size, distance;
@@ -391,6 +392,7 @@ __device__ BlockInfo emit_fixed_segment(
         if (!distance) roots[prefix + result.size] = 0x80000000u | u32(symbol);
         else {
             if (distance > prefix + result.size) { r.error = 6; break; }
+            if (distance > result.size) result.external = 1;
             for (u32 j = 0; j < size; ++j) {
                 u32 dest = prefix + result.size + j, source = dest - distance;
                 roots[dest] = source < prefix ? source : roots[source];
@@ -411,7 +413,7 @@ __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
                                             u32 window_bytes = 32768,
                                             u32 fixed_budget = 0) {
     BitReader r = {data, u64(bytes) * 8, start, 0};
-    BlockInfo result = {start, 0, 0, 0};
+    BlockInfo result = {start, 0, 0, 0, 0};
     result.final = r.take(1);
     u32 type = r.take(2);
     if (r.error) { result.status = r.error; return result; }
@@ -485,6 +487,7 @@ __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
             // Emission has the accepted chain's absolute output prefix.
             if (roots) {
                 if (distance > prefix + produced) { r.error = 6; break; }
+                if (distance > produced) result.external = 1;
                 for (u32 j = 0; j < length; ++j) {
                     u32 dest = prefix + produced + j;
                     u32 source = dest - distance;
@@ -748,7 +751,7 @@ extern "C" __global__ void emit_blocks(
     if (threadIdx.x) return;
     for (u64 i = blockIdx.x; i < count; i += gridDim.x) {
         u32 prefix = output_prefix[i], size = block_sizes[i];
-        u32 err = 0;
+        u32 err = 0, external = 0;
         if (!window_bytes || window_bytes > 32768) err = 6;
         else if (expected_bytes >= 0x80000000u ||
                  prefix > expected_bytes || size > expected_bytes - prefix)
@@ -761,6 +764,7 @@ extern "C" __global__ void emit_blocks(
                     size, prefix, roots, tables, window_bytes,
                     u32((start & FIXED_FINAL) != 0));
                 err = info.status;
+                external = info.external;
                 if (!err && (info.end != block_ends[i] || info.size != size))
                     err = 12;
             } else {
@@ -775,12 +779,16 @@ extern "C" __global__ void emit_blocks(
                         data, input_bytes, start, size, prefix, roots,
                         tables, window_bytes);
                     err = info.status;
+                    external = info.external;
                     if (!err && (info.end != block_ends[i] || info.size != size))
                         err = 12;
                 }
             }
         }
         block_status[i] = err;
+        // Separate planes preserve every error when another block requires
+        // refinement. Local history has already been flattened to literals.
+        block_status[count + i] = external;
     }
 }
 

@@ -1,39 +1,39 @@
 {
   "schema_version": 1,
-  "source": "results/rtx3090.json",
-  "source_sha256": "f501668597d99ca1176cb73e3848fa222371005e40fe1ec58debb8a75a478491",
-  "script_sha256": "864f74077e8a4257e49fbb0879875d16848cc1465ec364e28b60e73072af903b",
+  "source": "results/rtx3090-ffi-20261006.json",
+  "source_sha256": "b9dc75066565e986f0858abdadac14566763decca2f2d5e969e9bf37ac1d70ef",
+  "script_sha256": "d2378dcbedbb784f0672f9bf48015585324904723a15ead087bfa0ac41d73bb8",
   "renderer": {
     "matplotlib": "3.11.1",
     "numpy": "2.5.2",
     "backend": "Agg"
   },
-  "source_created_utc": "2026-10-06T11:15:10.215086+00:00",
+  "source_created_utc": "2026-10-06T15:49:53.449988+00:00",
   "validated_cases": 15,
   "samples_per_measurement": {
-    "cuda": 5,
-    "cpu": 3
+    "cuda": 15,
+    "cpu": 5
   },
   "throughput_units": "MiB/s; uncompressed bytes / 2**20 / seconds",
-  "point_statistic": "stored throughput at median elapsed time, checked against recorded timing samples",
-  "error_bars": "sample throughput minimum and maximum, from inverse individual elapsed times; not confidence intervals",
+  "point_statistic": "Defined separately for each figure's metric",
+  "error_bars": "Defined per figure; encoded-size and cpu-speedup have no error bars",
   "size_units": "100 * complete encoded bytes / uncompressed input bytes",
   "timing_scope": {
-    "clock": "perf_counter; deviceSynchronize before and after CUDA calls",
+    "clock": "perf_counter; block_until_ready for JAX outputs; exact codec APIs also check status synchronously",
     "warmup_calls_per_measurement": 1,
     "throughput_denominator": "uncompressed input bytes / 2**20",
     "compression_chunk_bytes": 32768,
     "timing_includes": "API allocations; transfers only for named host workflows",
-    "timing_excludes": "payload generation, initial resident uploads, validation",
+    "timing_excludes": "payload generation, initial resident uploads, native build/registration, per-workflow XLA compilation in warmup, validation",
     "cpu": "single-threaded stdlib zlib; levels 1 and 6; no level equivalence implied"
   },
   "cold_startup_excluded": true,
   "figures": {
     "compression-throughput": {
       "exports_sha256": {
-        "compression-throughput.png": "443106527b95bcb1e875ca0ec15c4df2d3e66c200e5dae47b1f6f02437a62bb2",
-        "compression-throughput.svg": "5ef7540e501d84aadada76e2abc5047b635c5ffc809785d65a6e1c7d93c9a61b",
-        "compression-throughput.pdf": "b0971901604f439db2800f46209203949770adf52716fbf6a9fae9dbf2fec98b"
+        "compression-throughput.png": "89f76acfb351d13543edbafa742fccc835c3d74345da84e0dead1028533da4fb",
+        "compression-throughput.svg": "900d30338f044c5f90800b57953a3523e4cea329367d5041b0401c62d3b02e1b",
+        "compression-throughput.pdf": "e9a5474ccdb6683e945f96ae355907915a2f89a3484bf0e3d9915b38ef028683"
       },
       "workloads": [
         "zeros",
@@ -65,7 +65,9 @@
           "label": "CPU zlib level 6",
           "json_key": "cpu_compress_level6"
         }
-      ]
+      ],
+      "point_statistic": "uncompressed MiB / median elapsed seconds, checked against recorded timing samples",
+      "error_bars": "sample throughput minimum and maximum from inverse individual elapsed times; not confidence intervals"
     },
     "encoded-size": {
       "exports_sha256": {
@@ -97,13 +99,15 @@
           "label": "CPU zlib level 6",
           "json_key": "zlib6"
         }
-      ]
+      ],
+      "point_statistic": "100 * complete encoded bytes / uncompressed input bytes",
+      "error_bars": null
     },
     "decompression-throughput": {
       "exports_sha256": {
-        "decompression-throughput.png": "ba8982c891db147aea679f383bf0ba03dcee15f4350373516a93bd78ca1a53f7",
-        "decompression-throughput.svg": "ad0581c00f8431779df16ae445e6e81aaedd6adca03245ba8cdb50b6d7108fb4",
-        "decompression-throughput.pdf": "b9a5d919fea62eab997b19574ccb7c1cb0f4a4bd4022dde389af34b32fd24203"
+        "decompression-throughput.png": "abf5f2c6438ddd156023eac97489904a016386e655afc37799be481087da01ba",
+        "decompression-throughput.svg": "ec960a9d0521a282c425be8a501fb8e5a9abda4e10cdd37a07dedaeb392bb3f2",
+        "decompression-throughput.pdf": "5fa278736e2c8627278173904172bc16ff16f29f868b97c6f59db7458f58dd8f"
       },
       "workloads": [
         "zeros",
@@ -131,13 +135,15 @@
           "label": "CPU zlib",
           "json_key": "cpu_decompress_level6"
         }
-      ]
+      ],
+      "point_statistic": "uncompressed MiB / median elapsed seconds, checked against recorded timing samples",
+      "error_bars": "sample throughput minimum and maximum from inverse individual elapsed times; not confidence intervals"
     },
     "decode-stream-layout": {
       "exports_sha256": {
-        "decode-stream-layout.png": "1f9a7995c5bd668b1d868627c2a7d9175e7d0ac900f54c7b385f78b4e53a8d5f",
-        "decode-stream-layout.svg": "a660baa045802a5b47c611d203a2d7b247202a16d5e520e3ad12cff99595c44d",
-        "decode-stream-layout.pdf": "fdfcd61f842e547d296f3c2dff04a51e3cb499df3b5b27b8d63f138571c74e1a"
+        "decode-stream-layout.png": "420124d8389f1ac4215b69edb53c83b46b61bca91a0723fb339fe61ab813b189",
+        "decode-stream-layout.svg": "6b05b331630e6c2f4ca72612799cf09972eb7741084586058d1897fc6d02f7a7",
+        "decode-stream-layout.pdf": "fa714195ba46794800a3aecc27603ff0ad1b0bda137b02a49c0d358ba2e05ef5"
       },
       "workloads": [
         "zeros",
@@ -166,6 +172,46 @@
         {
           "label": "CPU \u00b7 level-6 stream",
           "json_key": "cpu_decompress_level6"
+        }
+      ],
+      "point_statistic": "uncompressed MiB / median elapsed seconds, checked against recorded timing samples",
+      "error_bars": "sample throughput minimum and maximum from inverse individual elapsed times; not confidence intervals"
+    },
+    "cpu-speedup": {
+      "exports_sha256": {
+        "cpu-speedup.png": "73f7db727fed2efcfa8f6a4385e913b466a113ce9585b6a8fa885b62b7817b33",
+        "cpu-speedup.svg": "3c05baaf6fff76112c3ac6c3a0c069924b002ffe67dc55d26b101c3ff366373d",
+        "cpu-speedup.pdf": "38242fb0fd6329b74e4959b84f4b35a23a1ce9a27c6938430bfb658099644e4c"
+      },
+      "workloads": [
+        "zeros",
+        "text",
+        "uint32",
+        "float32",
+        "random"
+      ],
+      "input_bytes": [
+        67108864
+      ],
+      "metric": "cpu_speedup_ratio",
+      "point_statistic": "CPU median elapsed seconds / CUDA median elapsed seconds; greater than 1 favors CUDA",
+      "axis_scale": "linear",
+      "reference_ratio": 1,
+      "error_bars": null,
+      "cuda_timing_scope": "Host-to-host; copies and host/device transfers included",
+      "cpu_timing_scope": "Same-host, single-thread stdlib zlib",
+      "series": [
+        {
+          "label": "Host-to-host compression",
+          "numerator_timing_key": "cpu_compress_level1",
+          "denominator_timing_key": "cuda_compress_host_host",
+          "ratio_formula": "timings.cpu_compress_level1.median_seconds / timings.cuda_compress_host_host.median_seconds"
+        },
+        {
+          "label": "Host-to-host decompression",
+          "numerator_timing_key": "cpu_decompress_level6",
+          "denominator_timing_key": "cuda_decompress_level6_host_host",
+          "ratio_formula": "timings.cpu_decompress_level6.median_seconds / timings.cuda_decompress_level6_host_host.median_seconds"
         }
       ]
     }

@@ -6,13 +6,12 @@
 import contextlib
 import functools
 import random
-import sys
 import threading
 import time
-import types
 import zlib
 from concurrent.futures import ThreadPoolExecutor
 
+import numpy as np
 import pytest
 
 import cuda_zlib as codec
@@ -304,48 +303,107 @@ def test_encoder_entropy_skew_and_colliding_prefixes(cuda_device, monkeypatch, k
         decoded = codec.decompress_zlib(encoded, len(raw), cuda_device)
         if kind == "high-literals":
             repeated = codec.compress_zlib(raw, cuda_device, chunk_bytes=chunk)
-    payload = encoded.get().tobytes()
+    payload = np.asarray(encoded).tobytes()
     assert _inflate_exact(payload) == raw
     _assert_bytes(decoded, raw, cuda_device)
     if kind == "high-literals":
-        assert repeated.get().tobytes() == payload
+        assert np.asarray(repeated).tobytes() == payload
         assert (payload[2] >> 1) & 3 == 2, "biased literals need dynamic Huffman coding"
         assert len(payload) < len(raw) * 0.95
 
 
-def test_resource_cache_singleton_under_concurrent_misses_and_many_ordinals(monkeypatch):
-    """CPU fake checks synchronization without initializing a CUDA context."""
-    from cuda_zlib import _codec
+def test_native_library_cache_serializes_concurrent_misses(monkeypatch):
+    """CPU fake exercises the real loader lock without JAX or CUDA imports."""
+    from cuda_zlib import _ffi
+    constructions = []
 
-    class Pool:
-        def __init__(self):
-            # Widen the race: lru_cache alone does not serialize cache misses.
-            time.sleep(0.01)
+    @functools.lru_cache(maxsize=None)
+    def fake_cached(architecture):
+        # A bare lru_cache permits duplicate constructions during concurrent misses.
+        time.sleep(0.01)
+        constructions.append(architecture)
+        return object(), (architecture + "_encode", architecture + "_decode")
 
-        def set_limit(self, **kwargs):
-            pass
-
-    fake = types.SimpleNamespace(cuda=types.SimpleNamespace(
-        Device=lambda ordinal: contextlib.nullcontext(), MemoryPool=Pool,
-        Stream=lambda **kwargs: object(),
-    ))
     barrier = threading.Barrier(8)
-
     def concurrent_miss(_):
         barrier.wait(timeout=5)
-        return _codec._resources(0)
+        return _ffi._load_library("sm_86")
 
-    monkeypatch.setitem(sys.modules, "cupy", fake)
-    _codec._resources_cached.cache_clear()
-    try:
-        with ThreadPoolExecutor(max_workers=8) as executor:
-            results = list(executor.map(concurrent_miss, range(8)))
-        first = results[0]
-        assert all(result is first for result in results)
-        other = [_codec._resources(ordinal) for ordinal in range(1, 17)]
-        assert len({id(result) for result in [first] + other}) == 17
-        assert _codec._resources(0) is first
-        for ordinal, resource in enumerate(other, 1):
-            assert _codec._resources(ordinal) is resource
-    finally:
-        _codec._resources_cached.cache_clear()
+    monkeypatch.setattr(_ffi, "_load_library_cached", fake_cached)
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(executor.map(concurrent_miss, range(8)))
+    first = results[0]
+    assert all(result is first for result in results)
+    assert constructions == ["sm_86"]
+    other = _ffi._load_library("sm_89")
+    assert other is not first
+    assert _ffi._load_library("sm_86") is first
+    assert _ffi._load_library("sm_89") is other
+    assert constructions == ["sm_86", "sm_89"]
+
+
+def test_jit_padded_compression_preserves_stream_and_dependencies(cuda_device, monkeypatch):
+    import jax
+    import jax.numpy as jnp
+    device = jax.devices("gpu")[cuda_device]
+    host = np.arange(32769, dtype=np.uint32).astype(np.uint8)
+    source = jax.device_put(host, device)
+    encode = jax.jit(lambda value: codec.compress_zlib_padded(
+        (value.astype(jnp.uint16) * 17 + 3).astype(jnp.uint8), device))
+    with _no_cpu_codec(monkeypatch):
+        output, metadata = encode(source)
+        output.block_until_ready()
+        metadata.block_until_ready()
+    length, status = map(int, np.asarray(metadata))
+    assert status == 0 and 8 <= length <= output.size
+    assert output.devices() == metadata.devices() == {device}
+    buffer = np.asarray(output)
+    raw = ((host.astype(np.uint16) * 17 + 3) % 256).astype(np.uint8).tobytes()
+    assert _inflate_exact(buffer[:length].tobytes()) == raw
+    assert not np.any(buffer[length:]), "padded output must not expose stale scratch bytes"
+
+
+def test_jit_checked_decode_reports_device_errors_and_recovers(cuda_device, monkeypatch):
+    import jax
+    import jax.numpy as jnp
+    device = jax.devices("gpu")[cuda_device]
+    raw = b"native JAX checked status" * 512
+    payload = zlib.compress(raw)
+    source = jax.device_put(np.frombuffer(payload, dtype=np.uint8), device)
+    decode = jax.jit(lambda value: codec.decompress_zlib_checked(value, len(raw), device))
+    with _no_cpu_codec(monkeypatch):
+        result, metadata = decode(source)
+        assert int(np.asarray(metadata)[0]) == 0
+        _assert_bytes(result, raw, device)
+        malformed = source.at[-1].set(source[-1] ^ jnp.uint8(1))
+        _, bad_metadata = decode(malformed)
+        assert int(np.asarray(bad_metadata)[0]) == 21
+        bad_header = source.at[0].set(jnp.uint8(0))
+        _, header_metadata = decode(bad_header)
+        assert int(np.asarray(header_metadata)[0]) == 15
+        recovered, recovered_metadata = decode(source)
+        assert int(np.asarray(recovered_metadata)[0]) == 0
+        _assert_bytes(recovered, raw, device)
+    assert metadata.devices() == bad_metadata.devices() == {device}
+
+
+@pytest.mark.parametrize("operation", ["compress", "decompress"])
+def test_jit_explicit_device_rejects_other_device_input(cuda_device, operation):
+    import jax
+    devices = jax.devices("gpu")
+    if len(devices) < 2:
+        pytest.skip("two CUDA devices required for traced device admission")
+    device = devices[cuda_device]
+    other = devices[1 if cuda_device == 0 else 0]
+    raw = b"explicit FFI CUDA device" * 32
+    if operation == "compress":
+        payload = raw
+        run = jax.jit(lambda value: codec.compress_zlib_padded(value, device))
+    else:
+        payload = zlib.compress(raw)
+        run = jax.jit(lambda value: codec.decompress_zlib_checked(value, len(raw), device))
+    source = jax.device_put(np.frombuffer(payload, dtype=np.uint8), other)
+    with pytest.raises(ValueError, match="device|incompatible"):
+        result, metadata = run(source)
+        result.block_until_ready()
+        metadata.block_until_ready()
