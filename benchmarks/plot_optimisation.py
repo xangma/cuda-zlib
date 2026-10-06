@@ -167,7 +167,7 @@ def compare(before, after):
                                   "after": identity[1] / a_case["encoded_bytes"]},
             "timings": timings,
         })
-    return {
+    comparison = {
         "schema_version": 1, "profile_sha256": {"before": b_digest, "after": a_digest},
         "source_sha256": {"before": b_report["source_sha256"], "after": a_report["source_sha256"]},
         "changed_source_files": sorted(k for k in SOURCE_FILES
@@ -184,6 +184,15 @@ def compare(before, after):
                                   "profiles do not establish exclusive workstation use.",
         "cases": comparisons,
     }
+    if "aggregation" in b_report or "aggregation" in a_report:
+        if "aggregation" not in b_report or "aggregation" not in a_report:
+            raise ValueError("Both profiles must carry aggregation provenance")
+        b_aggregation, a_aggregation = b_report["aggregation"], a_report["aggregation"]
+        for key in ("run_order", "runs", "script_sha256"):
+            if b_aggregation[key] != a_aggregation[key]:
+                raise ValueError(f"Aggregates have different {key} provenance")
+        comparison["aggregation"] = {"before": b_aggregation, "after": a_aggregation}
+    return comparison
 
 
 def render(comparison):
@@ -233,7 +242,11 @@ def render(comparison):
     fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(0.135, 0.858),
                frameon=False, ncols=2, columnspacing=2.2)
     fig.text(0.47, 0.825, "Row labels show speedup (after / before throughput).", fontsize=9, color="#475569")
-    fig.text(0.055, 0.113, f"{comparison['gpu']['name']} · {comparison['samples_per_measurement']} samples per point · "
+    sample_note = f"{comparison['samples_per_measurement']} samples per point"
+    if "aggregation" in comparison:
+        runs = len(comparison["aggregation"]["before"]["included_run_ids"])
+        sample_note += f" combined from {runs} runs per version (ABBA)"
+    fig.text(0.055, 0.113, f"{comparison['gpu']['name']} · {sample_note} · "
              "error bars: sample min–max, not confidence intervals", fontsize=9, color="#475569")
     fig.text(0.055, 0.081, "Warm synchronized API wall time includes allocations; startup, generation, transfers and correctness checks excluded.",
              fontsize=9, color="#475569")
@@ -244,8 +257,8 @@ def render(comparison):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--baseline", type=Path, default=ROOT / "results" / "optimisation-before.json")
-    parser.add_argument("--candidate", type=Path, default=ROOT / "results" / "optimisation-after.json")
+    parser.add_argument("--baseline", type=Path, default=ROOT / "results" / "rerun-before.json")
+    parser.add_argument("--candidate", type=Path, default=ROOT / "results" / "rerun-after.json")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "figures")
     args = parser.parse_args()
     comparison = compare(read_profile(args.baseline), read_profile(args.candidate))

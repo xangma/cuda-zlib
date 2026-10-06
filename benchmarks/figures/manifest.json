@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "source": "results/rtx3090.json",
-  "source_sha256": "f501668597d99ca1176cb73e3848fa222371005e40fe1ec58debb8a75a478491",
-  "script_sha256": "864f74077e8a4257e49fbb0879875d16848cc1465ec364e28b60e73072af903b",
+  "source": "results/rtx3090-optimised.json",
+  "source_sha256": "d89695d18986da2a08ddc97a37bb9eb321cf3ac2c29fbc43b03085bbac75f55e",
+  "script_sha256": "286f637ac67f2cdde14ac1a8bf63fa87feb85e4eedd1fc7b60ae7ff736870f72",
   "renderer": {
     "matplotlib": "3.11.1",
     "numpy": "2.5.2",
     "backend": "Agg"
   },
-  "source_created_utc": "2026-10-06T11:15:10.215086+00:00",
+  "source_created_utc": "2026-10-06T14:18:29.497696+00:00",
   "validated_cases": 15,
   "samples_per_measurement": {
-    "cuda": 5,
-    "cpu": 3
+    "cuda": 15,
+    "cpu": 5
   },
   "throughput_units": "MiB/s; uncompressed bytes / 2**20 / seconds",
   "point_statistic": "stored throughput at median elapsed time, checked against recorded timing samples",
@@ -31,9 +31,9 @@
   "figures": {
     "compression-throughput": {
       "exports_sha256": {
-        "compression-throughput.png": "443106527b95bcb1e875ca0ec15c4df2d3e66c200e5dae47b1f6f02437a62bb2",
-        "compression-throughput.svg": "5ef7540e501d84aadada76e2abc5047b635c5ffc809785d65a6e1c7d93c9a61b",
-        "compression-throughput.pdf": "b0971901604f439db2800f46209203949770adf52716fbf6a9fae9dbf2fec98b"
+        "compression-throughput.png": "65854c37d947e648d961befe0ebc3304fd3ef2d9b7b6d4185447dc491ab5c9b7",
+        "compression-throughput.svg": "d534cdcee59c4daaa7b16c9aa2007942f72c26300ac6409cc49a7caf171a9ad5",
+        "compression-throughput.pdf": "fe809955f52c952f1ce76d195bf884c95a82cca46aabb1a05fc17322196e6fee"
       },
       "workloads": [
         "zeros",
@@ -101,9 +101,9 @@
     },
     "decompression-throughput": {
       "exports_sha256": {
-        "decompression-throughput.png": "ba8982c891db147aea679f383bf0ba03dcee15f4350373516a93bd78ca1a53f7",
-        "decompression-throughput.svg": "ad0581c00f8431779df16ae445e6e81aaedd6adca03245ba8cdb50b6d7108fb4",
-        "decompression-throughput.pdf": "b9a5d919fea62eab997b19574ccb7c1cb0f4a4bd4022dde389af34b32fd24203"
+        "decompression-throughput.png": "e68a44fe0e4e8f831d9135b36ec136f926a3b6cda3e1781df36bea772178df71",
+        "decompression-throughput.svg": "991a3dba214113e9675669efb15566e11e44ed0495659afffa62a1c663132757",
+        "decompression-throughput.pdf": "423d8fcb50e4a2aed1785f114b2d74f1867740e00f63a02bf1cb385b7bbf7bd4"
       },
       "workloads": [
         "zeros",
@@ -135,9 +135,9 @@
     },
     "decode-stream-layout": {
       "exports_sha256": {
-        "decode-stream-layout.png": "1f9a7995c5bd668b1d868627c2a7d9175e7d0ac900f54c7b385f78b4e53a8d5f",
-        "decode-stream-layout.svg": "a660baa045802a5b47c611d203a2d7b247202a16d5e520e3ad12cff99595c44d",
-        "decode-stream-layout.pdf": "fdfcd61f842e547d296f3c2dff04a51e3cb499df3b5b27b8d63f138571c74e1a"
+        "decode-stream-layout.png": "caaeca3e594651b37fa59318bf3c4733ee1f518fc9bf850f086cbd84eb267486",
+        "decode-stream-layout.svg": "292f86338b28df1eaaf100a1ee277bb50b9a93fc5e2c619bbbe69c096ebd7ef4",
+        "decode-stream-layout.pdf": "5231b642a35347868d8889ae0d02a038feda9dfece6a4b476f0d7139ad68ba89"
       },
       "workloads": [
         "zeros",

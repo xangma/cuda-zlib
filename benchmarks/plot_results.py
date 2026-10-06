@@ -303,7 +303,7 @@ def save_figure(fig, output, name):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, default=ROOT / "results" / "rtx3090.json")
+    parser.add_argument("--input", type=Path, default=ROOT / "results" / "rtx3090-optimised.json")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "figures")
     args = parser.parse_args()
     report, cases, source_hash = load_results(args.input)

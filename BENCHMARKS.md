@@ -25,21 +25,24 @@ all timing samples and software versions are recorded in the result JSON.
 Measured 2026-10-06 on GPU 0 of a two-GPU RTX 3090 workstation (24 GiB per
 GPU), with an AMD Ryzen Threadripper PRO 3995WX CPU, Linux x86_64, Python
 3.12.3, NumPy 2.2.6, CuPy 13.3.0, CUDA runtime 12.6, NVIDIA driver 610.57.04
-and stdlib zlib 1.3. The original `0.1.0a1` release wheel was installed;
-its six Python module hashes are recorded in the results. The harness is from
-[commit 612fd07](https://github.com/xangma/cuda-zlib/tree/612fd07efbf65402b1641388431b885d56f3914d).
+and stdlib zlib 1.3. A tested wheel built from the optimised source at
+[commit 07e25f1](https://github.com/xangma/cuda-zlib/tree/07e25f1c8eea8356e0c3903f62bc8f328c523a28)
+was installed; its six Python module hashes are recorded in the results.
+These measurements cover the optimisation branch. The original `0.1.0a1`
+release-wheel measurements remain available in
+[the archived run](benchmarks/results/rtx3090.json).
 All 15 workload/size cases passed byte-exact validation, including stdlib
 decoding CUDA output and CUDA decoding independent stdlib level-6 output.
 Payload hashes match the recorded Apple CPU run despite different NumPy versions.
 
-Each operation has one untimed warmup, then five CUDA samples or three CPU
+Each operation has one untimed warmup, then 15 CUDA samples or five CPU
 samples. Tables report median MiB/s, using uncompressed byte counts. CPU figures
 below come from the same run and host. These are single-run measurements on a
 shared workstation; recorded utilization snapshots do not establish isolation.
 
 With a fresh CuPy cache, imports and CUDA initialization took
-0.356 s, and `compile_kernels` took
-12.323 s. These startup costs are excluded from the warmed tables.
+0.399 s, and `compile_kernels` took
+12.405 s. These startup costs are excluded from the warmed tables.
 
 ### Plots
 
@@ -107,11 +110,11 @@ workspace allocations remain included in both workflows.
 
 | Workload | CUDA resident | CUDA host-to-host | CPU level 1 | CPU level 6 |
 | --- | ---: | ---: | ---: | ---: |
-| Zero bytes | 879.7 | 811.2 | 402.3 | 164.8 |
-| Generated text | 406.7 | 385.0 | 175.6 | 55.1 |
-| Integer counters | 285.1 | 273.3 | 49.6 | 6.7 |
-| Gaussian float32 | 278.2 | 216.9 | 19.9 | 17.2 |
-| Uniform random bytes | 587.9 | 327.8 | 26.2 | 25.2 |
+| Zero bytes | 1657.1 | 1423.5 | 402.7 | 165.1 |
+| Generated text | 714.5 | 650.2 | 175.7 | 55.4 |
+| Integer counters | 413.6 | 387.1 | 49.6 | 6.7 |
+| Gaussian float32 | 375.7 | 271.4 | 19.9 | 17.2 |
+| Uniform random bytes | 575.6 | 324.7 | 26.2 | 25.3 |
 
 ### 64 MiB decompression throughput
 
@@ -121,14 +124,14 @@ Host-to-host level-6 decoding includes both transfers and host byte conversion.
 
 | Workload | CUDA resident, codec stream | CPU, codec stream | CUDA resident, level-6 stream | CUDA host-to-host, level-6 stream | CPU, level-6 stream |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Zero bytes | 5489.0 | 178.2 | 512.1 | 313.3 | 180.2 |
-| Generated text | 2698.0 | 236.6 | 898.0 | 428.5 | 290.0 |
-| Integer counters | 1368.1 | 166.2 | 1738.3 | 546.5 | 165.9 |
-| Gaussian float32 | 955.1 | 113.8 | 1024.4 | 430.2 | 111.5 |
-| Uniform random bytes | 2195.7 | 421.1 | 2097.2 | 566.7 | 419.0 |
+| Zero bytes | 5903.0 | 178.9 | 507.4 | 312.2 | 181.0 |
+| Generated text | 2897.3 | 238.5 | 881.6 | 419.5 | 292.0 |
+| Integer counters | 1502.9 | 166.2 | 1692.4 | 539.2 | 165.9 |
+| Gaussian float32 | 1004.6 | 113.9 | 1057.3 | 443.9 | 111.6 |
+| Uniform random bytes | 2280.7 | 419.6 | 2084.1 | 546.6 | 419.2 |
 
-For example, resident zero-byte decoding reaches 5489.0 MiB/s for this codec's
-stream and 512.1 MiB/s for the level-6 stream. This difference is a property of
+For example, resident zero-byte decoding reaches 5903.0 MiB/s for this codec's
+stream and 507.4 MiB/s for the level-6 stream. This difference is a property of
 the stream layout and decoder paths, not a general speedup over the CPU.
 
 ### 64 KiB transfer and launch costs
@@ -139,13 +142,13 @@ compression and level-6 decode was slower than its CPU counterpart:
 
 | Workload | CUDA host compression | CPU level-1 compression | CUDA host decode, level-6 stream | CPU decode, level-6 stream |
 | --- | ---: | ---: | ---: | ---: |
-| Zero bytes | 9.5 | 552.9 | 22.0 | 251.9 |
-| Generated text | 5.1 | 195.5 | 8.8 | 517.3 |
-| Integer counters | 3.6 | 51.8 | 4.7 | 202.2 |
-| Gaussian float32 | 3.9 | 22.1 | 8.2 | 139.5 |
-| Uniform random bytes | 8.0 | 31.1 | 55.3 | 1607.4 |
+| Zero bytes | 17.3 | 552.9 | 22.8 | 252.4 |
+| Generated text | 8.8 | 201.5 | 8.9 | 524.2 |
+| Integer counters | 5.3 | 52.1 | 4.7 | 204.1 |
+| Gaussian float32 | 5.1 | 22.2 | 8.1 | 139.8 |
+| Uniform random bytes | 7.7 | 31.0 | 62.3 | 1624.9 |
 
-[Raw RTX 3090 results](benchmarks/results/rtx3090.json) include all three input
+[Raw optimised RTX 3090 results](benchmarks/results/rtx3090-optimised.json) include all three input
 sizes, every sample, min/max timings, host-to-device compression, encoded sizes,
 startup measurements and environment metadata. No cross-machine speedup is inferred
 from the Apple measurements below.
@@ -154,8 +157,9 @@ from the Apple measurements below.
 
 The following comparison measures the token-cache and decoder changes against
 [commit 2829e23](https://github.com/xangma/cuda-zlib/tree/2829e23542ebb0b5b2ff206c9e208214a7ca7cda),
-using the same RTX 3090 environment described above. The preceding release tables
-remain historical measurements of the original `0.1.0a1` wheel.
+using the same RTX 3090 environment described above. The general tables above
+are refreshed measurements of the optimised codec from
+[commit 07e25f1](https://github.com/xangma/cuda-zlib/tree/07e25f1c8eea8356e0c3903f62bc8f328c523a28).
 
 The encoder now saves the greedy matcher's tokens for emission instead of
 matching twice. A conservative dynamic-code cost bound avoids unnecessary
@@ -171,8 +175,10 @@ and compression ratios are unchanged.
 [PDF](benchmarks/figures/optimisation-throughput.pdf) ·
 [Comparison manifest](benchmarks/figures/optimisation-manifest.json)
 
-These are warm, synchronized resident API timings, including allocations, with
-one warmup and five samples per operation. Uploads, downloads, generation,
+These are warm, synchronized resident API timings, including allocations. Four
+complete runs used baseline → optimised → optimised → baseline order. Each run
+has one warmup and 15 samples per operation; the plots combine all 30 samples
+per version without filtering. Uploads, downloads, generation,
 validation and compilation are excluded. Decoding uses identical frozen baseline
 streams and identical stdlib level-6 streams in each run. The CPU codec is
 forbidden inside measured CUDA calls. Error bars show sample extrema, not
@@ -184,36 +190,48 @@ At 64 MiB, cells show before → after MiB/s and median wall-time speedup:
 
 | Workload | Compression | Frozen baseline decoding | Stdlib level-6 decoding |
 | --- | ---: | ---: | ---: |
-| Zero bytes | 873.5 → 1681.8 (1.93×) | 5999.5 → 6604.4 (1.10×) | 508.4 → 515.0 (1.01×) |
-| Generated text | 406.0 → 730.6 (1.80×) | 2908.5 → 3062.0 (1.05×) | 892.1 → 903.3 (1.01×) |
-| Integer counters | 284.6 → 422.9 (1.49×) | 1448.1 → 1389.8 (0.96×) | 1739.3 → 1739.2 (1.00×) |
-| Gaussian float32 | 277.6 → 378.4 (1.36×) | 1013.3 → 964.5 (0.95×) | 1085.4 → 1079.3 (0.99×) |
-| Uniform random bytes | 586.8 → 579.6 (0.99×) | 2238.1 → 2293.2 (1.02×) | 2090.9 → 2123.0 (1.02×) |
+| Zero bytes | 868.7 → 1668.9 (1.92×) | 5990.5 → 6483.8 (1.08×) | 507.2 → 510.0 (1.01×) |
+| Generated text | 403.6 → 724.5 (1.79×) | 2876.4 → 2939.5 (1.02×) | 890.4 → 893.4 (1.00×) |
+| Integer counters | 283.0 → 417.7 (1.48×) | 1473.1 → 1502.7 (1.02×) | 1722.9 → 1713.1 (0.99×) |
+| Gaussian float32 | 278.1 → 376.7 (1.35×) | 997.3 → 1011.3 (1.01×) | 1065.5 → 1064.4 (1.00×) |
+| Uniform random bytes | 580.1 → 577.5 (1.00×) | 2213.7 → 2281.5 (1.03×) | 2026.8 → 2086.8 (1.03×) |
 
-Decoding gains depend on stream layout. The integer and float sample ranges
-overlap between versions, and their five-sample medians are slower in this run;
-these measurements do not establish an improvement for every workload.
+Decoding gains depend on stream layout. Most decode changes are small, and
+sample ranges overlap between versions. Text decode medians also varied between
+the two pairs; these measurements do not establish an improvement for every workload.
 Compression of random bytes is roughly unchanged. The encoder token workspace
 costs four bytes per input byte, or 256 MiB at 64 MiB input. A decode that skips
 refinement avoids a second 256 MiB reference array at that output size; the first
 reference array remains necessary.
 
-[Before profile](benchmarks/results/optimisation-before.json) and
-[after profile](benchmarks/results/optimisation-after.json) record all three input
-sizes, individual samples, kernel timings, source hashes and input/stream hashes.
-The plot script checks matching environments and exact decode-input hashes.
-These are sequential runs on a shared workstation; small changes should be
-interpreted alongside the observed variation.
+[Combined before profile](benchmarks/results/rerun-before.json) and
+[combined after profile](benchmarks/results/rerun-after.json) record all three input
+sizes, all wall samples, source hashes and input/stream hashes. They also record
+raw-file hashes, run order and sample slices for the four complete runs:
+[baseline A](benchmarks/results/rerun-baseline-a.json),
+[optimised A](benchmarks/results/rerun-candidate-a.json),
+[optimised B](benchmarks/results/rerun-candidate-b.json) and
+[baseline B](benchmarks/results/rerun-baseline-b.json).
+[Execution receipts](benchmarks/results/rerun-execution.json) record successful
+completion, process cleanup and receipt timestamps confirming the run order,
+followed by the separate general benchmark used for the CPU/transfer tables.
+Kernel diagnostics in each combined profile come only from that version's first
+run and are explicitly identified; they are not combined timing measurements.
+The merge and plot scripts check matching environments, encoded bytes and exact
+decode-input hashes. These are sequential runs on a shared workstation; reversing
+run order reduces ordering bias but does not establish isolation. Small changes
+should be interpreted alongside the observed variation.
 
 A focused 15-sample repeat at 64 MiB measured frozen-stream decode medians of
 43.34 → 42.48 ms for integer counters (1.02×) and 63.76 → 63.11 ms for Gaussian
 floats (1.01×). Stdlib-stream decode speedups were 0.99× and 1.00× respectively.
 The earlier slower medians were not consistent across these runs; small decoder
-changes remain within the observed variation. The complete five-sample comparison
-above is retained. [Repeat before](benchmarks/results/decoder-repeat-before.json)
+changes remain within the observed variation. The original five-sample
+[before](benchmarks/results/optimisation-before.json) and
+[after](benchmarks/results/optimisation-after.json) profiles are retained as
+historical measurements. [Repeat before](benchmarks/results/decoder-repeat-before.json)
 and [repeat after](benchmarks/results/decoder-repeat-after.json) preserve the
-additional measurements. Add `--sizes 67108864 --workloads uint32 float32
---samples 15` to both profiling commands below to repeat this focused check.
+additional focused measurements.
 
 To reproduce on a CUDA machine from a checkout containing these changes:
 
@@ -224,9 +242,14 @@ STREAMS="$(mktemp -d)"
 git worktree add --detach "$BASELINE" 2829e23542ebb0b5b2ff206c9e208214a7ca7cda
 cp benchmarks/profile.py "$BASELINE/benchmarks/"
 PYTHONPATH="$BASELINE/src" python "$BASELINE/benchmarks/profile.py" \
-  --output benchmarks/results/optimisation-before.json --save-streams "$STREAMS"
+  --samples 15 --output benchmarks/results/rerun-baseline-a.json --save-streams "$STREAMS"
 PYTHONPATH=src python benchmarks/profile.py \
-  --output benchmarks/results/optimisation-after.json --streams-from "$STREAMS"
+  --samples 15 --output benchmarks/results/rerun-candidate-a.json --streams-from "$STREAMS"
+PYTHONPATH=src python benchmarks/profile.py \
+  --samples 15 --output benchmarks/results/rerun-candidate-b.json --streams-from "$STREAMS"
+PYTHONPATH="$BASELINE/src" python "$BASELINE/benchmarks/profile.py" \
+  --samples 15 --output benchmarks/results/rerun-baseline-b.json --streams-from "$STREAMS"
+python benchmarks/merge_profiles.py
 python benchmarks/plot_optimisation.py
 ```
 
@@ -269,14 +292,14 @@ CUDA run and the same payload hashes.
 
 ## Reproduce
 
-Use a current `main` checkout, which includes the benchmark harness added after
-`v0.1.0a1`. Install the package and run:
+Use a checkout containing this optimisation pass. Install the package and run:
 
 ```sh
-python -m pip install ".[cuda12]"
+python -m pip install ".[cuda12]" matplotlib
 CUPY_CACHE_DIR="$(mktemp -d)" python benchmarks/benchmark.py \
-  --sizes 65536 1048576 67108864 --samples 5 --cpu-samples 3 \
-  --seed 20261006 --device 0 --output results-cuda.json
+  --sizes 65536 1048576 67108864 --samples 15 --cpu-samples 5 \
+  --seed 20261006 --device 0 --output benchmarks/results/rtx3090-optimised.json
+python benchmarks/plot_results.py
 ```
 
 For the recorded RTX 3090 environment, pin `numpy==2.2.6` and
