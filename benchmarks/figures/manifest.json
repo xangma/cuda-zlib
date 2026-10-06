@@ -1,15 +1,28 @@
 {
   "schema_version": 1,
   "source": "results/rtx3090-ffi-20261006.json",
-  "source_sha256": "cc842bf21c66c6691b7b3b01654e0bb2c75e2d20159db97f2d6ce421e004a93d",
-  "script_sha256": "d2378dcbedbb784f0672f9bf48015585324904723a15ead087bfa0ac41d73bb8",
+  "source_sha256": "3b94e114f9c7fa6cb8c4d8819ef162400fd1eb6f8dd597cae05cbb97841f5156",
+  "script_sha256": "bc4a083e505db5e510ba6f25b1209c983539572596afc28dd293af7f61e41efb",
   "renderer": {
     "matplotlib": "3.11.1",
     "numpy": "2.5.2",
     "backend": "Agg"
   },
-  "source_created_utc": "2026-10-06T16:42:41.373791+00:00",
+  "source_created_utc": "2026-10-06T18:15:47.776200+00:00",
   "validated_cases": 15,
+  "validated_timing_keys": [
+    "cpu_compress_level1",
+    "cpu_compress_level6",
+    "cpu_decompress_codec",
+    "cpu_decompress_level6",
+    "cuda_compress_device_device",
+    "cuda_compress_host_device",
+    "cuda_compress_host_host",
+    "cuda_decompress_codec_device_device",
+    "cuda_decompress_level6_device_device",
+    "cuda_decompress_level6_host_array",
+    "cuda_decompress_level6_host_host"
+  ],
   "samples_per_measurement": {
     "cuda": 15,
     "cpu": 5
@@ -23,17 +36,19 @@
     "warmup_calls_per_measurement": 1,
     "throughput_denominator": "uncompressed input bytes / 2**20",
     "compression_chunk_bytes": 32768,
-    "timing_includes": "API allocations; transfers only for named host workflows",
-    "timing_excludes": "payload generation, initial resident uploads, native build/registration, per-workflow XLA compilation in warmup, validation",
-    "cpu": "single-threaded stdlib zlib; levels 1 and 6; no level equivalence implied"
+    "timing_includes": "API allocations and codec validation; transfers only for named host workflows",
+    "timing_excludes": "payload generation, initial resident uploads, native build/registration, per-workflow XLA compilation in warmup, post-timing oracle comparisons",
+    "cpu": "single-threaded stdlib zlib; levels 1 and 6; no level equivalence implied",
+    "host_decompression": "host_host returns bytes via pinned host transfer plus tobytes allocation/copy; host_array returns a completed read-only NumPy array backed by pinned host memory",
+    "consumer_outputs": "CPU decompression and CUDA host_host return bytes; CUDA host_array returns NumPy uint8 and is reported separately"
   },
   "cold_startup_excluded": true,
   "figures": {
     "compression-throughput": {
       "exports_sha256": {
-        "compression-throughput.png": "db483e5b0b879ad2e01a13cc20d7a1df7b62ae4e128a17b0db0be79dd1c0e5be",
-        "compression-throughput.svg": "2442798b790c3d4f8bcabae884d00addec59fd754909fd09c798baa8cdab1381",
-        "compression-throughput.pdf": "56479388d2a6a7e1567aec2253b7268fe68047037c0d5e76a621cb25d0258be2"
+        "compression-throughput.png": "020f76f0a0e5dc14868901b5265af72dae9aa672db7da5e779afe204f8aa1c18",
+        "compression-throughput.svg": "eb0bb130d4ac0244e812f9999facdadc60da53dcdac44a4334b9f01609434d4d",
+        "compression-throughput.pdf": "beb0119a935c22272fb67e92fd4fe41c961629ec7d2e88d5dfa02eff5032d392"
       },
       "workloads": [
         "zeros",
@@ -105,9 +120,9 @@
     },
     "decompression-throughput": {
       "exports_sha256": {
-        "decompression-throughput.png": "10ac1c52cd687c199055db652331c2022ec196b4bf44c981e9a87d927bf91467",
-        "decompression-throughput.svg": "ded2557d1b1151f6b9c762d71e3e71fa9243b4528a77b730b09839d176499129",
-        "decompression-throughput.pdf": "6eee56c504eff7b2f309db8cc62c9eb2ea31b97da1b86c402f590766909e3b4c"
+        "decompression-throughput.png": "99202a6e0ad75a503896e442747e742894d8ec06eba530e18267728a89add05b",
+        "decompression-throughput.svg": "3a229dafca79bd5f1a27b1ba5d7e00309589adfb58553d3880de0a4c7748768d",
+        "decompression-throughput.pdf": "d2f20182384373086e4eb957ff8439167f48b019a6b65c712383f3ab1e57efa4"
       },
       "workloads": [
         "zeros",
@@ -128,11 +143,15 @@
           "json_key": "cuda_decompress_level6_device_device"
         },
         {
-          "label": "CUDA host \u2192 host",
+          "label": "CUDA host \u2192 bytes",
           "json_key": "cuda_decompress_level6_host_host"
         },
         {
-          "label": "CPU zlib",
+          "label": "CUDA host \u2192 array",
+          "json_key": "cuda_decompress_level6_host_array"
+        },
+        {
+          "label": "CPU zlib \u2192 bytes",
           "json_key": "cpu_decompress_level6"
         }
       ],
@@ -141,9 +160,9 @@
     },
     "decode-stream-layout": {
       "exports_sha256": {
-        "decode-stream-layout.png": "f3c470e56782bc3f06a73c14e1f298cc21140836f50922739b37f26e03abb400",
-        "decode-stream-layout.svg": "b4d1195de8c7852854e37c1c59e5b889ca8b2e046b713b712a45062721639506",
-        "decode-stream-layout.pdf": "8f1d6bfe71dba5de6f229f20de76d92aba4284839939b76e08275d9df77947fe"
+        "decode-stream-layout.png": "3340e0b0080bbc3add04458ae75309a880ac8a73d4c6ae2213f5bb14ee472b31",
+        "decode-stream-layout.svg": "d1f645ff4393875c88e33d7221496e33629b3d03d19d5f53e38dbaf2f1b61b91",
+        "decode-stream-layout.pdf": "45f9b37a8856c7e164c8f58029fc388e8cc4d5759429ac7d18211c68e7c5373e"
       },
       "workloads": [
         "zeros",
@@ -179,9 +198,9 @@
     },
     "cpu-speedup": {
       "exports_sha256": {
-        "cpu-speedup.png": "e4e71d37a2f7d3ffc31aa64606cb96009aa19d206aa91d7fe02883332dfb224f",
-        "cpu-speedup.svg": "f08571e51c668d696bf2e9d92286e5f27cc65cf56018440a1b3b9d1229405f5b",
-        "cpu-speedup.pdf": "6ba65675b2c23d8c0f415f7aa10370d469337a2d6275c1a735f666dadebf75f6"
+        "cpu-speedup.png": "e61d273926e8ecd79a6697ab0cc4dde79373dbd1f6dad377bce90defd0cd6f68",
+        "cpu-speedup.svg": "a36d5f612320737a4ad0d2700c89dfd9275e6f9d58bb44bcec477434104550a6",
+        "cpu-speedup.pdf": "8d328ecc5d3b9dced69653793658cb3ffd86851d49ad0261776453b48ad73214"
       },
       "workloads": [
         "zeros",
@@ -198,7 +217,7 @@
       "axis_scale": "linear",
       "reference_ratio": 1,
       "error_bars": null,
-      "cuda_timing_scope": "Host-to-host; copies and host/device transfers included",
+      "cuda_timing_scope": "Host-to-host with Python bytes outputs; copies and host/device transfers included",
       "cpu_timing_scope": "Same-host, single-thread stdlib zlib",
       "series": [
         {

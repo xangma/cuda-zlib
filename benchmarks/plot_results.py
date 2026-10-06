@@ -35,8 +35,9 @@ COMPRESSION = (
 )
 DECOMPRESSION = (
     ("CUDA resident", "cuda_decompress_level6_device_device", BLUE, "o", "-"),
-    ("CUDA host → host", "cuda_decompress_level6_host_host", ORANGE, "D", "--"),
-    ("CPU zlib", "cpu_decompress_level6", GREEN, "^", "-."),
+    ("CUDA host → bytes", "cuda_decompress_level6_host_host", ORANGE, "D", "--"),
+    ("CUDA host → array", "cuda_decompress_level6_host_array", PURPLE, "s", ":"),
+    ("CPU zlib → bytes", "cpu_decompress_level6", GREEN, "^", "-."),
 )
 STREAM_LAYOUT = (
     ("CUDA · codec stream", "cuda_decompress_codec_device_device", BLUE, "o", "-"),
@@ -208,10 +209,12 @@ def throughput_panels(report, cases, series, title, subtitle):
     handles, labels = axes[0, 0].get_legend_handles_labels()
     legend_ax.legend(handles, labels, frameon=False, loc="upper left",
                      bbox_to_anchor=(0, 1.05), borderaxespad=0, labelspacing=1.1)
-    legend_ax.text(0, 0.18, "Resident: device → device\nHost → host: transfers included\nCPU: single thread\nLines connect measured sizes only.",
+    host_note = ("Host outputs: transfers included\nBytes: Python bytes; array: NumPy"
+                 if series == DECOMPRESSION else "Host → host: transfers included")
+    legend_ax.text(0, 0.18, f"Resident: device → device\n{host_note}\nCPU: single thread\nLines connect measured sizes only.",
                    transform=legend_ax.transAxes, va="top", fontsize=9.5, color="#475569",
                    linespacing=1.4)
-    footer(fig, report, "API output allocations included; payload generation, initial resident uploads, and correctness checks excluded.")
+    footer(fig, report, "API allocations and codec validation included; payload generation, initial resident uploads, and post-timing oracle comparisons excluded.")
     return fig
 
 
@@ -290,7 +293,7 @@ def decode_stream_layout(report, cases):
 def cpu_speedup(report, cases):
     fig, axes = plt.subplots(1, 2, figsize=(12, 6.5), sharey=True)
     fig.subplots_adjust(left=0.17, right=0.97, top=0.78, bottom=0.22, wspace=0.14)
-    header(fig, "GPU speedup over CPU", "64 MiB inputs · CUDA host-to-host workflows include copies and transfers")
+    header(fig, "GPU speedup over CPU", "64 MiB inputs · CUDA host-to-host workflows return bytes and include copies and transfers")
     baselines = ("CPU: single-thread stdlib zlib level 1", "CPU: same stdlib level-6 bytes, single thread")
     ratios = [[cases[(w, SIZES[-1])]["timings"][cpu]["median_seconds"] /
                cases[(w, SIZES[-1])]["timings"][cuda]["median_seconds"]
@@ -377,7 +380,7 @@ def main():
         "workloads": list(WORKLOADS), "input_bytes": [SIZES[-1]], "metric": "cpu_speedup_ratio",
         "point_statistic": "CPU median elapsed seconds / CUDA median elapsed seconds; greater than 1 favors CUDA",
         "axis_scale": "linear", "reference_ratio": 1, "error_bars": None,
-        "cuda_timing_scope": "Host-to-host; copies and host/device transfers included",
+        "cuda_timing_scope": "Host-to-host with Python bytes outputs; copies and host/device transfers included",
         "cpu_timing_scope": "Same-host, single-thread stdlib zlib",
         "series": [{"label": label, "numerator_timing_key": cpu, "denominator_timing_key": cuda,
                     "ratio_formula": f"timings.{cpu}.median_seconds / timings.{cuda}.median_seconds"}
@@ -392,6 +395,7 @@ def main():
         "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "renderer": {"matplotlib": matplotlib.__version__, "numpy": np.__version__, "backend": "Agg"},
         "source_created_utc": report["created_utc"], "validated_cases": len(cases),
+        "validated_timing_keys": sorted(ALL_KEYS),
         "samples_per_measurement": {"cuda": report["arguments"]["samples"], "cpu": report["arguments"]["cpu_samples"]},
         "throughput_units": "MiB/s; uncompressed bytes / 2**20 / seconds",
         "point_statistic": "Defined separately for each figure's metric",
