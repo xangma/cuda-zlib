@@ -35,6 +35,8 @@ def main():
     args = parser.parse_args()
     if args.samples < 1 or any(not 0 < size < 256 * 1024**2 for size in args.sizes):
         parser.error('positive samples and input sizes below 256 MiB required')
+    if args.save_streams and args.streams_from and args.save_streams.resolve() == args.streams_from.resolve():
+        parser.error('--save-streams and --streams-from must use different directories')
     device = _codec._select_device(args.device)
     cuda_zlib.compile_kernels(args.device)
     originals = {name: getattr(zlib, name) for name in
@@ -44,6 +46,8 @@ def main():
         from cuda_zlib import _ffi
         toolkit = Path(_ffi._nvcc()).resolve().parent.parent
         profiler = ctypes.CDLL(str(toolkit / 'lib64/libcudart.so'))
+        profiler.cudaSetDevice.argtypes = [ctypes.c_int]
+        profiler.cudaSetDevice.restype = ctypes.c_int
         profiler.cudaProfilerStart.restype = ctypes.c_int
         profiler.cudaProfilerStop.restype = ctypes.c_int
 
@@ -85,8 +89,11 @@ def main():
         result, wall = measure(lambda: guarded(fn), args.samples, size)
         validate(result)
         del result
-        if profiler and profiler.cudaProfilerStart():
-            raise RuntimeError('cudaProfilerStart failed')
+        if profiler:
+            if profiler.cudaSetDevice(int(device.local_hardware_id)):
+                raise RuntimeError('cudaSetDevice failed for profiler range')
+            if profiler.cudaProfilerStart():
+                raise RuntimeError('cudaProfilerStart failed')
         try:
             start = time.perf_counter()
             result = guarded(fn)

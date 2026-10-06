@@ -275,7 +275,7 @@ def decode_stream_layout(report, cases):
             ax.errorbar(median, index + offset, xerr=[[low], [high]],
                         marker=marker, color=color, markersize=6, linestyle="none",
                         capsize=3, elinewidth=1, zorder=3)
-            ax.annotate(f"{median:,.0f}", (median, index + offset),
+            ax.annotate(f"{median:,.0f}", (median + high, index + offset),
                         xytext=(8, 0), textcoords="offset points", fontsize=9.5,
                         va="center", color=color)
     handles = [Line2D([], [], color=color, marker=marker, linestyle="none", label=label)
@@ -341,7 +341,7 @@ def save_figure(fig, output, name):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, default=ROOT / "results" / "rtx3090-20261006.json")
+    parser.add_argument("--input", type=Path, default=ROOT / "results" / "rtx3090-ffi-20261006.json")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "figures")
     args = parser.parse_args()
     report, cases, source_hash = load_results(args.input)
