@@ -7,6 +7,7 @@ import argparse
 import gc
 import hashlib
 import json
+import os
 import platform
 import statistics
 import subprocess
@@ -48,6 +49,8 @@ def make_payload(name, size, seed):
 def measure(fn, samples, size, synchronize=lambda: None):
     """One untimed warmup, then synchronized wall-clock measurements."""
     result = fn()
+    if hasattr(result, "block_until_ready"):
+        result.block_until_ready()
     synchronize()
     times = []
     for _ in range(samples):
@@ -55,6 +58,8 @@ def measure(fn, samples, size, synchronize=lambda: None):
         synchronize()
         start = time.perf_counter()
         result = fn()
+        if hasattr(result, "block_until_ready"):
+            result.block_until_ready()
         synchronize()
         times.append(time.perf_counter() - start)
     median = statistics.median(times)
@@ -137,7 +142,7 @@ def main():
     parser.add_argument("--cpu-samples", type=int, default=3)
     parser.add_argument("--seed", type=int, default=20261006)
     parser.add_argument("--device", type=int, default=0)
-    parser.add_argument("--cpu-only", action="store_true", help="run CPU baselines without CuPy or CUDA")
+    parser.add_argument("--cpu-only", action="store_true", help="run CPU baselines without JAX or CUDA")
     parser.add_argument("--output", type=Path, default=Path("results.json"))
     args = parser.parse_args()
     if min(args.sizes) < 1 or max(args.sizes) > MAX_BYTES:
@@ -153,19 +158,19 @@ def main():
             parser.error("CUDA sizes must leave room for worst-case block/framing overhead within 256 MiB")
 
     start = time.perf_counter()
-    import cupy as cp
+    import jax
+    import jaxlib
     import cuda_zlib
-    cp.cuda.Device(args.device).use()
-    cp.cuda.runtime.deviceSynchronize()
+    from cuda_zlib import _codec
+    device = _codec._select_device(args.device)
+    jax.device_put(np.zeros(1, dtype=np.uint8), device).block_until_ready()
     init_seconds = time.perf_counter() - start
     start = time.perf_counter()
     cuda_zlib.compile_kernels(args.device)
-    cp.cuda.runtime.deviceSynchronize()
     compile_seconds = time.perf_counter() - start
-    synchronize = cp.cuda.runtime.deviceSynchronize
-    properties = cp.cuda.runtime.getDeviceProperties(args.device)
-    name = properties["name"]
     module_root = Path(cuda_zlib.__file__).parent
+    cache_root = Path(os.environ.get("CUDA_ZLIB_CACHE_DIR", str(
+        Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "cuda-zlib")))
     report = {
         "schema_version": 1,
         "created_utc": datetime.now(timezone.utc).isoformat(),
@@ -173,25 +178,26 @@ def main():
         "environment": {
             "os": platform.system(), "machine": platform.machine(),
             "cpu": cpu_model(), "python": platform.python_version(),
-            "numpy": np.__version__, "cupy": cp.__version__,
+            "numpy": np.__version__, "jax": jax.__version__, "jaxlib": jaxlib.__version__,
             "cuda_zlib": cuda_zlib.__version__,
             "zlib_runtime": zlib.ZLIB_RUNTIME_VERSION,
-            "cuda_runtime": cp.cuda.runtime.runtimeGetVersion(),
-            "cuda_driver": cp.cuda.runtime.driverGetVersion(),
-            "gpu": name.decode() if isinstance(name, bytes) else name,
+            "backend": "JAX typed CUDA FFI",
+            "cuda_platform": device.client.platform_version,
+            "gpu": device.device_kind,
+            "native_builds": [json.loads(p.read_text()) for p in sorted(cache_root.glob("*/build.json"))],
             "gpu_snapshot_before": gpu_snapshot(),
-            "codec_sha256": {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-                             for p in sorted(module_root.glob("*.py"))},
+            "codec_sha256": {str(p.relative_to(module_root)): hashlib.sha256(p.read_bytes()).hexdigest()
+                             for p in sorted([*module_root.glob("*.py"), *module_root.glob("native/*.cu")])},
         },
         "startup": {"imports_and_cuda_init_seconds": init_seconds,
                     "compile_kernels_seconds": compile_seconds},
         "methodology": {
-            "clock": "perf_counter; deviceSynchronize before and after CUDA calls",
+            "clock": "perf_counter; block_until_ready for JAX outputs; exact codec APIs also check status synchronously",
             "warmup_calls_per_measurement": 1,
             "throughput_denominator": "uncompressed input bytes / 2**20",
             "compression_chunk_bytes": CHUNK_BYTES,
             "timing_includes": "API allocations; transfers only for named host workflows",
-            "timing_excludes": "payload generation, initial resident uploads, validation",
+            "timing_excludes": "payload generation, initial resident uploads, native build/registration, per-workflow XLA compilation in warmup, validation",
             "cpu": "single-threaded stdlib zlib; levels 1 and 6; no level equivalence implied",
         },
         "cases": [],
@@ -200,21 +206,21 @@ def main():
         for workload in args.workloads:
             print(f"begin {workload} {size}", flush=True)
             payload = make_payload(workload, size, args.seed)
-            resident = cp.asarray(np.frombuffer(payload, dtype=np.uint8))
-            synchronize()
+            resident = jax.device_put(np.frombuffer(payload, dtype=np.uint8), device)
+            resident.block_until_ready()
             times = {}
             encoded, times["cuda_compress_device_device"] = measure(
                 lambda: cuda_zlib.compress_zlib(resident, args.device),
-                args.samples, size, synchronize)
-            encoded_host = encoded.get().tobytes()
+                args.samples, size)
+            encoded_host = np.asarray(encoded).tobytes()
             assert zlib.decompress(encoded_host) == payload
             host_encoded, times["cuda_compress_host_device"] = measure(
                 lambda: cuda_zlib.compress_zlib(payload, args.device),
-                args.samples, size, synchronize)
-            assert host_encoded.get().tobytes() == encoded_host
+                args.samples, size)
+            assert np.asarray(host_encoded).tobytes() == encoded_host
             host_bytes, times["cuda_compress_host_host"] = measure(
-                lambda: cuda_zlib.compress_zlib(payload, args.device).get().tobytes(),
-                args.samples, size, synchronize)
+                lambda: np.asarray(cuda_zlib.compress_zlib(payload, args.device)).tobytes(),
+                args.samples, size)
             assert host_bytes == encoded_host
             del host_encoded, host_bytes
             cpu_streams = {}
@@ -225,13 +231,13 @@ def main():
                 cpu_streams[level] = stream
             if not 8 <= len(cpu_streams[6]) <= MAX_BYTES:
                 raise ValueError("external level-6 stream exceeds the CUDA decoder extent bounds")
-            external = cp.asarray(np.frombuffer(cpu_streams[6], dtype=np.uint8))
-            synchronize()
+            external = jax.device_put(np.frombuffer(cpu_streams[6], dtype=np.uint8), device)
+            external.block_until_ready()
             for label, compressed in (("codec", encoded), ("level6", external)):
                 decoded, times[f"cuda_decompress_{label}_device_device"] = measure(
                     lambda compressed=compressed: cuda_zlib.decompress_zlib(compressed, size, args.device),
-                    args.samples, size, synchronize)
-                assert decoded.get().tobytes() == payload
+                    args.samples, size)
+                assert np.asarray(decoded).tobytes() == payload
                 del decoded
                 compressed_host = encoded_host if label == "codec" else cpu_streams[6]
                 decoded_host, times[f"cpu_decompress_{label}"] = measure(
@@ -240,14 +246,17 @@ def main():
                 assert decoded_host == payload
                 del decoded_host
             decoded_host, times["cuda_decompress_level6_host_host"] = measure(
-                lambda: cuda_zlib.decompress_zlib(cpu_streams[6], size, args.device).get().tobytes(),
-                args.samples, size, synchronize)
+                lambda: np.asarray(cuda_zlib.decompress_zlib(cpu_streams[6], size, args.device)).tobytes(),
+                args.samples, size)
             assert decoded_host == payload
             case = {
                 "workload": workload, "input_bytes": size,
                 "input_sha256": hashlib.sha256(payload).hexdigest(),
                 "encoded_bytes": {"cuda": len(encoded_host),
                                   "zlib1": len(cpu_streams[1]), "zlib6": len(cpu_streams[6])},
+                "encoded_sha256": {"cuda": hashlib.sha256(encoded_host).hexdigest(),
+                                   "zlib1": hashlib.sha256(cpu_streams[1]).hexdigest(),
+                                   "zlib6": hashlib.sha256(cpu_streams[6]).hexdigest()},
                 "encoded_percent": {"cuda": 100 * len(encoded_host) / size,
                                     "zlib1": 100 * len(cpu_streams[1]) / size,
                                     "zlib6": 100 * len(cpu_streams[6]) / size},
@@ -260,7 +269,6 @@ def main():
             print(f"pass {workload} {size}: encoded={case['encoded_bytes']}", flush=True)
             del payload, resident, encoded, encoded_host, cpu_streams, external, decoded_host, compressed
             gc.collect()
-            cp.get_default_memory_pool().free_all_blocks()
     report["environment"]["gpu_snapshot_after"] = gpu_snapshot()
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     print(f"complete {len(report['cases'])} cases", flush=True)

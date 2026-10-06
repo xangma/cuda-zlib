@@ -1,22 +1,18 @@
 # Copyright (c) 2026 xangma
 # SPDX-License-Identifier: MIT
 
-"""Extracted PyCBC byte-level regression fixtures; no PyCBC/JAX import required."""
+"""Independent byte-level regression fixtures; GPU imports remain optional."""
 
 import builtins
-import contextlib
-import functools
 import gc
 import random
 import struct
-import sys
-import types
 import zlib
 
 import numpy as np
 import pytest
 
-from cuda_zlib import CodecError as GWFFormatError
+from cuda_zlib import CodecError
 
 
 @pytest.fixture(scope="module")
@@ -27,13 +23,13 @@ def decoder():
 
 @pytest.fixture(scope="module")
 def cuda_device():
-    cupy = pytest.importorskip("cupy")
+    jax = pytest.importorskip("jax")
     try:
-        count = cupy.cuda.runtime.getDeviceCount()
-    except cupy.cuda.runtime.CUDARuntimeError as exc:
+        devices = jax.devices("gpu")
+    except RuntimeError as exc:
         pytest.skip(str(exc))
-    if not count:
-        pytest.skip("CUDA unavailable")
+    if not devices or devices[0].platform != "gpu":
+        pytest.skip("JAX CUDA backend unavailable")
     return 0
 
 
@@ -261,10 +257,12 @@ def _grid_stride_stream():
 
 
 def _assert_bytes(result, raw, device):
-    import cupy as cp
-    assert result.dtype == cp.uint8
-    assert result.device.id == device
-    assert result.get().tobytes() == raw
+    import jax
+    assert isinstance(result, jax.Array)
+    assert result.dtype == np.uint8
+    expected_device = jax.devices("gpu")[device] if isinstance(device, int) else device
+    assert result.devices() == {expected_device}
+    assert np.asarray(result.block_until_ready()).tobytes() == raw
 
 
 def test_handbuilt_deflate_fixtures_match_independent_stdlib():
@@ -305,7 +303,7 @@ def test_invalid_size_is_rejected_before_optional_backend(
     actual_import = builtins.__import__
 
     def guarded_import(name, *args, **kwargs):
-        if name.split(".")[0] in {"jax", "cupy"}:
+        if name.split(".")[0] in {"jax"}:
             pytest.fail("invalid input loaded the optional GPU backend")
         return actual_import(name, *args, **kwargs)
 
@@ -323,19 +321,19 @@ def test_invalid_size_is_rejected_before_optional_backend(
 ], ids=["empty", "one-byte", "header-only", "header-check", "method",
         "window", "dictionary", "gzip"])
 def test_bad_wrapper_is_rejected_without_cuda(decoder, monkeypatch, payload):
-    from cuda_zlib import UnsupportedStream as GWFDeflateUnavailable
+    from cuda_zlib import UnsupportedStream
 
     actual_import = builtins.__import__
 
     def guarded_import(name, *args, **kwargs):
-        if name.split(".")[0] in {"jax", "cupy"}:
+        if name.split(".")[0] in {"jax"}:
             pytest.fail("invalid framing loaded the optional GPU backend")
         return actual_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
-    expected = (GWFDeflateUnavailable if payload.startswith(b"\x1f\x8b")
-                else (ValueError, GWFDeflateUnavailable))
-    match = "RFC 1950 zlib" if expected is GWFDeflateUnavailable else None
+    expected = (UnsupportedStream if payload.startswith(b"\x1f\x8b")
+                else (ValueError, UnsupportedStream))
+    match = "RFC 1950 zlib" if expected is UnsupportedStream else None
     with pytest.raises(expected, match=match):
         decoder(payload, 0, device=0)
 
@@ -480,7 +478,7 @@ def test_discovery_reaches_dynamic_block_after_large_stored_prefix(
 def test_malformed_dynamic_code_length_repeat(
     decoder, cuda_device, forbid_cpu_inflation, kind,
 ):
-    with pytest.raises(GWFFormatError, match="Deflate|Adler32"):
+    with pytest.raises(CodecError, match="Deflate|Adler32"):
         decoder(_invalid_repeat_stream(kind), 0, cuda_device)
 
 
@@ -497,7 +495,7 @@ def test_backward_distance_obeys_declared_zlib_window(
     payload, small_window, raw = _distance_window_stream()
     _assert_bytes(decoder(payload, len(raw), cuda_device), raw, cuda_device)
     # CINFO=0 advertises a 256-byte window, smaller than distance 257.
-    with pytest.raises(GWFFormatError, match="Deflate|Adler32"):
+    with pytest.raises(CodecError, match="Deflate|Adler32"):
         decoder(small_window, len(raw), cuda_device)
 
 
@@ -534,17 +532,16 @@ def test_bad_stream_fails_without_cpu_inflation(
     elif change == "distance-before-history":
         # Fixed code 257 (length 3), distance 1, before any literal output.
         payload, expected = _wrap(b"\x03\x02\x00", b"AAA"), 3
-    with pytest.raises(GWFFormatError, match="Deflate|Adler32"):
+    with pytest.raises(CodecError, match="Deflate|Adler32"):
         decoder(payload, expected, cuda_device)
 
 
 @pytest.mark.parametrize("length", [0, 4095, 4096, 4097])
 @pytest.mark.parametrize("encoding", ["stored", "local-fixed", "literal-dynamic"])
-def test_resolved_emission_skips_refinement_and_checks_fused_checksum(
-    decoder, cuda_device, forbid_cpu_inflation, monkeypatch, length, encoding,
+def test_local_and_literal_emission_validate_fused_checksum(
+    decoder, cuda_device, forbid_cpu_inflation, length, encoding,
 ):
-    from cuda_zlib import _codec
-
+    # Exercise checksum seams and each resolved emission path through native FFI.
     raw = (bytes(index % 251 for index in range(length))
            if encoding == "stored" else b"A" * length)
     if encoding == "stored":
@@ -553,44 +550,23 @@ def test_resolved_emission_skips_refinement_and_checks_fused_checksum(
         payload = _compressed(raw, strategy=zlib.Z_FIXED)
     else:
         payload = _wrap(_bits(_dynamic_literal_fields(raw)), raw)
-    kernels = _codec._module(cuda_device)
-    write = kernels["write_adler_parts"]
-    writes = []
-
-    def forbidden_refinement(*args, **kwargs):
-        pytest.fail("resolved local/literal roots entered refinement")
-
-    def counted_write(*args, **kwargs):
-        writes.append(1)
-        return write(*args, **kwargs)
-
-    monkeypatch.setitem(kernels, "refine_roots", forbidden_refinement)
-    monkeypatch.setitem(kernels, "write_adler_parts", counted_write)
     _assert_bytes(decoder(payload, length, cuda_device), raw, cuda_device)
-    assert len(writes) == 1
     bad_checksum = payload[:-1] + bytes((payload[-1] ^ 1,))
-    with pytest.raises(GWFFormatError, match="Adler32"):
+    with pytest.raises(CodecError, match="Adler32"):
         decoder(bad_checksum, length, cuda_device)
-    assert len(writes) == 2
+    # A failed native status must not poison the next invocation.
+    _assert_bytes(decoder(payload, length, cuda_device), raw, cuda_device)
 
 
-def test_external_emission_still_refines_cross_block_history(
-    decoder, cuda_device, forbid_cpu_inflation, monkeypatch,
+def test_external_emission_resolves_cross_block_history_and_checksum(
+    decoder, cuda_device, forbid_cpu_inflation,
 ):
-    from cuda_zlib import _codec
-
     payload, _, raw = _distance_window_stream()
-    kernels = _codec._module(cuda_device)
-    refine = kernels["refine_roots"]
-    rounds = []
-
-    def counted_refinement(*args, **kwargs):
-        rounds.append(1)
-        return refine(*args, **kwargs)
-
-    monkeypatch.setitem(kernels, "refine_roots", counted_refinement)
     _assert_bytes(decoder(payload, len(raw), cuda_device), raw, cuda_device)
-    assert rounds
+    bad_checksum = payload[:-1] + bytes((payload[-1] ^ 1,))
+    with pytest.raises(CodecError, match="Adler32"):
+        decoder(bad_checksum, len(raw), cuda_device)
+    _assert_bytes(decoder(payload, len(raw), cuda_device), raw, cuda_device)
 
 
 def test_external_reference_flag_does_not_hide_another_blocks_error(
@@ -609,7 +585,7 @@ def test_external_reference_flag_does_not_hide_another_blocks_error(
         fields += [length_codes[width] for width in literal + [1]]
         fields += [literal_codes[257], (0, 1), literal_codes[256]]
     payload = _wrap(_bits(fields), b"A" * 6)
-    with pytest.raises(GWFFormatError, match="Deflate output emission"):
+    with pytest.raises(CodecError, match="backward distance|Deflate status 6"):
         decoder(payload, 6, cuda_device)
 
 
