@@ -1,8 +1,8 @@
 # cuda-zlib
 
 Experimental compression and decompression of general zlib byte streams on CUDA.
-The core uses NumPy and CuPy and requires neither PyCBC nor LAL. The optional JAX
-bridge also works with general byte arrays. Version `0.1.0a1` is an alpha release;
+The core uses NumPy and CuPy. The optional JAX bridge also works with general
+byte arrays. Version `0.1.0a1` is an alpha release;
 performance and compatibility depend on the workload and CUDA environment.
 
 ```python
@@ -21,7 +21,7 @@ not mutate an input concurrently. No CPU codec fallback occurs.
 
 `cuda_zlib.jax` provides explicit `device=` bridges returning independently
 owned, completed JAX arrays. Compression also accepts a JAX `uint8` array through
-stream-aware DLPack. The core imports neither JAX nor PyCBC; base package import
+stream-aware DLPack. The core does not import JAX; base package import
 does not initialize CUDA. `compile_kernels(0)` loads both kernel modules for
 separately measured startup.
 
@@ -67,15 +67,10 @@ GPU token-boundary summaries only when the actual stream requires them. Stored
 copying uses a separate parallel kernel; dynamic blocks retain parallel decoding.
 Cold NVRTC compilation is additional to warmed measurements.
 
-On the tested RTX 4090, new H1/L1 64 MiB outputs were 58,014,271/62,216,405 bytes,
-within 0.21/0.60% of stdlib zlib level 6, and decoded in about 28/29 ms. The frozen
-prototype's fixed/stored outputs now decode in about 37/33 ms, down from
-9.67/2.36 seconds. External fixed streams remain slower than dynamic streams.
-Small inputs and complete small frame reads can be slower on CUDA. Compression
-remains experimental; these measurements establish one configuration, not a
-general compatibility or performance guarantee. [BENCHMARKS.md](BENCHMARKS.md) records startup, warm timings, CPU baselines
-and complete frame reads. The strain vectors are benchmark examples; the API
-accepts general bytes.
+See [BENCHMARKS.md](BENCHMARKS.md) for measured compression ratios, startup costs,
+warm timings and CPU baselines. Compression remains experimental; measurements
+depend on the workload and CUDA environment and do not establish a general
+compatibility or performance guarantee.
 
 `CodecError` means malformed input, integrity failure, or a codec workspace limit.
 `UnsupportedStream` means an unsupported wrapper feature. `BackendUnavailable`
@@ -83,7 +78,7 @@ means an absent optional backend or invalid device argument. A nonexistent
 nonnegative CUDA ordinal raises the underlying CuPy/CUDA error. Other argument
 errors use `TypeError`/`ValueError`; unexpected CuPy/CUDA runtime errors propagate.
 
-## Validation and optional integration
+## Validation
 
 ```sh
 python -m pip install ".[test]"
@@ -91,18 +86,12 @@ python -m pytest -q tests
 ```
 
 GitHub CI builds and tests the installed wheel on CPU runners. CUDA tests skip
-when the GPU backend is unavailable; CPU CI does not establish GPU correctness. Tests use stdlib zlib only as
-an independent oracle/baseline and forbid CPU codec calls inside CUDA operations.
-`integrations/pycbc/gwf_deflate_jax.py` is an optional adapter for a development
-PyCBC frame-reader API. It is outside the installed package and imports PyCBC
-only when used in that project. Container
-parsing, CRCs, numeric conversion, replay caching, and scheme dispatch stay in
-PyCBC. The adapter was tested in an isolated development snapshot; it has not been
-deployed upstream and is not a compatibility promise for every PyCBC version.
+when the GPU backend is unavailable; CPU CI does not establish GPU correctness.
+Tests use stdlib zlib only as an independent oracle/baseline and forbid CPU codec
+calls inside CUDA operations.
 
 ## License
 
-[MIT](LICENSE). The code was originally developed for xangma's unmerged PyCBC
-development branch and is released independently by its owner. See
-[PROVENANCE.md](PROVENANCE.md). PyCBC and the other dependencies retain their own
-licenses.
+[MIT](LICENSE). The code was originally developed for xangma in an unmerged
+development branch and is released independently with the owner's authorization.
+See [PROVENANCE.md](PROVENANCE.md). Dependencies retain their own licenses.

@@ -33,3 +33,5 @@ jobs:
           PY
       - name: Test installed package
         run: python -m pytest -q tests
+      - name: Smoke test the synthetic benchmark harness
+        run: python benchmarks/benchmark.py --cpu-only --sizes 65536 --cpu-samples 1 --output /tmp/benchmark-smoke.json

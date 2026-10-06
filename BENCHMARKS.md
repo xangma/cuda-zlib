@@ -1,63 +1,105 @@
-# Measured behavior
+# General byte-stream benchmarks
 
-Measured on 2026-10-05 with an RTX 4090, driver 610.57.04, Python 3.12.8,
-NumPy 2.2.6, CuPy 13.3.0, JAX/JAXlib 0.11.2 and CUDA runtime 12.6.
-H1/L1 labels identify example strain byte vectors, not required input formats.
-These measurements used the validated pre-release candidate whose executable
-codec logic and CUDA source strings are retained by this MIT release.
+The reproducible harness uses synthetic byte streams without external datasets.
+It measures encoded size, compression throughput and decompression throughput.
+The current recorded results are CPU baselines; fresh CUDA results for these
+workloads are pending. These CPU figures do not measure the CUDA codec.
 
-Codec workflows used one warmup and five synchronized samples. CPU compression
-used three samples. The encoding table shows **first call / warm median in ms**.
-First calls share one process and benefit from earlier work; they are not
-independent cold starts.
+## Workloads
 
-| Payload | Frozen CUDA bytes | New CUDA bytes | zlib 1 bytes | zlib 6 bytes | New size above zlib 6 |
-| --- | --- | --- | --- | --- | --- |
-| H1 1 MiB | 1,048,742 | 1,015,199 | 1,015,922 | 1,013,805 | 0.14% |
-| L1 1 MiB | 1,048,742 | 982,505 | 981,709 | 977,367 | 0.53% |
-| H1 64 MiB | 63,758,206 | 58,014,271 | 57,810,594 | 57,893,444 | 0.21% |
-| L1 64 MiB | 66,998,538 | 62,216,405 | 62,056,788 | 61,844,345 | 0.60% |
+Each workload runs at 64 KiB, 1 MiB and 64 MiB with seed `20261006`:
 
-| Payload | CUDA resident → resident | CUDA host → device | CUDA host → host | zlib 1 | zlib 6 |
-| --- | --- | --- | --- | --- | --- |
-| H1 1 MiB | 123.75 / 12.67 | 12.90 / 12.81 | 13.08 / 12.89 | 40.57 / 41.71 | 44.82 / 44.84 |
-| L1 1 MiB | 14.70 / 14.42 | 14.52 / 14.51 | 14.85 / 14.85 | 37.44 / 37.12 | 47.82 / 47.38 |
-| H1 64 MiB | 129.54 / 123.90 | 132.02 / 131.56 | 193.14 / 198.96 | 2364.29 / 2360.48 | 3959.41 / 3951.12 |
-| L1 64 MiB | 120.51 / 115.16 | 122.76 / 122.66 | 184.58 / 191.85 | 2634.23 / 2645.08 | 3027.28 / 3033.82 |
+- `zeros`: all zero bytes, representing extremely compressible input.
+- `text`: generated ASCII request records with varying fields. An 8192-record
+  block repeats to fill larger inputs; this is synthetic repetitive text.
+- `uint32`: ascending counters encoded as little-endian unsigned 32-bit integers.
+- `float32`: seeded Gaussian samples encoded as little-endian 32-bit floats.
+- `random`: seeded uniformly distributed bytes, representing incompressible input.
 
-New CUDA streams decoded in 10.65/10.95 ms for 1 MiB H1/L1 inputs and
-28.33/28.78 ms for the corresponding 64 MiB inputs. The earlier encoder's frozen
-64 MiB streams took 9.67/2.36 seconds before repair and now take about 37/33 ms.
-Old values were single samples; repaired values are warm medians. Independent
-before/after GPU profiles confirmed the serial-selection bottleneck and repair.
-Original dynamic-stream medians were about 0.4–5% slower in the final run.
-Independent stdlib fixed/stored 64 MiB H1 streams took 156.89/19.62 ms warm.
+Generation and validation occur outside timed regions. Payload SHA-256 hashes,
+all timing samples and software versions are recorded in the result JSON.
 
-The new 64 MiB outputs were 9.01/7.14% smaller than the earlier fixed-code
-encoder's output, but resident encoding rose from 72.46/66.42 ms to
-123.90/115.16 ms. On these inputs the new large outputs remained slightly larger
-than stdlib level 1. Small dynamic outputs decode more slowly than the earlier,
-larger stored outputs. There are independent chunk histories and a bounded
-greedy matcher rather than every stdlib zlib compression decision.
+## Recorded CPU baselines
 
-An isolated PyCBC development integration's large complete reads took
-300.70/319.50 ms with CUDA versus 798.11/831.11 ms on the host path. Both small
-complete CUDA reads remained slower than host. All four reads matched the public
-LAL reader byte-for-byte, including dtype, sample interval and start time.
-Readers cleared parsed-frame caches and constructed a fresh source for every
-sample, with the OS file cache warm. These integration timings include parsing,
-CRCs, JAX ownership, numeric conversion and slicing; they are not codec timings.
+Measured 2026-10-06 on Apple M4 Max, macOS arm64, Python 3.14.6,
+NumPy 2.5.3 and stdlib zlib 1.2.12. Each operation has one untimed warmup
+and five measured samples. Timings are single-threaded wall-clock medians;
+output allocation is included. This is one run on one workstation.
 
-Fresh import/device startup took 4.27 seconds and compiling both modules with a
-new NVRTC cache took 10.28 seconds. The private pool retained 0.95 GiB after the
-four cases. Startup and instrumented kernel measurements were separate from
-warm wall-clock medians. Workload and hardware affect these results.
+Encoded percentage is compressed bytes divided by input bytes; lower is better.
+Throughput is uncompressed MiB divided by elapsed seconds. Values over 100%
+indicate expansion. Decode uses the stream produced by zlib level 6.
 
-The pre-release source and installed wheel each passed 157 CUDA tests. The
-frozen PyCBC adapter suite passed 187 tests, with two fixture-dependent skips
-and one obsolete private-cache test deselected. The macOS installed wheel
-without CuPy/JAX passed 24 host-only tests and skipped 133 GPU tests. Coverage
-includes independent fixed/stored/dynamic streams, mixed blocks, alignments,
-overlapping history, corruption, exact bounds, recovery, output lifetime,
-concurrent calls and JAX ownership. Multiple physical GPUs, actual 256 MiB
-limits, allocator exhaustion and asynchronous driver failures remain untested.
+| Input | Workload | Encoded, level 1 | Encoded, level 6 | Compress level 1, MiB/s | Compress level 6, MiB/s | Decode level 6, MiB/s |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| 64 KiB | Zero bytes | 0.468% | 0.128% | 1529.1 | 622.7 | 1554.4 |
+| 64 KiB | Generated text | 12.273% | 10.779% | 797.9 | 233.8 | 3401.4 |
+| 64 KiB | Integer counters | 34.636% | 34.639% | 190.0 | 18.2 | 698.3 |
+| 64 KiB | Gaussian float32 | 92.839% | 92.599% | 58.2 | 45.3 | 529.1 |
+| 64 KiB | Uniform random bytes | 100.040% | 100.040% | 88.6 | 90.6 | 10714.9 |
+| 1 MiB | Zero bytes | 0.438% | 0.099% | 1217.7 | 571.8 | 3473.7 |
+| 1 MiB | Generated text | 12.127% | 10.333% | 559.7 | 184.7 | 4042.4 |
+| 1 MiB | Integer counters | 34.590% | 34.578% | 173.1 | 16.8 | 661.9 |
+| 1 MiB | Gaussian float32 | 92.888% | 92.625% | 46.2 | 37.8 | 522.9 |
+| 1 MiB | Uniform random bytes | 100.031% | 100.031% | 69.5 | 69.6 | 11650.4 |
+| 64 MiB | Zero bytes | 0.436% | 0.097% | 1193.7 | 561.2 | 4256.4 |
+| 64 MiB | Generated text | 12.121% | 10.293% | 586.7 | 193.8 | 3938.9 |
+| 64 MiB | Integer counters | 34.589% | 34.576% | 173.1 | 16.7 | 652.3 |
+| 64 MiB | Gaussian float32 | 92.886% | 92.617% | 45.7 | 37.1 | 514.0 |
+| 64 MiB | Uniform random bytes | 100.030% | 100.031% | 70.2 | 68.0 | 12113.2 |
+
+[Raw CPU results](benchmarks/results/apple-cpu.json) include every sample and
+both levels' decoding measurements. These baselines cannot establish GPU speedup
+across machines. CUDA comparisons should use the CPU measurements from the same
+CUDA run and the same payload hashes.
+
+## Reproduce
+
+Use a current `main` checkout, which includes the benchmark harness added after
+`v0.1.0a1`. Install the package and run:
+
+```sh
+python -m pip install ".[cuda12]"
+CUPY_CACHE_DIR="$(mktemp -d)" python benchmarks/benchmark.py \
+  --sizes 65536 1048576 67108864 --samples 5 --cpu-samples 3 \
+  --seed 20261006 --device 0 --output results-cuda.json
+```
+
+A fresh CuPy cache separates initial kernel compilation from warm throughput.
+The harness records import/CUDA initialization and `compile_kernels` durations
+separately. It performs one untimed warmup before each timed operation and
+synchronizes the device before and after CUDA calls. Avoid other active GPU
+work during measurements; GPU utilization, memory usage and temperature are
+recorded before and after the run, but these snapshots do not prove isolation.
+
+CUDA measurements include:
+
+- Compression with resident device input and output, host input to device
+  output, and complete host input to host output.
+- Resident decompression of codec-produced streams and independent zlib
+  level-6 streams, plus complete host-to-host decoding of level-6 streams.
+- Single-threaded stdlib zlib compression at levels 1 and 6 and CPU decoding
+  of the same compressed streams used by the CUDA decoder.
+
+Resident uploads, workload generation and byte comparisons are excluded from
+resident timings. API allocations remain included; host workflows include their
+transfers and host copies. All CUDA and CPU results are checked against the
+original bytes. Stdlib zlib independently decodes the CUDA compressor's output,
+and CUDA decodes the stdlib level-6 output. A failed check stops the run.
+The CUDA compressor uses its default 32768-byte chunks; it has no compression
+level equivalent to zlib's levels 1 or 6.
+
+For a CPU-only reproduction without CuPy or CUDA:
+
+```sh
+python -m pip install numpy
+python benchmarks/benchmark.py --cpu-only --cpu-samples 5 \
+  --seed 20261006 --output results-cpu.json
+```
+
+For a focused smoke check, add `--sizes 65536 --samples 1 --cpu-samples 1`.
+Small inputs can be dominated by launch and transfer costs. Highly repetitive
+streams can exercise different decoding paths from random bytes. Compare both
+encoded size and end-to-end throughput for the intended workload; synthetic
+results and the alpha codec's documented bounds are not a universal performance
+or compatibility guarantee.

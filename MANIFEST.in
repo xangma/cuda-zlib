@@ -1,2 +1,3 @@
 include PROVENANCE.md BENCHMARKS.md
 recursive-include integrations *.py
+recursive-include benchmarks *.py *.json
