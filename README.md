@@ -65,10 +65,10 @@ asynchronous pipeline.
 ## Performance
 
 On an RTX 3090 with an AMD Threadripper PRO 3995WX, warm **64 MiB**
-compression measured **3.87–12.53×** the throughput of the same CPU's
+compression measured **3.88–12.52×** the throughput of the same CPU's
 single-threaded stdlib zlib level 1. Decoding identical stdlib level-6 streams
-measured **1.02–4.29×** CPU throughput: GPU decoding was faster for zeros,
-synthetic text, uint32 and float32; random bytes were close to CPU parity.
+measured **1.06–4.42×** CPU throughput: GPU decoding was faster across all five
+workloads, with random bytes close to CPU parity.
 Both comparisons include GPU uploads, downloads, codec validation and conversion
 to host bytes. Host-array output is measured separately in the benchmark tables.
 
@@ -141,8 +141,10 @@ the actual stream requires them.
 Compression caches match tokens in a workspace of four bytes per input byte
 (256 MiB for a 64 MiB input). Decoding skips the second four-byte-per-output-byte
 reference workspace when every match resolves within its emitted segment, and
-gathers output bytes while calculating checksum partials. Allocation failures
-remain possible even within the codec bounds.
+gathers output bytes while calculating checksum partials. Large compressed
+inputs use a speculative-prefix queue of about one eighth the compressed input
+size. The queue is bounded; dense prefixes use a GPU fallback path. Allocation
+failures remain possible even within the codec bounds.
 
 `CodecError` means malformed input, integrity failure, or a codec workspace limit.
 `UnsupportedStream` means an unsupported wrapper feature. `BackendUnavailable`
