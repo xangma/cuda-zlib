@@ -51,7 +51,7 @@ FIXED_ENTRY_COUNT = 32
 WARP_MIN_OUTPUT_BYTES = 1 << 20
 
 KERNEL_NAMES = (
-    "discover", "describe_candidates", "fixed_summaries", "select_chain",
+    "discover", "scan_prefixes", "validate_prefixes", "describe_candidates", "fixed_summaries", "select_chain",
     "emit_blocks", "emit_blocks_warp", "emit_stored",
 )
 
@@ -675,6 +675,87 @@ extern "C" __global__ void discover(const u8* data, u32 input_bytes,
     }
 }
 
+// Large inputs scan with a lightweight kernel. Only prefix matches allocate
+// the Huffman validator's per-thread stack in the following kernel.
+extern "C" __global__ void scan_prefixes(const u8* data, u32 input_bytes,
+    u64* starts, u32* count, u32 max_candidates,
+    u64* prefixes, u32* prefix_count, u32 prefix_capacity) {
+    u64 stride = u64(blockDim.x) * gridDim.x;
+    for (u64 byte = u64(blockIdx.x) * blockDim.x + threadIdx.x;
+         byte < input_bytes; byte += stride) {
+        u64 low = 0;
+        u32 high = 0;
+        // An unaligned wide pointer cast would be undefined; assemble from
+        // individual bounded byte reads, shared by all eight prefix tests.
+        u64 available_bytes = u64(input_bytes) - byte;
+        #pragma unroll
+        for (u32 j = 0; j < 8; ++j)
+            if (j < available_bytes) low |= u64(data[byte + j]) << (8 * j);
+        #pragma unroll
+        for (u32 j = 0; j < 3; ++j)
+            if (j + 8 < available_bytes)
+                high |= u32(data[byte + j + 8]) << (8 * j);
+        // A stored block has aligned LEN/NLEN fields and a cheaply validated
+        // endpoint. Seed a following fixed header there instead of forcing
+        // the exact-chain selector to decode its entire token body serially.
+        // These remain speculative starts: embedded LEN/NLEN words cannot
+        // change the accepted chain, and full token/history checks still run.
+        if (byte && available_bytes >= 5) {
+            u32 n = u32(low) & 65535u;
+            u32 complement = u32(low >> 16) & 65535u;
+            if ((n ^ complement) == 65535u &&
+                u64(n) + 4 < available_bytes) {
+                u32 before = u32(data[byte - 1]) << 8;
+                if (byte >= 2) before |= u32(data[byte - 2]);
+                bool possible_stored = false;
+                // Alignment after the three-bit header permits eight starts.
+                for (u32 gap = 3; gap <= 10; ++gap)
+                    if (byte * 8 >= gap &&
+                        ((before >> (17 - gap)) & 3u) == 0)
+                        possible_stored = true;
+                u64 endpoint = byte + 4 + n;
+                if (possible_stored && ((data[endpoint] >> 1) & 3u) == 1) {
+                    u32 slot = atomicAdd(count, 1u);
+                    if (slot < max_candidates) starts[slot] = endpoint * 8;
+                }
+            }
+        }
+        u32 mask = 0;
+        for (u32 bit = 0; bit < 8; ++bit)
+            if ((byte || bit) && dynamic_prefix_window(low, high, bit, available_bytes * 8))
+                mask |= 1u << bit;
+        if (!byte) {
+            u32 slot = atomicAdd(count, 1u);
+            if (slot < max_candidates) starts[slot] = 0;
+        }
+        if (mask) {
+            u32 slot = atomicAdd(prefix_count, 1u);
+            if (slot < prefix_capacity) prefixes[slot] = (byte << 8) | mask;
+        }
+    }
+}
+
+extern "C" __global__ void validate_prefixes(const u8* data, u32 input_bytes,
+    u64* starts, u32* count, u32 max_candidates,
+    const u64* prefixes, const u32* prefix_count, u32 prefix_capacity) {
+    if (*prefix_count > prefix_capacity) return;
+    u64 stride = u64(blockDim.x) * gridDim.x;
+    for (u64 i = u64(blockIdx.x) * blockDim.x + threadIdx.x;
+         i < *prefix_count; i += stride) {
+        u64 entry = prefixes[i];
+        u64 byte = entry >> 8;
+        u32 mask = u32(entry) & 255u;
+        while (mask) {
+            u32 bit = __ffs(mask) - 1;
+            mask &= mask - 1;
+            u64 start = byte * 8 + bit;
+            if (dynamic_valid(data, input_bytes, start)) {
+                u32 slot = atomicAdd(count, 1u);
+                if (slot < max_candidates) starts[slot] = start;
+            }
+        }
+    }
+}
 extern "C" __global__ void describe_candidates(
     const u8* data, u32 input_bytes, const u64* starts, u32 count,
     u32 expected_bytes, u64* ends, u32* sizes, u32* finals, u32* status) {
