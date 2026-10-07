@@ -220,10 +220,11 @@ gzip, raw DEFLATE, dictionaries, concatenation, and trailing bytes. This is a
 bounded subset, not a complete implementation of all RFC 1950 features.
 
 RFC 1950 framing, declared window and checksum parameters stay on the GPU in
-checked decoding. The large-stream path reads discovery and accepted-chain
-counters to size sorting, temporary allocations and launches; a fixed-block
-summary retry can require another counter read. Output and final status remain
-JAX device arrays for compiled consumers.
+checked decoding. Discovery and accepted-chain counts, conditional retries and
+reference-resolution state also stay on device. The native checked path queues
+bounded sorting and launches without intermediate counter copies or explicit
+stream waits. Output and final status remain JAX device arrays for compiled
+consumers; completing the returned arrays waits for all decoding and validation.
 
 Input/output bounds are 256 MiB; candidate and block limits are 262144.
 Each invocation uses its own temporary workspace, allocated and freed on XLA's
@@ -244,9 +245,12 @@ dictionaries. Long fixed regions use fresh GPU token-boundary summaries when
 the actual stream requires them.
 
 Compression caches match tokens in a workspace of four bytes per input byte
-(256 MiB for a 64 MiB input). Large-file decoding reserves four bytes per output
-byte for references, or eight bytes per output byte when there are multiple
-emitted blocks. Reference resolution and final error checks run on the device;
+(256 MiB for a 64 MiB input). Decoding above 64 KiB reserves eight bytes per declared output
+byte for reference buffers under the default limits, plus up to 128 MiB of fixed
+tile summaries and bounded candidate/block metadata. Scratch is allocated before
+the GPU determines the stream's status, including for eligible medium fast parses
+and malformed input. The 256 MiB output limit can require 2 GiB of reference
+scratch alone. Reference resolution and final error checks run on the device;
 output bytes are gathered while calculating checksum partials. Large compressed
 inputs use a speculative-prefix queue of about one eighth the compressed input
 size. The queue is bounded; dense prefixes use a GPU fallback path. Allocation

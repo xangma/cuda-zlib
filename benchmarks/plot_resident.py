@@ -44,7 +44,7 @@ def main():
         low = np.array([min(row['seconds']) * 1000 for row in selected])
         high = np.array([max(row['seconds']) * 1000 for row in selected])
         position = x + (i - (len(workloads) - 1) / 2) * width
-        label = {'zeros': 'Zero bytes', 'text': 'Generated text', 'random': 'Random bytes'}.get(workload, workload)
+        label = {'zeros': 'Zero bytes', 'text': 'Generated text', 'uint32': 'Integer counters', 'float32': 'Gaussian floats', 'random': 'Random bytes'}.get(workload, workload)
         axes[0].bar(position, latency, width, label=label,
                     yerr=np.array([latency-low, high-latency]), capsize=3)
         throughput = np.array(sizes) / 1024**2 / (latency / 1000)

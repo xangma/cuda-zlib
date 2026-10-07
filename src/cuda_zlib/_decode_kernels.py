@@ -3,7 +3,7 @@
 
 """Bounded GPU discovery and reconstruction of original raw Deflate streams.
 
-This prototype parallelizes independent Deflate blocks and fixed-code tiles.
+The decoder parallelizes independent Deflate blocks and fixed-code tiles.
 Fresh fixed summaries are requested only when the exact boundary chain needs
 them. No host-generated block index, CPU inflation, or transcoding is used. The caller
 compiles ``CUDA_SOURCE`` into a native JAX FFI library, sorts candidate metadata on
@@ -29,7 +29,8 @@ ones, with lane zero parsing and all lanes expanding long matches. Launch both
 emitters: their output and status writes are disjoint. ``fixed_summaries`` uses
 32 threads per tile. ``emit_stored`` uses cooperative CTAs and follows both
 emitters without clearing block statuses.
-Grid stride supports smaller grids. ``select_chain`` uses one CTA/thread.
+Counts and status gates stay on device. Grid stride supports bounded static
+grids. ``select_chain`` uses one CTA/thread.
 """
 
 STATUS_MESSAGES = {
@@ -765,10 +766,13 @@ extern "C" __global__ void validate_prefixes(const u8* data, u32 input_bytes,
     }
 }
 extern "C" __global__ void describe_candidates(
-    const u8* data, u32 input_bytes, const u64* starts, u32 count,
-    u32 expected_bytes, u64* ends, u32* sizes, u32* finals, u32* status) {
+    const u8* data, u32 input_bytes, const u64* starts,
+    u32 expected_bytes, u64* ends, u32* sizes, u32* finals, u32* status,
+    const u32* count_device, const u32* discovery_status) {
     __shared__ DecodeTables tables;
+    if (*discovery_status) return;
     if (threadIdx.x) return;
+    const u32 count = *count_device;
     for (u64 i = blockIdx.x; i < count; i += gridDim.x) {
         BlockInfo info = parse_block(data, input_bytes, starts[i],
                                      expected_bytes, 0, (u32*)0, tables,
@@ -782,8 +786,11 @@ extern "C" __global__ void describe_candidates(
 
 extern "C" __global__ void fixed_summaries(
     const u8* data, u32 input_bytes, u32 tile_bytes, u64* ends, u32* sizes,
-    u64* first_ends, u32* first_sizes, u32* flags, u32* status) {
+    u64* first_ends, u32* first_sizes, u32* flags, u32* status,
+    const u32* chain_status = nullptr) {
     __shared__ DecodeTables tables;
+    // The request is immutable during this launch; every lane skips together.
+    if (chain_status && *chain_status != 13) return;
     if (!tile_bytes || blockDim.x != 32) return;
     if (!threadIdx.x) fixed_tables(tables.ll, tables.dd);
     __syncthreads();
@@ -813,11 +820,18 @@ extern "C" __global__ void select_chain(
     u32 max_blocks, u32* chain_status, u32 tile_bytes,
     const u64* summary_ends, const u32* summary_sizes,
     const u64* summary_first_ends, const u32* summary_first_sizes,
-    const u32* summary_flags, const u32* summary_status) {
+    const u32* summary_flags, const u32* summary_status,
+    const u32* count_device = nullptr, const u32* discovery_status = nullptr,
+    const u32* retry_status = nullptr) {
     __shared__ DecodeTables tables;
     if (blockIdx.x || threadIdx.x) return;
+    // A skipped retry must preserve the first chain's count and error. The
+    // retry request may alias chain_status, so consume it before clearing.
+    if (retry_status && *retry_status != 13) return;
     *block_count = 0;
-    *chain_status = 0;
+    *chain_status = discovery_status ? *discovery_status : 0;
+    if (*chain_status) return;
+    if (count_device) count = *count_device;
     if (expected_bytes >= 0x80000000u) { *chain_status = 7; return; }
     u64 next = 0;
     u32 output = 0, n = 0, real_blocks = 0;
@@ -972,11 +986,14 @@ __device__ __forceinline__ bool use_warp_emission(u32 size, u64 start, u64 end) 
 extern "C" __global__ void emit_blocks(
     const u8* data, u32 input_bytes, const u64* block_starts,
     const u64* block_ends, const u32* output_prefix, const u32* block_sizes,
-    u32 count, u32 expected_bytes, u32 window_bytes, u32* roots,
-    u32* block_status, const u32* window_device = nullptr) {
+    u32 expected_bytes, u32* roots, u32* block_status,
+    const u32* window_device, const u32* count_device,
+    const u32* chain_status) {
     __shared__ DecodeTables tables;
+    if (*chain_status) return;
     if (threadIdx.x) return;
-    if (window_device) window_bytes = *window_device;
+    const u32 count = *count_device;
+    const u32 window_bytes = *window_device;
     for (u64 i = blockIdx.x; i < count; i += gridDim.x) {
         u32 prefix = output_prefix[i], size = block_sizes[i];
         if (use_warp_emission(size, block_starts[i], block_ends[i])) continue;
@@ -1024,11 +1041,14 @@ extern "C" __global__ void emit_blocks(
 extern "C" __global__ void emit_blocks_warp(
     const u8* data, u32 input_bytes, const u64* block_starts,
     const u64* block_ends, const u32* output_prefix, const u32* block_sizes,
-    u32 count, u32 expected_bytes, u32 window_bytes, u32* roots,
-    u32* block_status, const u32* window_device = nullptr) {
+    u32 expected_bytes, u32* roots, u32* block_status,
+    const u32* window_device, const u32* count_device,
+    const u32* chain_status) {
     __shared__ DecodeTables tables;
+    if (*chain_status) return;
     if (threadIdx.x >= 32) return;
-    if (window_device) window_bytes = *window_device;
+    const u32 count = *count_device;
+    const u32 window_bytes = *window_device;
     for (u64 i = blockIdx.x; i < count; i += gridDim.x) {
         u32 prefix = output_prefix[i], size = block_sizes[i];
         if (!use_warp_emission(size, block_starts[i], block_ends[i])) continue;
@@ -1081,11 +1101,14 @@ extern "C" __global__ void emit_blocks_warp(
 extern "C" __global__ void emit_stored(
     const u8* data, u32 input_bytes, const u64* block_starts,
     const u64* block_ends, const u32* output_prefix, const u32* block_sizes,
-    u32 count, u32 expected_bytes, u32 window_bytes, u32* roots,
-    u32* block_status, const u32* window_device = nullptr) {
+    u32 expected_bytes, u32* roots, u32* block_status,
+    const u32* window_device, const u32* count_device,
+    const u32* chain_status) {
     __shared__ u64 stored_payload;
     __shared__ u32 stored, err;
-    if (!threadIdx.x && window_device) window_bytes = *window_device;
+    if (*chain_status) return;
+    const u32 count = *count_device;
+    const u32 window_bytes = threadIdx.x ? 0 : *window_device;
     for (u64 i = blockIdx.x; i < count; i += gridDim.x) {
         u32 prefix = output_prefix[i], size = block_sizes[i];
         if (!threadIdx.x) {
