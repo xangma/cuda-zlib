@@ -3,6 +3,7 @@
 """Bounded host compilation reuse and validation across warm calls."""
 from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
+import sys
 import zlib
 
 import numpy as np
@@ -56,9 +57,11 @@ def fake_backend(monkeypatch):
         return np.resize(data, sum(expected)), np.zeros((len(sizes), 2), np.uint32)
 
     fake = SimpleNamespace(
-        jit=jit, Array=Array, core=SimpleNamespace(Tracer=type("Tracer", (), {})),
+        jit=jit, Array=Array, numpy=np, core=SimpleNamespace(Tracer=type("Tracer", (), {})),
         sharding=SimpleNamespace(SingleDeviceSharding=lambda device, **kwargs: (device, kwargs)),
         device_put=lambda value, sharding: SimpleNamespace(block_until_ready=lambda: value))
+    monkeypatch.setitem(sys.modules, "jax", fake)
+    monkeypatch.setitem(sys.modules, "jax.numpy", np)
     monkeypatch.setattr(_codec, "_jax", lambda: fake)
     monkeypatch.setattr(_codec, "_select_device", lambda device: device)
     monkeypatch.setattr(_codec, "compress_zlib_batch_padded", encode)
