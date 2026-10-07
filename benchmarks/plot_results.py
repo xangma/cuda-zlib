@@ -352,7 +352,7 @@ def save_figure(fig, output, name):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, default=ROOT / "results" / "rtx4090-20261007.json")
+    parser.add_argument("--input", type=Path, default=ROOT / "results" / "rtx4090-20261008.json")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "figures")
     parser.add_argument("--validate-only", action="store_true", help="validate the report without writing figures")
     args = parser.parse_args()
