@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import statistics
 import subprocess
 import time
@@ -94,9 +95,39 @@ def cpu_model():
     return platform.processor()
 
 
-def cpu_only(args):
+def source_revision():
+    """Record a supplied revision as metadata, or the local Git revision."""
+    supplied = os.environ.get("CUDA_ZLIB_SOURCE_REVISION")
+    if supplied is not None:
+        if not re.fullmatch(r"(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})", supplied):
+            raise ValueError("CUDA_ZLIB_SOURCE_REVISION must be a full hexadecimal Git revision")
+        return supplied.lower()
+    try:
+        return subprocess.check_output(
+            ["git", "-C", str(Path(__file__).resolve().parents[1]), "rev-parse", "HEAD"],
+            text=True, timeout=10, stderr=subprocess.DEVNULL).strip()
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def native_build(device):
+    """Identify the library actually loaded for this device, not other cache entries."""
+    from cuda_zlib import _ffi
+    library, targets = _ffi._backend(device)
+    path = Path(library._name).resolve()
+    build = path.with_name("build.json")
+    contents = build.read_bytes()
+    return {"cache_key": path.parent.name, "library": str(path),
+            "library_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "build": str(build), "build_sha256": hashlib.sha256(contents).hexdigest(),
+            "identity": json.loads(contents), "ffi_targets": list(targets)}
+
+
+def cpu_only(args, revision):
     report = {
         "schema_version": 1,
+        "source_revision": revision,
+        "harness_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "arguments": {k: v for k, v in vars(args).items() if k != "output"},
         "environment": {"os": platform.system(), "machine": platform.machine(),
@@ -107,8 +138,10 @@ def cpu_only(args):
                         "cpu": "single-threaded stdlib zlib; levels 1 and 6",
                         "timing_includes": "output allocation",
                         "timing_excludes": "payload generation, validation"},
-        "cases": [],
+        "cases": [], "complete": False,
     }
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(report, indent=2) + "\n")
     for size in args.sizes:
         for workload in args.workloads:
             payload = make_payload(workload, size, args.seed)
@@ -126,11 +159,13 @@ def cpu_only(args):
                 "input_sha256": hashlib.sha256(payload).hexdigest(),
                 "encoded_bytes": lengths,
                 "encoded_percent": {k: 100 * v / size for k, v in lengths.items()},
-                "timings": times, "validation": "both levels decoded byte-exact",
+                "timings": times, "validation": "last decoded output from both levels byte-exact",
             })
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(json.dumps(report, indent=2) + "\n")
             print(f"pass {workload} {size}: encoded={lengths}", flush=True)
+    report["complete"] = True
+    args.output.write_text(json.dumps(report, indent=2) + "\n")
     print(f"complete {len(report['cases'])} CPU cases", flush=True)
 
 
@@ -149,8 +184,12 @@ def main():
         parser.error("sizes must be between 1 byte and 256 MiB")
     if min(args.samples, args.cpu_samples) < 1 or args.device < 0:
         parser.error("sample counts must be positive and device must be nonnegative")
+    try:
+        revision = source_revision()
+    except ValueError as exc:
+        parser.error(str(exc))
     if args.cpu_only:
-        cpu_only(args)
+        cpu_only(args, revision)
         return
     for size in args.sizes:
         chunks = (size + CHUNK_BYTES - 1) // CHUNK_BYTES
@@ -169,10 +208,11 @@ def main():
     cuda_zlib.compile_kernels(args.device)
     compile_seconds = time.perf_counter() - start
     module_root = Path(cuda_zlib.__file__).parent
-    cache_root = Path(os.environ.get("CUDA_ZLIB_CACHE_DIR", str(
-        Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "cuda-zlib")))
+    loaded_build = native_build(device)
     report = {
         "schema_version": 1,
+        "source_revision": revision,
+        "harness_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "arguments": {k: v for k, v in vars(args).items() if k != "output"},
         "environment": {
@@ -184,7 +224,8 @@ def main():
             "backend": "JAX typed CUDA FFI",
             "cuda_platform": device.client.platform_version,
             "gpu": device.device_kind,
-            "native_builds": [json.loads(p.read_text()) for p in sorted(cache_root.glob("*/build.json"))],
+            "native_build": loaded_build,
+            "native_builds": [loaded_build["identity"]],
             "gpu_snapshot_before": gpu_snapshot(),
             "codec_sha256": {str(p.relative_to(module_root)): hashlib.sha256(p.read_bytes()).hexdigest()
                                for p in sorted([*module_root.glob("*.py"), *module_root.glob("native/*.cu"),
@@ -204,8 +245,10 @@ def main():
             "host_decompression": "host_host returns bytes via pinned host transfer plus tobytes allocation/copy; host_array returns a completed read-only NumPy array backed by pinned host memory",
             "consumer_outputs": "CPU decompression and CUDA host_host return bytes; CUDA host_array returns NumPy uint8 and is reported separately",
         },
-        "cases": [],
+        "cases": [], "complete": False,
     }
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(report, indent=2) + "\n")
     for size in args.sizes:
         for workload in args.workloads:
             print(f"begin {workload} {size}", flush=True)
@@ -269,7 +312,7 @@ def main():
                                     "zlib1": 100 * len(cpu_streams[1]) / size,
                                     "zlib6": 100 * len(cpu_streams[6]) / size},
                 "timings": times,
-                "validation": "all outputs byte-exact; stdlib decoded CUDA output; CUDA decoded stdlib level 6",
+                "validation": "last returned output from each timed workflow byte-exact; stdlib decoded CUDA output; CUDA decoded stdlib level 6",
             }
             report["cases"].append(case)
             args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -279,6 +322,7 @@ def main():
             gc.collect()
     report["environment"]["gpu_snapshot_after"] = gpu_snapshot()
     report["environment"]["workspace_pool_after"] = cuda_zlib.workspace_pool_stats(device)
+    report["complete"] = True
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     print(f"complete {len(report['cases'])} cases", flush=True)
 

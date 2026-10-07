@@ -1,9 +1,150 @@
 {
+  "schema_version": 1,
+  "source_report": "benchmarks/results/resident-checked-rtx4090-20261007.json",
   "source_report_sha256": "de437433abf3cf89495701fbd1bad8966141910df6934e905761067f3ab94be3",
-  "plotter_sha256": "90a30fac7304af9f1e7a44cf04548f4a628d7fc9e210c1631d51ecb783165ace",
+  "plotter_sha256": "67f6a54c0d09bea050164488fbc98dafa3edf9d86f2b2dab4c57bce19e57609b",
+  "renderer": {
+    "matplotlib": "3.11.1",
+    "numpy": "2.5.2",
+    "backend": "Agg"
+  },
+  "measurement_source": {
+    "revision": "cb5a6299a26a9221bbac7e6f1201ce052930bcc9",
+    "sha256": {
+      "__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
+      "_codec.py": "0a0a5484f90a55cf53530b3dc837a12b2a293d5bb88c0b9426758d17409af5d2",
+      "_decode_kernels.py": "7fc7aeb3230c2d1797287e453f7c41c302837ceb3395a625ac58f555689d85b1",
+      "_encode_kernels.py": "514bd9aba9978010f4a1659209ac0a6b9b0e72a043d6605805c4c698f6d87964",
+      "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
+      "_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
+      "_postprocess.py": "bfbc7664b4c6255890388716f4e16999676ebe2b37c900c5e41eafad387ea307",
+      "jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
+      "native/batch_decode.cuh": "65544604248924cdbd14bd39eb6a85181f8eebdd3f2e3f296f28ad36579a04a4",
+      "native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+      "native/codec_ffi.cu": "b357d982698f0d3905ee35f0fd47c20c8e3d12ec93df6998764f2335db1f722b"
+    },
+    "harness_sha256": "a50f5b0ca028dcddb50a6eb0a7fdb402d2dae2ed1ab337ecc2e045ba8a8cc7c0"
+  },
+  "environment": {
+    "gpu_before": [
+      "NVIDIA GeForce RTX 4090, 610.57.04, 2737, 24564, 0, 55"
+    ],
+    "python": "3.12.8",
+    "jax": "0.11.2",
+    "jaxlib": "0.11.2",
+    "numpy": "2.2.6",
+    "backend": "JAX typed CUDA FFI",
+    "cuda_platform": "cuda 13040",
+    "zlib_runtime": "1.3.1",
+    "gpu_after": [
+      "NVIDIA GeForce RTX 4090, 610.57.04, 4188, 24564, 98, 63"
+    ],
+    "workspace_pool_after": {
+      "retention_bytes": 1073741824,
+      "reserved_bytes": 603979776,
+      "used_bytes": 0,
+      "pool_count": 1
+    }
+  },
+  "native_build": {
+    "cache_key": "6388957233425ad94d8a49ddff1ad1915ee4b79e78c98ce53fcf43d84dc97bc9",
+    "library_sha256": "26ad421390382ae91d338a54e9327a653c87b8ccfd7cbb319605c22c620a014f",
+    "build_sha256": "9d807709c12bd642187e97d002a6a78238fecf2cf3d700c76cc91ea3cf71fd91",
+    "identity": {
+      "architecture": "sm_89",
+      "jaxlib": "0.11.2",
+      "compiler": "/usr/local/cuda-12.1/bin/nvcc",
+      "compiler_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2023 NVIDIA Corporation\nBuilt on Mon_Apr__3_17:16:06_PDT_2023\nCuda compilation tools, release 12.1, V12.1.105\nBuild cuda_12.1.r12.1/compiler.32688072_0\n",
+      "sources": {
+        "codec_ffi.cu": "b357d982698f0d3905ee35f0fd47c20c8e3d12ec93df6998764f2335db1f722b",
+        "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
+        "decoder.cuh": "42dbcc25cd735dc77b8502753ed0530367b6c7cf049989f6f6df1f573d8a2693",
+        "postprocess.cuh": "31579be73cd0fd6fc120b0ee6accd9267df5ed66c88f9170208bdd506664a38e",
+        "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+        "batch_decode.cuh": "65544604248924cdbd14bd39eb6a85181f8eebdd3f2e3f296f28ad36579a04a4"
+      },
+      "headers": {
+        "api.h": "1426ea8206a1b9f1824f460572ea731665eb7cb9def1f0fc166b13df4b955ad0",
+        "c_api.h": "9847993912aa1aadb2dac4af16eeb9d8bae3f470905b519977d1d09b3f37eedf",
+        "collectives_api.h": "59f78f7358e33ad4c98d9356cce45b43c22c745eb6e88785070889e546b7e0b4",
+        "collectives_c_api.h": "ed27017e78d9adc100927b868b8578941765aaee483c16138c6e6ec3d982063f",
+        "ffi.h": "0878473a1ee35fdd9ff15424d46a44602fb53019f0d0a9f5117abdb386c35129",
+        "record_api.h": "35214dc4910a1de61e8903adca060d8a1354070fb0a31936cf97c7ce9292ec37",
+        "record_c_api.h": "6972199566e88987f224e42aac1a6b433d4d9a25f1eaa6526288b4922ff02db0"
+      },
+      "flags": [
+        "-O3",
+        "-lineinfo",
+        "--std=c++17",
+        "--cudart=shared",
+        "-Xcompiler=-pthread",
+        "-ldl"
+      ]
+    },
+    "ffi_targets": [
+      "cuda_zlib_compress_sm_89",
+      "cuda_zlib_decompress_sm_89",
+      "cuda_zlib_compress_batch_sm_89",
+      "cuda_zlib_decompress_batch_sm_89"
+    ]
+  },
+  "arguments": {
+    "sizes": [
+      65536,
+      131072,
+      262144,
+      1048576,
+      8388608,
+      67108864
+    ],
+    "workloads": [
+      "zeros",
+      "text",
+      "uint32",
+      "float32",
+      "random"
+    ],
+    "samples": 31,
+    "seed": 20261007,
+    "device": 0,
+    "cuda_profiler_range": false
+  },
+  "methodology": "Completed warm JIT checked decompression with resident inputs. Native build, XLA compilation, generation, upload, status and byte checks excluded. CPU codec forbidden inside calls. All shapes warmed before timing or capture. Normal timings sample completed calls; capture uses one call per case in a single continuous range with NVTX labels and retains output and metadata until stop. Capture wall timings are diagnostic. Status is checked before consuming output bytes after capture.",
+  "validated_cases": 30,
+  "samples_per_case": 31,
+  "latency_units": "median completed seconds * 1000, milliseconds",
+  "throughput_units": "uncompressed bytes / 2**20 / median completed seconds, MiB/s",
+  "error_bars": "all sample minimum and maximum latency; throughput extrema are inverse individual sample times; not confidence intervals",
+  "series_styles": {
+    "zeros": {
+      "label": "Zeros",
+      "color": "#0072B2",
+      "marker": "o"
+    },
+    "text": {
+      "label": "Synthetic text",
+      "color": "#D55E00",
+      "marker": "D"
+    },
+    "uint32": {
+      "label": "Ascending uint32",
+      "color": "#009E73",
+      "marker": "^"
+    },
+    "float32": {
+      "label": "Normal float32",
+      "color": "#CC79A7",
+      "marker": "s"
+    },
+    "random": {
+      "label": "Random bytes",
+      "color": "#475569",
+      "marker": "X"
+    }
+  },
   "exports": {
-    "resident-checked.png": "c98c43cabf85a6a5c0da54d844054c0cf66a47c478e491ac720f37dccb4f7526",
-    "resident-checked.svg": "7a17678357374cfbfd687934fd19c52339f7a5a8acfa2e88d4059689492c02ba",
-    "resident-checked.pdf": "f6bdd47e068a49ef121eb3f79f2facebbd0bb3aecaca4de9f856f5cd7377972f"
+    "resident-checked.png": "501dc34b66ec561d7c96adc2b63d8fdc66593ec1cfffa450c4b0c02f20ac2eb9",
+    "resident-checked.svg": "1e1f3a5ba20987cf25975c751cc5cfba5ec81d23095310f3a9e52556cdc1af9f",
+    "resident-checked.pdf": "3cf3c8828372b4c6cad8a0d9a03c7216e0f3e78b1678b55570a8c53ef6d4d7b5"
   }
 }

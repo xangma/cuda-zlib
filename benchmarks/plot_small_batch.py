@@ -21,6 +21,7 @@ REPORT_TYPE = "cuda-zlib-small-batch"
 LABELS = {"zeros": "Zeros", "text": "Synthetic text", "random": "Random bytes"}
 COLORS = {"cpu": "#009E73", "single": "#0072B2", "batch": "#D55E00"}
 MARKERS = {"cpu": "^", "single": "o", "batch": "s"}
+LINESTYLES = {"cpu": "-.", "single": "--", "batch": "-"}
 CPU_KEYS = {"cpu_compress_level1", "cpu_decompress_level6"}
 CUDA_KEYS = {f"cuda_{operation}_{method}_{scope}"
              for operation in ("compress", "decompress")
@@ -95,7 +96,7 @@ def load_results(path):
         workload, size, count = identity
         if case["total_input_bytes"] != size * count:
             raise ValueError(f"Wrong byte denominator: {identity}")
-        if not case["validation"].startswith("all timed workflow outputs byte-exact"):
+        if not case["validation"].startswith(("all timed workflow outputs byte-exact", "last returned output from each timed workflow byte-exact")):
             raise ValueError(f"Missing byte-exact validation: {identity}")
         if set(case["timings"]) != expected_keys:
             raise ValueError(f"Incomplete or unknown timing keys: {identity}")
@@ -167,6 +168,7 @@ def draw(report, cases, workload, scope):
                 high = np.asarray([timing["max_seconds"] / count * 1e6 for timing, count in zip(timings, counts)])
                 axis.errorbar(counts, medians, yerr=np.vstack((medians - low, high - medians)),
                               color=COLORS[method], marker=MARKERS[method], linewidth=1.7,
+                              linestyle=LINESTYLES[method],
                               markersize=5, capsize=3, label=label)
             title = "Compression" if operation == "compress" else "Decompression · stdlib level 6 streams"
             axis.set_title(f"{title}\n{format_bytes(size)} per file", fontsize=11)
@@ -189,9 +191,30 @@ def draw(report, cases, workload, scope):
         notes += "CUDA: warmed jax.jit, device outputs; status checked outside timing. CPU: single thread, host bytes outputs."
     else:
         notes += "Includes transfers, status checks and bytes copies for CUDA; CPU uses one thread."
+    notes += "\nPanel-specific logarithmic y ranges; lines connect measured file counts only."
     figure.text(0.06, 0.025, notes, fontsize=8.5, color="#475569", va="bottom")
     figure.tight_layout(rect=(0.015, 0.085, 0.995, 0.90))
     return figure
+
+
+def report_identifier(path):
+    try:
+        return path.resolve().relative_to(Path(__file__).resolve().parents[1]).as_posix()
+    except ValueError:
+        return path.name
+
+
+def save_figure(figure, output):
+    """Remove export timestamps and SVG trailing whitespace before hashing."""
+    metadata = {
+        ".png": {"Software": "cuda-zlib benchmark plotting"},
+        ".svg": {"Date": None, "Creator": "cuda-zlib benchmark plotting"},
+        ".pdf": {"CreationDate": None, "ModDate": None, "Creator": "cuda-zlib benchmark plotting"},
+    }
+    figure.savefig(output, dpi=180, metadata=metadata[output.suffix])
+    if output.suffix == ".svg":
+        output.write_text("\n".join(line.rstrip() for line in output.read_text().splitlines()) + "\n")
+    return hashlib.sha256(output.read_bytes()).hexdigest()
 
 
 def main():
@@ -199,10 +222,14 @@ def main():
     parser.add_argument("report", type=Path)
     parser.add_argument("--output-dir", type=Path, default=Path("small-batch-figures"))
     parser.add_argument("--prefix", default="small-batch")
+    parser.add_argument("--validate-only", action="store_true", help="validate the report without writing figures")
     args = parser.parse_args()
     if not args.prefix or Path(args.prefix).name != args.prefix:
         parser.error("prefix must be a filename component")
     report, cases, digest = load_results(args.report)
+    if args.validate_only:
+        print(f"Validated {len(cases)} cases; source SHA-256 {digest}")
+        return
     plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 9,
                          "svg.fonttype": "none", "svg.hashsalt": "cuda-zlib-small-batch-v1",
                          "pdf.fonttype": 42, "savefig.facecolor": "white"})
@@ -214,19 +241,26 @@ def main():
             figure = draw(report, cases, workload, scope)
             for extension in ("png", "svg", "pdf"):
                 output = args.output_dir / f"{args.prefix}-{workload}-{scope.replace('_', '-')}.{extension}"
-                figure.savefig(output, dpi=180)
-                exports.append({"file": output.name, "sha256": hashlib.sha256(output.read_bytes()).hexdigest(),
+                exports.append({"file": output.name, "sha256": save_figure(figure, output),
                                 "workload": workload, "scope": scope,
                                 "metric": "median total call seconds / file count, in microseconds"})
             plt.close(figure)
     manifest = {
         "schema_version": 1, "report_type": REPORT_TYPE,
-        "source_report": str(args.report.resolve()), "source_report_sha256": digest,
+        "source_report": report_identifier(args.report), "source_report_sha256": digest,
         "plotter_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "renderer": {"matplotlib": matplotlib.__version__, "numpy": np.__version__, "backend": "Agg"},
+        "source_revision": report.get("source_revision", report["source"].get("git", {}).get("commit")),
+        "harness_sha256": report.get("harness_sha256"),
         "measurement_source": report["source"], "environment": report["environment"],
         "arguments": report["arguments"], "methodology": report["methodology"],
         "plotted_operations": ["compression", "decompression"],
-        "roundtrip_plotted": False, "exports": exports,
+        "roundtrip_plotted": False,
+        "point_statistic": "median completed call seconds / file count * 1e6",
+        "error_bars": "sample minimum and maximum seconds / file count * 1e6; not confidence intervals",
+        "series_styles": {method: {"color": COLORS[method], "marker": MARKERS[method], "linestyle": LINESTYLES[method]}
+                          for method in COLORS},
+        "exports": exports,
     }
     output = args.output_dir / f"{args.prefix}-manifest.json"
     output.write_text(json.dumps(manifest, indent=2) + "\n")
