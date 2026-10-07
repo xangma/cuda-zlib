@@ -281,6 +281,53 @@ cudaError_t SetStatus(cudaStream_t stream, U32* metadata, U32 status,
   return cudaGetLastError();
 }
 
+// Discovery uses words 0..3 for its counters and later chain/checksum scratch.
+// Words 4..7 hold framing status, window, wanted checksum and a discovery gate.
+constexpr U32 kFramingOffset = 4;
+constexpr U32 kDiscoveryWords = 8;
+
+__global__ void DecompressionFraming(const U8* input, U32 size, U32* framing) {
+  if (blockIdx.x || threadIdx.x) return;
+  U32 error = 0, window = 0, wanted = 0;
+  if (size < 8) error = kTruncatedZlib;
+  else {
+    const U32 cmf = input[0], flg = input[1];
+    if (cmf == 0x1f && flg == 0x8b) error = kUnsupportedGzip;
+    else if ((cmf & 15) != 8 || (cmf >> 4) > 7 ||
+             (cmf * 256 + flg) % 31) error = kInvalidHeader;
+    else if (flg & 32) error = kUnsupportedDictionary;
+    else {
+      window = 1u << ((cmf >> 4) + 8);
+      wanted = (U32(input[size - 4]) << 24) | (U32(input[size - 3]) << 16) |
+               (U32(input[size - 2]) << 8) | U32(input[size - 1]);
+    }
+  }
+  framing[0] = error;
+  framing[1] = window;
+  framing[2] = wanted;
+  framing[3] = !error;
+}
+
+__global__ void ResetDenseDiscovery(U32* control, U32 prefix_capacity) {
+  if (blockIdx.x || threadIdx.x) return;
+  U32* framing = control + kFramingOffset;
+  const U32 repeat = !framing[0] && control[1] > prefix_capacity;
+  framing[3] = repeat;
+  if (repeat) {
+    // The completed validator skipped an overflowing prefix list. Discard all
+    // speculative stored seeds before the gated full discovery replaces them.
+    control[0] = 0;
+    control[1] = 0;
+  }
+}
+
+__global__ void SetDiscoveryFailure(const U32* framing, U32 fallback,
+                                     U32* metadata) {
+  if (blockIdx.x || threadIdx.x) return;
+  metadata[0] = framing[0] ? framing[0] : fallback;
+  metadata[1] = 0;
+}
+
 cudaError_t ReadWords(cudaStream_t stream, const U32* device, U32* host,
                       std::size_t count) {
   CUDA_TRY(cudaMemcpyAsync(host, device, count * sizeof(U32),
@@ -369,13 +416,13 @@ __global__ void RefinementStatus(checksum::DecodeState* state, U32 last_round) {
 }
 
 __global__ void VerifyDecompression(const checksum::DecodeState* state,
-                                    const U32* actual, U32 wanted,
+                                    const U32* actual, const U32* wanted,
                                     U32* metadata) {
   if (blockIdx.x || threadIdx.x) return;
   U32 error = state->status;
   if (!error && state->active) error = kReferenceDepthExceeded;
   // Gather/checksum are skipped on prior failure, so actual may be unwritten.
-  if (!error && *actual != wanted) error = kAdlerMismatch;
+  if (!error && *actual != *wanted) error = kAdlerMismatch;
   metadata[0] = error;
   metadata[1] = 0;
 }
@@ -471,33 +518,19 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
   }
   if (expected) CUDA_TRY(cudaMemsetAsync(output->typed_data(), 0, expected, stream));
 
-  // Only RFC 1950 framing bytes cross to host. Token parsing, index discovery,
-  // matching, output reconstruction and checksum computation remain on CUDA.
-  std::array<U8, 6> framing{};
-  CUDA_TRY(cudaMemcpyAsync(framing.data(), input.typed_data(), 2,
-                           cudaMemcpyDeviceToHost, stream));
-  CUDA_TRY(cudaMemcpyAsync(framing.data() + 2, input.typed_data() + full_size - 4,
-                           4, cudaMemcpyDeviceToHost, stream));
-  CUDA_TRY(cudaStreamSynchronize(stream));
-  const U32 cmf = framing[0], flg = framing[1];
-  if (cmf == 0x1f && flg == 0x8b)
-    return SetStatus(stream, result, kUnsupportedGzip);
-  if ((cmf & 15) != 8 || (cmf >> 4) > 7 || (cmf * 256 + flg) % 31)
-    return SetStatus(stream, result, kInvalidHeader);
-  if (flg & 32) return SetStatus(stream, result, kUnsupportedDictionary);
-  const U32 wanted_checksum = (U32(framing[2]) << 24) | (U32(framing[3]) << 16) |
-                             (U32(framing[4]) << 8) | U32(framing[5]);
   const U8* data = input.typed_data() + 2;
   const U32 length = U32(full_size - 6);
-  const U32 window = 1u << ((cmf >> 4) + 8);
   const U32 candidate_capacity = U32(max_candidates);
   const U32 block_capacity = U32(max_blocks);
   U64 *unsorted = nullptr, *starts = nullptr, *ends = nullptr;
   U32 *control = nullptr, *sizes = nullptr, *finals = nullptr, *status = nullptr;
   CUDA_TRY(workspace.Allocate(&unsorted, candidate_capacity));
   CUDA_TRY(workspace.Allocate(&starts, candidate_capacity));
-  CUDA_TRY(workspace.Allocate(&control, 4));
-  CUDA_TRY(cudaMemsetAsync(control, 0, 4 * sizeof(U32), stream));
+  CUDA_TRY(workspace.Allocate(&control, kDiscoveryWords));
+  CUDA_TRY(cudaMemsetAsync(control, 0, kDiscoveryWords * sizeof(U32), stream));
+  U32* framing = control + kFramingOffset;
+  DecompressionFraming<<<1, 1, 0, stream>>>(input.typed_data(), U32(full_size), framing);
+  CUDA_TRY(cudaGetLastError());
   const U32 discovery_grid = std::min<U32>(16384, (length + 127) / 128);
   std::array<U32, 2> host{};
   if (length > (1u << 20)) {
@@ -508,33 +541,35 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
     CUDA_TRY(workspace.Allocate(&prefixes, prefix_capacity));
     decoder::scan_prefixes<<<discovery_grid, 128, 0, stream>>>(
         data, length, unsorted, control, candidate_capacity,
-        prefixes, control + 1, prefix_capacity);
+        prefixes, control + 1, prefix_capacity, framing);
     CUDA_TRY(cudaGetLastError());
     decoder::validate_prefixes<<<std::min<U32>(16384, (prefix_capacity + 127) / 128),
                                   128, 0, stream>>>(
         data, length, unsorted, control, candidate_capacity,
-        prefixes, control + 1, prefix_capacity);
+        prefixes, control + 1, prefix_capacity, framing);
     CUDA_TRY(cudaGetLastError());
-    CUDA_TRY(ReadWords(stream, control, host.data(), host.size()));
-    if (host[1] > prefix_capacity) {
-      // A dense prefix stream must retain the original discovery semantics.
-      // No validators ran; discard scan seeds before repeating discovery.
-      CUDA_TRY(cudaMemsetAsync(control, 0, 2 * sizeof(U32), stream));
-      decoder::discover<<<discovery_grid, 128, 0, stream>>>(
-          data, length, unsorted, control, candidate_capacity);
-      CUDA_TRY(cudaGetLastError());
-      CUDA_TRY(ReadWords(stream, control, host.data(), 1));
-    }
+    ResetDenseDiscovery<<<1, 1, 0, stream>>>(control, prefix_capacity);
+    CUDA_TRY(cudaGetLastError());
+    decoder::discover<<<discovery_grid, 128, 0, stream>>>(
+        data, length, unsorted, control, candidate_capacity, framing + 3);
+    CUDA_TRY(cudaGetLastError());
   } else {
     decoder::discover<<<discovery_grid, 128, 0, stream>>>(
-        data, length, unsorted, control, candidate_capacity);
+        data, length, unsorted, control, candidate_capacity, framing + 3);
     CUDA_TRY(cudaGetLastError());
-    CUDA_TRY(ReadWords(stream, control, host.data(), 1));
   }
+  // Framing and any dense-prefix retry complete before the same count readback
+  // needed by actual-count CUB sorting. The frame fields stay on the device.
+  CUDA_TRY(ReadWords(stream, control, host.data(), host.size()));
   const U32 candidates = host[0];
-  if (candidates > candidate_capacity)
-    return SetStatus(stream, result, kCandidateOverflow);
-  if (!candidates) return SetStatus(stream, result, kInitialBlockMissing);
+  if (candidates > candidate_capacity || !candidates) {
+    // Invalid framing disables all discovery, so its zero count takes this
+    // path. Preserve framing-error precedence without reading its status.
+    SetDiscoveryFailure<<<1, 1, 0, stream>>>(
+        framing, candidates > candidate_capacity ? kCandidateOverflow : kInitialBlockMissing,
+        result);
+    return cudaGetLastError();
+  }
 
   std::size_t sort_bytes = 0;
   CUDA_TRY(cub::DeviceRadixSort::SortKeys(nullptr, sort_bytes, unsorted, starts,
@@ -563,7 +598,7 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
       block_starts, block_ends, prefix, block_sizes, control, block_capacity,
       control + 1, 0, ends, sizes, ends, sizes, status, status);
   CUDA_TRY(cudaGetLastError());
-  CUDA_TRY(ReadWords(stream, control, host.data(), host.size()));
+  CUDA_TRY(ReadWords(stream, control, host.data(), 2));
   if (host[1] == 13) {
     const U32 tiles = (length + kFixedTileBytes - 1) / kFixedTileBytes;
     const std::size_t entries = std::size_t(tiles) * 32;
@@ -586,7 +621,7 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
         control + 1, kFixedTileBytes, summary_ends, summary_sizes, first_ends,
         first_sizes, summary_flags, summary_status);
     CUDA_TRY(cudaGetLastError());
-    CUDA_TRY(ReadWords(stream, control, host.data(), host.size()));
+    CUDA_TRY(ReadWords(stream, control, host.data(), 2));
   }
   if (host[1]) return SetStatus(stream, result, host[1]);
   const U32 blocks = host[0];
@@ -602,15 +637,15 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
   if (rounds) CUDA_TRY(workspace.Allocate(&alternate, expected));
   decoder::emit_blocks<<<blocks, 1, 0, stream>>>(
       data, length, block_starts, block_ends, prefix, block_sizes, blocks,
-      expected, window, roots, emission);
+      expected, 0, roots, emission, framing + 1);
   CUDA_TRY(cudaGetLastError());
   decoder::emit_blocks_warp<<<blocks, 32, 0, stream>>>(
       data, length, block_starts, block_ends, prefix, block_sizes, blocks,
-      expected, window, roots, emission);
+      expected, 0, roots, emission, framing + 1);
   CUDA_TRY(cudaGetLastError());
   decoder::emit_stored<<<blocks, 256, 0, stream>>>(
       data, length, block_starts, block_ends, prefix, block_sizes, blocks,
-      expected, window, roots, emission);
+      expected, 0, roots, emission, framing + 1);
   CUDA_TRY(cudaGetLastError());
   EmissionStatus<<<1, 256, 0, stream>>>(emission, blocks, decode_state);
   CUDA_TRY(cudaGetLastError());
@@ -635,7 +670,7 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
       partial_a, partial_b, parts, expected, control + 2, decode_state);
   CUDA_TRY(cudaGetLastError());
   VerifyDecompression<<<1, 1, 0, stream>>>(
-      decode_state, control + 2, wanted_checksum, result);
+      decode_state, control + 2, framing + 2, result);
   return cudaGetLastError();
 }
 

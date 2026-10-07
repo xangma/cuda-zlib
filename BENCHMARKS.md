@@ -115,6 +115,46 @@ runs real CPU measurements without JAX or CUDA. The plotter rejects incomplete
 matrices and inconsistent summaries; its manifest hashes every export and the
 source report.
 
+## Resident checked decoding on RTX 4090
+
+These measurements use one warmed `jax.jit` checked decode of an independent
+stdlib level-6 stream. The input, output and final metadata stay on the device;
+completion waits for both returned arrays. Timings exclude compilation, initial
+uploads and post-call host status/byte checks. GPU codec validation and temporary
+allocations are included. This timing scope differs from the host-byte and eager
+API measurements elsewhere; no CPU speedup is inferred from this dataset.
+
+| Stream size | Workload | Compressed bytes | Completed latency (ms) | Throughput (MiB/s) |
+| --- | --- | ---: | ---: | ---: |
+| 1 MiB | Zero bytes | 1039 | 5.700 | 175.4 |
+| 1 MiB | Generated text | 108353 | 20.783 | 48.1 |
+| 1 MiB | Random bytes | 1048902 | 0.715 | 1398.6 |
+| 8 MiB | Zero bytes | 8163 | 21.128 | 378.7 |
+| 8 MiB | Generated text | 863857 | 21.488 | 372.3 |
+| 8 MiB | Random bytes | 8391174 | 1.821 | 4393.5 |
+
+![Resident checked decode latency and throughput on RTX 4090](benchmarks/figures/resident-checked.png)
+
+Medians use 31 completed calls after all shapes are warmed; whiskers show sample
+minimum/maximum. Axes are logarithmic. Every case passed status and independent
+byte checks; CPU codec functions are forbidden during CUDA calls.
+[SVG](benchmarks/figures/resident-checked.svg) ·
+[PDF](benchmarks/figures/resident-checked.pdf) ·
+[Raw samples and hashes](benchmarks/results/resident-checked-rtx4090-20261007.json).
+
+Measured 2026-10-07 on RTX 4090, driver 610.57.04, JAX/JAXlib 0.11.2,
+Python 3.12.8 and nvcc 12.1.105. Package and harness hashes match
+[39ac535](https://github.com/xangma/cuda-zlib/tree/39ac5353a131f006b3eaa30dc9451785630ab8a1).
+The private workspace pool ended with 96 MiB retained and zero live scratch.
+The workstation was shared; device snapshots do not establish isolation.
+
+```sh
+CUDACXX=/path/to/nvcc XLA_PYTHON_CLIENT_PREALLOCATE=false \
+  python benchmarks/profile_resident.py --sizes 1048576 8388608 \
+  --workloads zeros text random --seed 20261007 --samples 31 --output resident.json
+python benchmarks/plot_resident.py resident.json --output-dir resident-figures
+```
+
 ## Single-stream results on RTX 3090
 
 These results compare cuda-zlib on an **RTX 3090** with **single-threaded stdlib
@@ -417,34 +457,41 @@ or compatibility guarantee.
 
 ## Profiling
 
-Capture warmed CUDA calls with Nsight Systems:
+Capture warmed resident checked decompression with Nsight Systems:
 
 ```sh
 CUDACXX=/usr/local/cuda-12.1/bin/nvcc python benchmarks/trace.py \
-  --nsys /path/to/nsys --output traces/codec --cuda-profiler-range -- \
-  python benchmarks/profile.py --sizes 1048576 --workloads zeros random \
-  --samples 3 --cuda-profiler-range --output traces/wall.json
+  --nsys /path/to/nsys --output traces/decode --cuda-profiler-single-range -- \
+  python benchmarks/profile_resident.py --sizes 1048576 8388608 \
+  --workloads zeros text random --cuda-profiler-range --output traces/decode.json
 ```
 
-The range workload warms all requested shapes before the first capture, since
-new JAX compilation between repeated ranges can disconnect Nsight on the tested
-stack. Each profiler API range captures an extra completed codec call after warmup;
-startup and oracle checks are outside those ranges. The workload checks byte-exact outputs and forbids
-CPU codec calls during CUDA operations. Profiler overhead can affect timings;
-use the benchmark harness for throughput comparisons.
+The workload warms every requested shape, then completes one decode per case
+inside a single continuous profiler range. NVTX labels identify workload and
+uncompressed size. Inputs stay resident; both output and status are completed on
+the GPU. Status is checked before output bytes after capture, and CPU codec calls
+are forbidden during decoding. Capture retains all outputs until the range ends,
+so device memory grows with the sum of requested input and output sizes. Use
+fewer cases per process when memory is limited. Startup, compilation, uploads,
+oracle checks and file writes are outside the capture.
+
+For ordinary completed resident timings, run the workload directly without
+`--cuda-profiler-range` and choose `--samples`. These timings exclude initial
+uploads and post-call host status/byte checks. They measure a checked JIT API
+workflow and have a different scope from host-byte benchmarks above. Timings
+under Nsight are diagnostic; use separate normal runs for performance comparisons.
+`benchmarks/profile.py` also measures eager compression and both codec-produced
+and stdlib streams; `trace.py --cuda-profiler-range` supports its separate ranges.
 
 `trace.py` writes the Nsight report, SQLite export, log and a `.trace.json`
-manifest containing the CLI version and record counts. It requires successful
-execution, imported GPU kernels and CUDA API records, and rejects known import
-errors or a disconnected capture agent even when Nsight returns zero. Choose a
-fresh output prefix for each run.
+manifest containing the CLI version, capture mode and record counts. It requires
+successful execution, imported GPU kernels and CUDA API records, and rejects
+known import errors or a disconnected agent even when Nsight returns zero. Choose
+a fresh output prefix for each run. The single-range mode stops collection after
+one range while allowing the workload to finish its validation.
 
-The default `--nvtx-domain-exclude=TSL` keeps CUDA and other NVTX records while
-omitting JAX's TSL annotations, which cause registered-string import errors on
-the tested JAX 0.11.2 / Nsight Systems 2026.1.3 stack. On a compatible stack,
-`--nvtx-domain-exclude=""` includes all domains.
-
-The range workload leaves `environment.gpu_after` unset: launching `nvidia-smi`
-after the last capture can disconnect Nsight before deferred export. Collect
-that snapshot after `trace.py` exits. In-process wall times under Nsight are
-diagnostic; use a separate benchmark run for throughput.
+The default `--nvtx-domain-exclude=TSL` retains CUDA and other NVTX records while
+omitting JAX TSL annotations for import compatibility on JAX 0.11.2 / Nsight
+Systems 2026.1.3. On a compatible stack, `--nvtx-domain-exclude=""` includes all
+domains. Capture workloads leave `environment.gpu_after` unset; collect device
+snapshots after `trace.py` exits to avoid subprocesses during deferred export.

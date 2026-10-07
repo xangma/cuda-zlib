@@ -16,6 +16,8 @@ declared window size (raw Deflate uses 32768). A root is an earlier output index
 
 Initialize discover's count to zero; allocate starts[max_candidates]. A returned
 count greater than capacity is an error, and must not be passed to other kernels.
+Optional discovery gates must remain immutable during each kernel launch; null
+gates retain raw Deflate discovery without framing validation.
 All sorted candidate columns must use the same permutation. Empty blocks are
 supported; block capacity is independent of output length. Speculative errors
 are local; only errors on the exact boundary chain invalidate the stream.
@@ -621,7 +623,9 @@ __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
 
 extern "C" __global__ void discover(const u8* data, u32 input_bytes,
                                     u64* starts, u32* count,
-                                    u32 max_candidates) {
+                                    u32 max_candidates,
+                                    const u32* enabled = nullptr) {
+    if (enabled && !*enabled) return;
     u64 stride = u64(blockDim.x) * gridDim.x;
     for (u64 byte = u64(blockIdx.x) * blockDim.x + threadIdx.x;
          byte < input_bytes; byte += stride) {
@@ -679,7 +683,9 @@ extern "C" __global__ void discover(const u8* data, u32 input_bytes,
 // the Huffman validator's per-thread stack in the following kernel.
 extern "C" __global__ void scan_prefixes(const u8* data, u32 input_bytes,
     u64* starts, u32* count, u32 max_candidates,
-    u64* prefixes, u32* prefix_count, u32 prefix_capacity) {
+    u64* prefixes, u32* prefix_count, u32 prefix_capacity,
+    const u32* frame_status = nullptr) {
+    if (frame_status && *frame_status) return;
     u64 stride = u64(blockDim.x) * gridDim.x;
     for (u64 byte = u64(blockIdx.x) * blockDim.x + threadIdx.x;
          byte < input_bytes; byte += stride) {
@@ -737,7 +743,9 @@ extern "C" __global__ void scan_prefixes(const u8* data, u32 input_bytes,
 
 extern "C" __global__ void validate_prefixes(const u8* data, u32 input_bytes,
     u64* starts, u32* count, u32 max_candidates,
-    const u64* prefixes, const u32* prefix_count, u32 prefix_capacity) {
+    const u64* prefixes, const u32* prefix_count, u32 prefix_capacity,
+    const u32* frame_status = nullptr) {
+    if (frame_status && *frame_status) return;
     if (*prefix_count > prefix_capacity) return;
     u64 stride = u64(blockDim.x) * gridDim.x;
     for (u64 i = u64(blockIdx.x) * blockDim.x + threadIdx.x;
@@ -952,16 +960,26 @@ extern "C" __global__ void select_chain(
     }
 }
 
+// Routing uses the accepted block's compressed extent, including any header.
+// Medium highly repetitive blocks benefit from cooperative history expansion.
+__device__ __forceinline__ bool use_warp_emission(u32 size, u64 start, u64 end) {
+    if (size > WARP_MIN_OUTPUT_BYTES) return true;
+    if (size <= 65536) return false;
+    const u64 begin = (start & FIXED_SEGMENT) ? (start & FIXED_POSITION) : start;
+    return end > begin && (end - begin + 7) / 8 <= size / 64;
+}
+
 extern "C" __global__ void emit_blocks(
     const u8* data, u32 input_bytes, const u64* block_starts,
     const u64* block_ends, const u32* output_prefix, const u32* block_sizes,
     u32 count, u32 expected_bytes, u32 window_bytes, u32* roots,
-    u32* block_status) {
+    u32* block_status, const u32* window_device = nullptr) {
     __shared__ DecodeTables tables;
     if (threadIdx.x) return;
+    if (window_device) window_bytes = *window_device;
     for (u64 i = blockIdx.x; i < count; i += gridDim.x) {
         u32 prefix = output_prefix[i], size = block_sizes[i];
-        if (size > WARP_MIN_OUTPUT_BYTES) continue;
+        if (use_warp_emission(size, block_starts[i], block_ends[i])) continue;
         u32 err = 0, external = 0;
         if (!window_bytes || window_bytes > 32768) err = 6;
         else if (expected_bytes >= 0x80000000u ||
@@ -1007,12 +1025,13 @@ extern "C" __global__ void emit_blocks_warp(
     const u8* data, u32 input_bytes, const u64* block_starts,
     const u64* block_ends, const u32* output_prefix, const u32* block_sizes,
     u32 count, u32 expected_bytes, u32 window_bytes, u32* roots,
-    u32* block_status) {
+    u32* block_status, const u32* window_device = nullptr) {
     __shared__ DecodeTables tables;
     if (threadIdx.x >= 32) return;
+    if (window_device) window_bytes = *window_device;
     for (u64 i = blockIdx.x; i < count; i += gridDim.x) {
         u32 prefix = output_prefix[i], size = block_sizes[i];
-        if (size <= WARP_MIN_OUTPUT_BYTES) continue;
+        if (!use_warp_emission(size, block_starts[i], block_ends[i])) continue;
         u32 err = 0, external = 0;
         if (!window_bytes || window_bytes > 32768) err = 6;
         else if (expected_bytes >= 0x80000000u ||
@@ -1063,9 +1082,10 @@ extern "C" __global__ void emit_stored(
     const u8* data, u32 input_bytes, const u64* block_starts,
     const u64* block_ends, const u32* output_prefix, const u32* block_sizes,
     u32 count, u32 expected_bytes, u32 window_bytes, u32* roots,
-    u32* block_status) {
+    u32* block_status, const u32* window_device = nullptr) {
     __shared__ u64 stored_payload;
     __shared__ u32 stored, err;
+    if (!threadIdx.x && window_device) window_bytes = *window_device;
     for (u64 i = blockIdx.x; i < count; i += gridDim.x) {
         u32 prefix = output_prefix[i], size = block_sizes[i];
         if (!threadIdx.x) {

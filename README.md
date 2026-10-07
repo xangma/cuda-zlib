@@ -157,6 +157,9 @@ The measured source is [23d40f5](https://github.com/xangma/cuda-zlib/tree/23d40f
 [small-file results](BENCHMARKS.md#independent-small-files-on-rtx-4090) for
 resident timings, CPU comparisons and batch-count plots.
 
+For compiled consumers, [resident checked decode measurements and plots](BENCHMARKS.md#resident-checked-decoding-on-rtx-4090) report completed JIT latency
+without uploads or host status checks.
+
 The following single-stream measurements use a separate RTX 3090 source
 snapshot recorded in [BENCHMARKS.md](BENCHMARKS.md#recorded-cuda-results).
 
@@ -215,6 +218,12 @@ DEFLATE blocks, including cross-block history. It checks CMF/FLG, advertised
 window, exact output size, exact stream extent, and original Adler32. It rejects
 gzip, raw DEFLATE, dictionaries, concatenation, and trailing bytes. This is a
 bounded subset, not a complete implementation of all RFC 1950 features.
+
+RFC 1950 framing, declared window and checksum parameters stay on the GPU in
+checked decoding. The large-stream path reads discovery and accepted-chain
+counters to size sorting, temporary allocations and launches; a fixed-block
+summary retry can require another counter read. Output and final status remain
+JAX device arrays for compiled consumers.
 
 Input/output bounds are 256 MiB; candidate and block limits are 262144.
 Each invocation uses its own temporary workspace, allocated and freed on XLA's
