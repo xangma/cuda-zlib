@@ -124,8 +124,9 @@ and checksum reductions. DEFLATE bit parsing still follows stream order.
 For small files, prefer CPU unless batching or device-resident processing suits
 the workflow. On an RTX 4090, CPU won every measured single-file case at 256 B,
 4 KiB and 64 KiB. With 128 independent files per packed call, host-byte
-compression of 64 KiB files beat CPU by 1.82–17.20×. Decompression beat CPU for
-zero/text files, while random-byte decoding remained slightly slower. See the
+compression of 64 KiB files beat CPU by 2.47–17.70×. Decompression beat CPU by
+9.14× for zeros and 1.81× for text; random-byte decoding was slightly slower.
+The measured source is [1994273](https://github.com/xangma/cuda-zlib/tree/19942736ab608ac2d81b6a19a8f8023fdc0e0637). See the
 [small-file results](BENCHMARKS.md#independent-small-files-on-rtx-4090) for
 resident timings, CPU comparisons and batch-count plots.
 
