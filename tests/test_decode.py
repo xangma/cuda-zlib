@@ -306,12 +306,24 @@ def test_handbuilt_deflate_fixtures_match_independent_stdlib():
     assert zlib.decompress(small_window) == raw
 
 
+def _dense_prefix_stored_stream():
+    # A complete code-length prefix followed by an invalid repeat. Repetition
+    # creates many speculative matches but no usable dynamic block at each
+    # marker; all markers are ordinary literals in a valid stored stream.
+    marker = _invalid_repeat_stream("repeat-before-length")[2:-4]
+    raw = (marker * ((2 * 1024 ** 2 + len(marker) - 1) // len(marker)))[:2 * 1024 ** 2]
+    chunks = [raw[i:i + 65535] for i in range(0, len(raw), 65535)]
+    body = b"".join(_stored(chunk, final=i == len(chunks) - 1)
+                    for i, chunk in enumerate(chunks))
+    return _wrap(body, raw), raw
+
+
 def test_discovery_stress_fixtures_match_independent_stdlib():
     streams = [_alignment_stream(index) for index in range(8)]
     streams += [_embedded_candidate_stream(), _many_dynamic_stream(True),
                 _many_dynamic_stream(False), _long_literal_stream()]
     streams += [_truncated_prefix_tail_stream(index) for index in range(8)]
-    streams.append(_grid_stride_stream())
+    streams += [_grid_stride_stream(), _dense_prefix_stored_stream()]
     for payload, raw in streams:
         assert zlib.decompress(payload) == raw
     # Invalid speculative bodies are harmless only when they are stored data.
@@ -466,6 +478,18 @@ def test_dynamic_discovery_with_late_code_length(
     decoder, cuda_device, forbid_cpu_inflation, prefix_count,
 ):
     payload, raw = _late_code_length_stream(prefix_count)
+    _assert_bytes(decoder(payload, len(raw), cuda_device), raw, cuda_device)
+
+
+@pytest.mark.parametrize("dense", [False, True], ids=["random", "prefix-queue-overflow"])
+def test_large_stored_stream_discovery(
+    decoder, cuda_device, forbid_cpu_inflation, dense,
+):
+    if dense:
+        payload, raw = _dense_prefix_stored_stream()
+    else:
+        raw = random.Random(92771).randbytes(2 * 1024 ** 2)
+        payload = _compressed(raw, level=0)
     _assert_bytes(decoder(payload, len(raw), cuda_device), raw, cuda_device)
 
 

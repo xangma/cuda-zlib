@@ -436,11 +436,39 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
   CUDA_TRY(workspace.Allocate(&starts, candidate_capacity));
   CUDA_TRY(workspace.Allocate(&control, 4));
   CUDA_TRY(cudaMemsetAsync(control, 0, 4 * sizeof(U32), stream));
-  decoder::discover<<<std::min<U32>(16384, (length + 127) / 128), 128, 0, stream>>>(
-      data, length, unsorted, control, candidate_capacity);
-  CUDA_TRY(cudaGetLastError());
+  const U32 discovery_grid = std::min<U32>(16384, (length + 127) / 128);
   std::array<U32, 2> host{};
-  CUDA_TRY(ReadWords(stream, control, host.data(), 1));
+  if (length > (1u << 20)) {
+    // Prefix matches are speculative and have a separate capacity from valid
+    // candidates. Scratch is bounded to one eighth of the compressed input.
+    const U32 prefix_capacity = (length + 63) / 64;
+    U64* prefixes = nullptr;
+    CUDA_TRY(workspace.Allocate(&prefixes, prefix_capacity));
+    decoder::scan_prefixes<<<discovery_grid, 128, 0, stream>>>(
+        data, length, unsorted, control, candidate_capacity,
+        prefixes, control + 1, prefix_capacity);
+    CUDA_TRY(cudaGetLastError());
+    decoder::validate_prefixes<<<std::min<U32>(16384, (prefix_capacity + 127) / 128),
+                                  128, 0, stream>>>(
+        data, length, unsorted, control, candidate_capacity,
+        prefixes, control + 1, prefix_capacity);
+    CUDA_TRY(cudaGetLastError());
+    CUDA_TRY(ReadWords(stream, control, host.data(), host.size()));
+    if (host[1] > prefix_capacity) {
+      // A dense prefix stream must retain the original discovery semantics.
+      // No validators ran; discard scan seeds before repeating discovery.
+      CUDA_TRY(cudaMemsetAsync(control, 0, 2 * sizeof(U32), stream));
+      decoder::discover<<<discovery_grid, 128, 0, stream>>>(
+          data, length, unsorted, control, candidate_capacity);
+      CUDA_TRY(cudaGetLastError());
+      CUDA_TRY(ReadWords(stream, control, host.data(), 1));
+    }
+  } else {
+    decoder::discover<<<discovery_grid, 128, 0, stream>>>(
+        data, length, unsorted, control, candidate_capacity);
+    CUDA_TRY(cudaGetLastError());
+    CUDA_TRY(ReadWords(stream, control, host.data(), 1));
+  }
   const U32 candidates = host[0];
   if (candidates > candidate_capacity)
     return SetStatus(stream, result, kCandidateOverflow);
