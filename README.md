@@ -62,7 +62,76 @@ have no automatic differentiation rule. Handler execution includes bounded
 host control synchronization; a compiled call does not imply an entirely
 asynchronous pipeline.
 
+## Multiple files
+
+Batch independent files to share dispatch, workspace and transfer costs:
+
+```python
+files = (b"first file" * 100, b"second file" * 500, b"")
+sizes = tuple(map(len, files))
+streams = cuda_zlib.compress_zlib_batch_host(files, device=0)
+outputs = cuda_zlib.decompress_zlib_batch_host(streams, sizes, device=0)
+assert tuple(view.tobytes() for view in outputs) == files
+```
+
+Files can have different lengths, including zero. Each gets its own zlib
+wrapper, history and checksum. The host compression API returns a tuple of
+`bytes`; host decompression returns read-only NumPy views of one packed pinned
+host allocation. `compress_zlib_batch` and `decompress_zlib_batch` return tuples
+of completed JAX arrays. Exact per-file JAX slicing adds dispatch work; prefer
+packed outputs in compiled workflows.
+
+For `jax.jit`, supply one flat buffer and static file sizes:
+
+```python
+sizes = (4096, 256, 0)
+chunk_bytes = 32768
+capacities = tuple(n + 5 * max(1, (n + chunk_bytes - 1) // chunk_bytes) + 6
+                   for n in sizes)
+
+@jax.jit
+def roundtrip(packed):
+    streams, encoded = cuda_zlib.compress_zlib_batch_padded(
+        packed, sizes, device, chunk_bytes=chunk_bytes)
+    output, decoded = cuda_zlib.decompress_zlib_batch_checked(
+        streams, capacities, sizes, device, encoded_metadata=encoded)
+    return output, encoded, decoded
+
+packed = jax.device_put(np.zeros(sum(sizes), dtype=np.uint8), device)
+output, encoded, decoded = roundtrip(packed)
+assert not np.any(np.asarray(encoded)[:, 1])
+assert not np.any(np.asarray(decoded)[:, 0])
+```
+
+Compression places each stream in a fixed-capacity slot, with zero padding.
+Its `(files, 2)` metadata rows contain `[encoded_length, status]`. Passing that
+metadata to decompression keeps actual lengths on device. For externally
+encoded streams, concatenate their exact bytes, supply their exact static
+lengths as `input_sizes`, and omit `encoded_metadata`. Decoded files are packed
+without padding; metadata rows are `[status, 0]`. Check every file's status
+before using its output. Convenience APIs raise an error naming the first
+failed file.
+
+Batching supports at most 262144 files, with combined input and output bounds
+of 256 MiB. Compression also bounds the combined chunk count and padded
+capacity. Batch decoding assigns a CUDA warp to each file and is intended for
+many small streams; use the single-stream API for large files. Small single
+streams use fused finishing and decoding paths, with cooperative byte copies
+and checksum reductions. DEFLATE bit parsing still follows stream order.
+
 ## Performance
+
+For small files, prefer CPU unless batching or device-resident processing suits
+the workflow. On an RTX 4090, CPU won every measured single-file case at 256 B,
+4 KiB and 64 KiB. With 128 independent files per packed call, host-byte
+compression of 64 KiB files beat CPU by 2.47–17.70×. Decompression beat CPU by
+9.14× for zeros and 1.81× for text; random-byte decoding was slightly slower.
+The measured source is [1994273](https://github.com/xangma/cuda-zlib/tree/19942736ab608ac2d81b6a19a8f8023fdc0e0637). See the
+[small-file results](BENCHMARKS.md#independent-small-files-on-rtx-4090) for
+resident timings, CPU comparisons and batch-count plots.
+
+The following single-stream measurements use a separate RTX 3090 source
+snapshot recorded in [BENCHMARKS.md](BENCHMARKS.md#recorded-cuda-results).
 
 On an RTX 3090 with an AMD Threadripper PRO 3995WX, warm **64 MiB**
 compression measured **3.88–12.52×** the throughput of the same CPU's

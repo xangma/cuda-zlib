@@ -99,7 +99,6 @@ __device__ bool enc_tree(const enc_u32* freq, enc_u32 alphabet, enc_u32 limit,
                         enc_u16* heap, enc_u32* weight) {
   for (enc_u32 shift = 0; shift <= 16u; ++shift) {
     enc_u32 heap_size = 0;
-    for (enc_u32 i = 0; i < 2u * alphabet - 1u; ++i) parent[i] = 65535u;
     for (enc_u32 i = 0; i < alphabet; ++i) {
       lengths[i] = 0; codes[i] = 0;
       weight[i] = freq[i] ? ((freq[i] + (1u << shift) - 1u) >> shift) : 0;
@@ -122,6 +121,8 @@ __device__ bool enc_tree(const enc_u32* freq, enc_u32 alphabet, enc_u32 limit,
       parent[a] = (enc_u16)next; parent[b] = (enc_u16)next;
       enc_heap_push(next++, heap, heap_size, weight);
     }
+    // Every participating non-root node received a parent during merging.
+    parent[next - 1u] = 65535u;
     bool overlong = false;
     // Internal weights are dead once the heap is consumed. Reuse that shared
     // scratch instead of spilling dynamically indexed automatic arrays.
@@ -186,29 +187,55 @@ __device__ enc_u32 enc_rle(enc_u32 nll, enc_u32 ndist, const enc_u8* ll,
 
 // Preserve the original one-candidate matcher and its insertion order. A
 // literal consumes one byte; a match consumes at least three, so n token slots
-// suffice. Match tokens hold the already-classified symbols and extra values.
+// suffice. The first warp compares a candidate and inserts consumed positions
+// together. atomicMax retains the last position when their hashes collide.
+// Literal runs remain in lane zero, avoiding a collective for each byte.
+// All 32 lanes must call this helper; only lane zero returns the token count.
 __device__ enc_u32 enc_collect(
     const enc_u8* data, enc_u32 n, enc_u32* last,
     enc_u32* ll_freq, enc_u32* d_freq, enc_u32& extra_bits,
     enc_u32* tokens) {
+  const enc_u32 lane = threadIdx.x & 31u;
   enc_u32 pos = 0, count = 0;
-  while (pos < n) {
-    enc_u32 match = 0, distance = 0;
-    if (n - pos >= 3) {
-      enc_u32 hash = enc_hash(data, pos);
-      enc_u32 previous = last[hash];
-      last[hash] = pos + 1u;
-      if (previous) {
-        enc_u32 earlier = previous - 1u;
-        distance = pos - earlier;
-        if (distance && distance <= 32768u) {
-          enc_u32 limit = n - pos;
-          if (limit > 258u) limit = 258u;
-          while (match < limit && data[earlier + match] == data[pos + match]) ++match;
+  while (true) {
+    enc_u32 earlier = 0;
+    if (!lane) {
+      while (pos < n) {
+        bool candidate = false;
+        if (n - pos >= 3u) {
+          enc_u32 hash = enc_hash(data, pos), previous = last[hash];
+          last[hash] = pos + 1u;
+          if (previous) {
+            earlier = previous - 1u;
+            enc_u32 distance = pos - earlier;
+            candidate = distance && distance <= 32768u &&
+                data[earlier] == data[pos] && data[earlier+1u] == data[pos+1u] &&
+                data[earlier+2u] == data[pos+2u];
+          }
         }
+        if (candidate) break;
+        ++ll_freq[data[pos]];
+        tokens[count++] = data[pos++];
       }
     }
-    if (match >= 3) {
+    pos = __shfl_sync(0xffffffffu, pos, 0);
+    if (pos == n) break;
+    earlier = __shfl_sync(0xffffffffu, earlier, 0);
+    enc_u32 limit = n - pos;
+    if (limit > 258u) limit = 258u;
+    enc_u32 match = limit;
+    for (enc_u32 base = 3u; base < limit; base += 32u) {
+      enc_u32 offset = base + lane;
+      enc_u32 different = __ballot_sync(0xffffffffu, offset < limit &&
+          data[earlier+offset] != data[pos+offset]);
+      if (different) { match = base + __ffs(different) - 1u; break; }
+    }
+    __syncwarp();
+    for (enc_u32 j = 1u + lane; j < match && n - (pos + j) >= 3u; j += 32u)
+      atomicMax(last + enc_hash(data, pos + j), pos + j + 1u);
+    __syncwarp();
+    if (!lane) {
+      enc_u32 distance = pos - earlier;
       enc_u32 li = 0, di = 0;
       while (li < 28u && match >= enc_lb[li+1u]) ++li;
       while (di < 29u && distance >= enc_db[di+1u]) ++di;
@@ -216,16 +243,10 @@ __device__ enc_u32 enc_collect(
       tokens[count++] = 0x80000000u | li | (di << 5) |
                          ((match - enc_lb[li]) << 10) |
                          ((distance - enc_db[di]) << 15);
-      for (enc_u32 j = 1; j < match && n - (pos + j) >= 3; ++j)
-        last[enc_hash(data, pos + j)] = pos + j + 1u;
       pos += match;
-    } else {
-      ++ll_freq[data[pos]];
-      tokens[count++] = data[pos];
-      ++pos;
     }
   }
-  ++ll_freq[256];
+  if (!lane) ++ll_freq[256];
   return count;
 }
 
@@ -254,16 +275,15 @@ __device__ void enc_emit(
 __device__ enc_u32 enc_extent(enc_u32 bits, bool final) {
   return final ? (bits+7u)/8u : (bits+3u+7u)/8u+4u;
 }
-extern "C" __global__ void encode_chunks(
+__device__ __forceinline__ void encode_chunk(
     const enc_u8* input, enc_u32 total, enc_u32 chunk_bytes, enc_u32 chunks,
-    enc_u32 slot_bytes, enc_u8* scratch, enc_u32* sizes, enc_u32* status,
-    enc_u32* tokens) {
+    enc_u32 chunk, enc_u32 slot_bytes, enc_u8* scratch, enc_u32* sizes,
+    enc_u32* status, enc_u32* tokens) {
   __shared__ enc_u32 last[8192];
   __shared__ enc_u32 freq[335], weight[571];
   __shared__ enc_u16 codes[335], parent[571], heap[286];
   __shared__ enc_u8 lengths[335], rle_symbols[316], rle_extras[316];
   __shared__ enc_u32 extra_bits, nll, ndist, ncl, rle_size, mode, extent, token_count;
-  enc_u32 chunk = blockIdx.x;
   if (chunk >= chunks) return;
   enc_u32 start = chunk * chunk_bytes;
   enc_u32 n = total - start;
@@ -279,7 +299,12 @@ extern "C" __global__ void encode_chunks(
   BitWriter w = {slot, 0, slot_bytes, 0, 0, 0};
   if (!threadIdx.x) {
     extra_bits = 0; mode = 0; extent = n + 5u; status[chunk] = 0;
-    token_count = enc_collect(data, n, last, freq, freq+286, extra_bits, tokens+start);
+  }
+  if (threadIdx.x < 32u) {
+    enc_u32 count = enc_collect(data, n, last, freq, freq+286, extra_bits, tokens+start);
+    if (!threadIdx.x) token_count = count;
+  }
+  if (!threadIdx.x) {
     enc_u32 fixed_bits = 3u + extra_bits;
     for (enc_u32 i = 0; i < 286u; ++i)
       fixed_bits += freq[i] * (i <= 143u ? 8u : i <= 255u ? 9u : i <= 279u ? 7u : 8u);
@@ -353,6 +378,13 @@ extern "C" __global__ void encode_chunks(
   if (w.size != extent) { status[chunk] = 1; return; }
   sizes[chunk] = w.size;
   status[chunk] = w.error;
+}
+extern "C" __global__ void encode_chunks(
+    const enc_u8* input, enc_u32 total, enc_u32 chunk_bytes, enc_u32 chunks,
+    enc_u32 slot_bytes, enc_u8* scratch, enc_u32* sizes, enc_u32* status,
+    enc_u32* tokens) {
+  encode_chunk(input, total, chunk_bytes, chunks, blockIdx.x, slot_bytes,
+               scratch, sizes, status, tokens);
 }
 extern "C" __global__ void pack_chunks(
     const enc_u8* scratch, enc_u32 slot_bytes, const enc_u32* sizes,
