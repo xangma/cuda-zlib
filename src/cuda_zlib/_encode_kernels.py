@@ -75,10 +75,8 @@ __device__ void enc_heap_push(enc_u32 node, enc_u16* heap, enc_u32& count,
   }
   heap[i] = (enc_u16)node;
 }
-__device__ enc_u32 enc_heap_pop(enc_u16* heap, enc_u32& count,
-                               const enc_u32* weight) {
-  enc_u32 result = heap[0], node = heap[--count];
-  if (!count) return result;
+__device__ void enc_heap_replace_root(enc_u32 node, enc_u16* heap, enc_u32 count,
+                                     const enc_u32* weight) {
   enc_u32 i = 0;
   while (2u * i + 1u < count) {
     enc_u32 child = 2u * i + 1u;
@@ -87,6 +85,11 @@ __device__ enc_u32 enc_heap_pop(enc_u16* heap, enc_u32& count,
     heap[i] = heap[child]; i = child;
   }
   heap[i] = (enc_u16)node;
+}
+__device__ enc_u32 enc_heap_pop(enc_u16* heap, enc_u32& count,
+                               const enc_u32* weight) {
+  enc_u32 result = heap[0], node = heap[--count];
+  if (count) enc_heap_replace_root(node, heap, count, weight);
   return result;
 }
 
@@ -116,10 +119,12 @@ __device__ bool enc_tree(const enc_u32* freq, enc_u32 alphabet, enc_u32 limit,
     enc_u32 next = alphabet;
     while (heap_size > 1u) {
       enc_u32 a = enc_heap_pop(heap, heap_size, weight);
-      enc_u32 b = enc_heap_pop(heap, heap_size, weight);
+      enc_u32 b = heap[0];
       weight[next] = weight[a] + weight[b];
       parent[a] = (enc_u16)next; parent[b] = (enc_u16)next;
-      enc_heap_push(next++, heap, heap_size, weight);
+      // Replace the second minimum with its merged parent in one sift. The
+      // strict (weight, node ID) ordering preserves every subsequent minimum.
+      enc_heap_replace_root(next++, heap, heap_size, weight);
     }
     // Every participating non-root node received a parent during merging.
     parent[next - 1u] = 65535u;
@@ -305,21 +310,28 @@ __device__ __forceinline__ void encode_chunk(
     if (!threadIdx.x) token_count = count;
   }
   if (!threadIdx.x) {
-    enc_u32 fixed_bits = 3u + extra_bits;
+    enc_u32 fixed_bits = 3u + extra_bits, distance_tokens = 0;
     for (enc_u32 i = 0; i < 286u; ++i)
       fixed_bits += freq[i] * (i <= 143u ? 8u : i <= 255u ? 9u : i <= 279u ? 7u : 8u);
-    for (enc_u32 i = 0; i < 30u; ++i) fixed_bits += freq[286u+i] * 5u;
+    for (enc_u32 i = 0; i < 30u; ++i) {
+      distance_tokens += freq[286u+i];
+      fixed_bits += freq[286u+i] * 5u;
+    }
     enc_u32 fixed_extent = enc_extent(fixed_bits, final);
     if (fixed_extent < extent) { extent = fixed_extent; mode = 1; }
 
-    bool trees = enc_tree(freq, 286, 15, lengths, codes, parent, heap, weight);
-    enc_u32 ll_bits = 0, distance_tokens = 0;
-    for (enc_u32 i = 0; i < 286u; ++i) ll_bits += freq[i] * lengths[i];
-    for (enc_u32 i = 0; i < 30u; ++i) distance_tokens += freq[286u+i];
     // Dynamic coding needs at least 17 + 3*4 header bits and one bit per
-    // distance token. If even this lower bound cannot improve the complete
-    // stored/fixed extent, avoid the remaining trees without changing ties.
-    bool consider_dynamic = enc_extent(29u + extra_bits + ll_bits + distance_tokens, final) < extent;
+    // literal/length token (including EOF) and distance token. Compare complete
+    // extents so byte rounding, nonfinal alignment and mode ties are preserved.
+    bool trees = true;
+    enc_u32 ll_bits = 0;
+    bool consider_dynamic = enc_extent(29u + extra_bits + token_count + 1u + distance_tokens, final) < extent;
+    if (consider_dynamic) {
+      trees = enc_tree(freq, 286, 15, lengths, codes, parent, heap, weight);
+      for (enc_u32 i = 0; i < 286u; ++i) ll_bits += freq[i] * lengths[i];
+      // The actual literal/length cost can rule out the remaining trees.
+      consider_dynamic = enc_extent(29u + extra_bits + ll_bits + distance_tokens, final) < extent;
+    }
     if (trees && consider_dynamic) {
       trees = enc_tree(freq+286, 30, 15, lengths+286, codes+286, parent, heap, weight);
       nll = 286; ndist = 30;
