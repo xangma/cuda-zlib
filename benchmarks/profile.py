@@ -138,7 +138,9 @@ def main():
             print(stem, {k: round(v['wall']['median_seconds'] * 1000, 3)
                          for k, v in timings.items()}, flush=True)
             del stream, device_raw
-    report['environment']['gpu_after'] = gpu_snapshot()
+    # nvidia-smi after cudaProfilerStop can disconnect Nsight's capture agent
+    # before deferred reports are exported. Run it after trace.py exits instead.
+    report['environment']['gpu_after'] = None if args.cuda_profiler_range else gpu_snapshot()
     args.output.write_text(json.dumps(report, indent=2) + '\n')
 
 

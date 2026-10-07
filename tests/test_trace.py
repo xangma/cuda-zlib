@@ -1,7 +1,10 @@
 """A successful CLI exit is insufficient evidence of a usable CUDA trace."""
 import importlib.util
+import json
 from pathlib import Path
 import sqlite3
+import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -40,3 +43,56 @@ def test_trace_accepts_imported_cuda(tmp_path):
     counts = {'CUPTI_ACTIVITY_KIND_KERNEL': 12, 'CUPTI_ACTIVITY_KIND_RUNTIME': 86}
     db = database(tmp_path / 'complete.sqlite', counts)
     assert trace.validate_trace(db, 'Generated report') == counts
+
+
+@pytest.mark.parametrize('message', ['Importation succeeded with non-fatal errors',
+                                    'Connection to Agent lost'])
+def test_trace_rejects_diagnostics_with_existing_records(tmp_path, message):
+    db = database(tmp_path / 'partial.sqlite', {'CUPTI_ACTIVITY_KIND_KERNEL': 12,
+                                               'CUPTI_ACTIVITY_KIND_RUNTIME': 86})
+    with pytest.raises(RuntimeError):
+        trace.validate_trace(db, message)
+
+
+@pytest.mark.parametrize('excluded', [None, ''])
+def test_trace_cli_domain_filter_and_manifest(tmp_path, monkeypatch, excluded):
+    prefix = tmp_path / 'codec'
+    args = ['trace.py', '--output', str(prefix), '--cuda-profiler-range']
+    if excluded is not None:
+        args += ['--nvtx-domain-exclude', excluded]
+    command = ['python', 'workload.py', '--cuda-profiler-range']
+    monkeypatch.setattr(sys, 'argv', args + ['--'] + command)
+    monkeypatch.setattr(trace.subprocess, 'check_output', lambda *a, **k: 'Nsight test version\n')
+    invocations = []
+    def run(invocation, *, stdout, stderr):
+        invocations.append(invocation)
+        (tmp_path / 'codec.1.nsys-rep').touch()
+        database(tmp_path / 'codec.1.sqlite', {'CUPTI_ACTIVITY_KIND_KERNEL': 12,
+                                             'CUPTI_ACTIVITY_KIND_RUNTIME': 86})
+        stdout.write('Generated report\n')
+        return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(trace.subprocess, 'run', run)
+    trace.main()
+    invocation = invocations[0]
+    assert invocation[-len(command):] == command
+    assert '--capture-range=cudaProfilerApi' in invocation
+    assert ('--nvtx-domain-exclude=TSL' in invocation) == (excluded is None)
+    assert not any(flag == '--nvtx-domain-exclude=' for flag in invocation)
+    manifest = json.loads((tmp_path / 'codec.trace.json').read_text())
+    assert manifest['validated'] and len(manifest['records']) == 1
+    assert manifest['nvtx_domain_exclude'] == ('TSL' if excluded is None else '')
+
+
+def test_trace_cli_rejects_lost_agent_without_report(tmp_path, monkeypatch):
+    prefix = tmp_path / 'codec'
+    monkeypatch.setattr(sys, 'argv', ['trace.py', '--output', str(prefix), '--', 'workload'])
+    monkeypatch.setattr(trace.subprocess, 'check_output', lambda *a, **k: 'Nsight test version\n')
+    def run(invocation, *, stdout, stderr):
+        stdout.write('Connection to Agent lost. Internal reason: End of file\n')
+        return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(trace.subprocess, 'run', run)
+    with pytest.raises(SystemExit) as error:
+        trace.main()
+    assert error.value.code == 1
+    manifest = json.loads((tmp_path / 'codec.trace.json').read_text())
+    assert not manifest['validated'] and 'disconnected' in manifest['error']
