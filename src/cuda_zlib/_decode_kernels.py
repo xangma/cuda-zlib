@@ -268,14 +268,12 @@ __device__ __forceinline__ bool dynamic_prefix_window(
     if (((low >> (bit + 3)) & 31u) > 29u) return false;
     u32 nc = u32((low >> (bit + 13)) & 15u) + 4;
     if (bit + 17 + 3 * nc > available_bits) return false;
+    // At most 19 three-bit lengths fit in one word after the header.
+    u64 lengths = (low >> (bit + 17)) | (u64(high) << (47 - bit));
     u32 kraft = 0;
     for (u32 i = 0; i < nc; ++i) {
-        u32 shift = bit + 17 + 3 * i;
-        u32 len;
-        if (shift <= 61) len = u32(low >> shift) & 7u;
-        else if (shift < 64)
-            len = u32((low >> shift) | (u64(high) << (64 - shift))) & 7u;
-        else len = (high >> (shift - 64)) & 7u;
+        u32 len = u32(lengths) & 7u;
+        lengths >>= 3;
         if (len) kraft += 128u >> len;
         if (kraft > 128) return false;
     }
@@ -734,6 +732,8 @@ extern "C" __global__ void select_chain(
     if (expected_bytes >= 0x80000000u) { *chain_status = 7; return; }
     u64 next = 0;
     u32 output = 0, n = 0, real_blocks = 0;
+    u32 candidate = 0;
+    u64 candidate_start = count ? starts[0] : ~u64(0);
     bool fixed_ready = false;
     for (;;) {
         if (n >= max_blocks) { *chain_status = 9; return; }
@@ -815,18 +815,29 @@ extern "C" __global__ void select_chain(
             }
             continue;
         }
-        u32 lo = 0, hi = count;
-        while (lo < hi) {
-            u32 mid = lo + (hi - lo) / 2;
-            if (starts[mid] < next) lo = mid + 1;
-            else hi = mid;
+        // Exact block ends advance monotonically through sorted candidates.
+        // Adjacent entries need one load; skipped speculative starts retain
+        // logarithmic lookup and select the first duplicate at the boundary.
+        if (candidate_start < next) {
+            ++candidate;
+            candidate_start = candidate < count ? starts[candidate] : ~u64(0);
+            if (candidate_start < next) {
+                u32 lo = candidate + 1, hi = count;
+                while (lo < hi) {
+                    u32 mid = lo + (hi - lo) / 2;
+                    if (starts[mid] < next) lo = mid + 1;
+                    else hi = mid;
+                }
+                candidate = lo;
+                candidate_start = candidate < count ? starts[candidate] : ~u64(0);
+            }
         }
         BlockInfo info;
-        if (lo < count && starts[lo] == next) {
-            info.end = ends[lo];
-            info.size = sizes[lo];
-            info.final = finals[lo];
-            info.status = status[lo];
+        if (candidate < count && candidate_start == next) {
+            info.end = ends[candidate];
+            info.size = sizes[candidate];
+            info.final = finals[candidate];
+            info.status = status[candidate];
         } else {
             // Request fresh summaries only on an undiscovered exact fixed
             // boundary, never because a speculative candidate was expensive.

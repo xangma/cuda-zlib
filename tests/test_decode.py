@@ -203,6 +203,31 @@ def _alignment_stream(prefix_count):
     return _wrap(body, raw), raw
 
 
+def _late_code_length_stream(prefix_count):
+    # With 19 code lengths, the header extends beyond the 64-bit scan word
+    # at every alignment. The tree becomes complete only at the last entry.
+    code_lengths = [0] * 19
+    code_lengths[0] = code_lengths[1] = 2
+    code_lengths[15] = 1
+    literal = [0] * 257
+    literal[65] = literal[256] = 1
+    codes = _codes(code_lengths)
+    fields = _dynamic_header(257, 1, code_lengths)
+    fields += [codes[width] for width in literal + [0]]
+    literal_codes = _codes(literal)
+    fields += [literal_codes[65]] * 37 + [literal_codes[256]]
+    prefix = ([(0, 1), (1, 2)] + [_code(400, 9)] * prefix_count
+              + [_code(0, 7)])
+    raw = b"\x90" * prefix_count + b"A" * 37
+    return _wrap(_bits(prefix + fields), raw), raw
+
+
+def test_late_code_length_fixture_matches_stdlib():
+    for prefix_count in range(8):
+        payload, raw = _late_code_length_stream(prefix_count)
+        assert zlib.decompress(payload) == raw
+
+
 def _embedded_candidate_stream():
     empty = _bits(_dynamic_literal_fields(b"", single_eob=True))
     valid = _bits(_dynamic_literal_fields(b"A"))
@@ -433,6 +458,14 @@ def test_dynamic_discovery_at_every_bit_alignment(
     decoder, cuda_device, forbid_cpu_inflation, prefix_count,
 ):
     payload, raw = _alignment_stream(prefix_count)
+    _assert_bytes(decoder(payload, len(raw), cuda_device), raw, cuda_device)
+
+
+@pytest.mark.parametrize("prefix_count", range(8))
+def test_dynamic_discovery_with_late_code_length(
+    decoder, cuda_device, forbid_cpu_inflation, prefix_count,
+):
+    payload, raw = _late_code_length_stream(prefix_count)
     _assert_bytes(decoder(payload, len(raw), cuda_device), raw, cuda_device)
 
 
