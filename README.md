@@ -157,6 +157,9 @@ The measured source is [23d40f5](https://github.com/xangma/cuda-zlib/tree/23d40f
 [small-file results](BENCHMARKS.md#independent-small-files-on-rtx-4090) for
 resident timings, CPU comparisons and batch-count plots.
 
+For compiled consumers, [resident checked decode measurements and plots](BENCHMARKS.md#resident-checked-decoding-on-rtx-4090) report completed JIT latency
+without uploads or host status checks.
+
 The following single-stream measurements use a separate RTX 3090 source
 snapshot recorded in [BENCHMARKS.md](BENCHMARKS.md#recorded-cuda-results).
 

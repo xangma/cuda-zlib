@@ -65,12 +65,12 @@ def main():
     gpu = snapshots[device_index].split(',')[0] if isinstance(snapshots, list) and \
         0 <= device_index < len(snapshots) else 'CUDA GPU'
     fig.suptitle('Resident checked JIT decompression — ' + gpu, fontsize=15)
-    axes[0].legend(loc='upper left', fontsize=9)
+    axes[1].legend(loc='upper left', fontsize=9)
     fig.supxlabel('Stdlib level-6 streams · median completed calls · whiskers: sample min/max\nUploads, compilation and host status/byte checks excluded; no CPU comparison', fontsize=9)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     exports = {}
     for extension in ('png', 'svg', 'pdf'):
-        path = args.output_dir / ('resident-checked-rtx4090.' + extension)
+        path = args.output_dir / ('resident-checked.' + extension)
         fig.savefig(path, dpi=180)
         exports[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
     plt.close(fig)

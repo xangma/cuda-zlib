@@ -115,6 +115,46 @@ runs real CPU measurements without JAX or CUDA. The plotter rejects incomplete
 matrices and inconsistent summaries; its manifest hashes every export and the
 source report.
 
+## Resident checked decoding on RTX 4090
+
+These measurements use one warmed `jax.jit` checked decode of an independent
+stdlib level-6 stream. The input, output and final metadata stay on the device;
+completion waits for both returned arrays. Timings exclude compilation, initial
+uploads and post-call host status/byte checks. GPU codec validation and temporary
+allocations are included. This timing scope differs from the host-byte and eager
+API measurements elsewhere; no CPU speedup is inferred from this dataset.
+
+| Stream size | Workload | Compressed bytes | Completed latency (ms) | Throughput (MiB/s) |
+| --- | --- | ---: | ---: | ---: |
+| 1 MiB | Zero bytes | 1039 | 5.700 | 175.4 |
+| 1 MiB | Generated text | 108353 | 20.783 | 48.1 |
+| 1 MiB | Random bytes | 1048902 | 0.715 | 1398.6 |
+| 8 MiB | Zero bytes | 8163 | 21.128 | 378.7 |
+| 8 MiB | Generated text | 863857 | 21.488 | 372.3 |
+| 8 MiB | Random bytes | 8391174 | 1.821 | 4393.5 |
+
+![Resident checked decode latency and throughput on RTX 4090](benchmarks/figures/resident-checked.png)
+
+Medians use 31 completed calls after all shapes are warmed; whiskers show sample
+minimum/maximum. Axes are logarithmic. Every case passed status and independent
+byte checks; CPU codec functions are forbidden during CUDA calls.
+[SVG](benchmarks/figures/resident-checked.svg) ·
+[PDF](benchmarks/figures/resident-checked.pdf) ·
+[Raw samples and hashes](benchmarks/results/resident-checked-rtx4090-20261007.json).
+
+Measured 2026-10-07 on RTX 4090, driver 610.57.04, JAX/JAXlib 0.11.2,
+Python 3.12.8 and nvcc 12.1.105. Package and harness hashes match
+[39ac535](https://github.com/xangma/cuda-zlib/tree/39ac5353a131f006b3eaa30dc9451785630ab8a1).
+The private workspace pool ended with 96 MiB retained and zero live scratch.
+The workstation was shared; device snapshots do not establish isolation.
+
+```sh
+CUDACXX=/path/to/nvcc XLA_PYTHON_CLIENT_PREALLOCATE=false \
+  python benchmarks/profile_resident.py --sizes 1048576 8388608 \
+  --workloads zeros text random --seed 20261007 --samples 31 --output resident.json
+python benchmarks/plot_resident.py resident.json --output-dir resident-figures
+```
+
 ## Single-stream results on RTX 3090
 
 These results compare cuda-zlib on an **RTX 3090** with **single-threaded stdlib
