@@ -55,9 +55,10 @@ def test_trace_rejects_diagnostics_with_existing_records(tmp_path, message):
 
 
 @pytest.mark.parametrize('excluded', [None, ''])
-def test_trace_cli_domain_filter_and_manifest(tmp_path, monkeypatch, excluded):
+@pytest.mark.parametrize('mode, ending', [('range', 'repeat'), ('single-range', 'stop')])
+def test_trace_cli_domain_filter_and_manifest(tmp_path, monkeypatch, excluded, mode, ending):
     prefix = tmp_path / 'codec'
-    args = ['trace.py', '--output', str(prefix), '--cuda-profiler-range']
+    args = ['trace.py', '--output', str(prefix), '--cuda-profiler-' + mode]
     if excluded is not None:
         args += ['--nvtx-domain-exclude', excluded]
     command = ['python', 'workload.py', '--cuda-profiler-range']
@@ -76,11 +77,25 @@ def test_trace_cli_domain_filter_and_manifest(tmp_path, monkeypatch, excluded):
     invocation = invocations[0]
     assert invocation[-len(command):] == command
     assert '--capture-range=cudaProfilerApi' in invocation
+    assert '--capture-range-end=' + ending in invocation
+    assert '--kill=none' in invocation
     assert ('--nvtx-domain-exclude=TSL' in invocation) == (excluded is None)
     assert not any(flag == '--nvtx-domain-exclude=' for flag in invocation)
     manifest = json.loads((tmp_path / 'codec.trace.json').read_text())
     assert manifest['validated'] and len(manifest['records']) == 1
     assert manifest['nvtx_domain_exclude'] == ('TSL' if excluded is None else '')
+    assert manifest['capture_mode'] == ('repeat' if mode == 'range' else 'single')
+
+
+def test_trace_cli_capture_modes_mutually_exclusive(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, 'argv', ['trace.py', '--output', str(tmp_path / 'codec'),
+                                    '--cuda-profiler-range', '--cuda-profiler-single-range',
+                                    '--', 'workload'])
+    monkeypatch.setattr(trace.subprocess, 'check_output',
+                        lambda *a, **k: pytest.fail('invalid CLI started Nsight'))
+    with pytest.raises(SystemExit) as error:
+        trace.main()
+    assert error.value.code == 2
 
 
 def test_trace_cli_rejects_lost_agent_without_report(tmp_path, monkeypatch):

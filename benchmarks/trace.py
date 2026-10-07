@@ -41,8 +41,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--nsys', default='nsys', help='Nsight Systems CLI executable')
     parser.add_argument('--output', type=Path, required=True, help='new report prefix')
-    parser.add_argument('--cuda-profiler-range', action='store_true',
+    ranges = parser.add_mutually_exclusive_group()
+    ranges.add_argument('--cuda-profiler-range', action='store_true',
                         help='capture each cudaProfilerStart/Stop range, excluding startup')
+    ranges.add_argument('--cuda-profiler-single-range', action='store_true',
+                        help='capture one cudaProfilerStart/Stop range and stop collection')
     parser.add_argument('--nvtx-domain-exclude', default='TSL',
                         help='excluded NVTX domains (default: TSL, for JAX import compatibility; empty includes all)')
     parser.add_argument('command', nargs=argparse.REMAINDER, help='workload command after --')
@@ -58,6 +61,8 @@ def main():
     version = subprocess.check_output([args.nsys, '--version'], text=True).strip()
     flags = ['--capture-range=cudaProfilerApi', '--capture-range-end=repeat', '--kill=none'] \
         if args.cuda_profiler_range else []
+    if args.cuda_profiler_single_range:
+        flags = ['--capture-range=cudaProfilerApi', '--capture-range-end=stop', '--kill=none']
     if args.nvtx_domain_exclude:
         flags.append('--nvtx-domain-exclude=' + args.nvtx_domain_exclude)
     invocation = [args.nsys, 'profile', '--trace=cuda,nvtx', '--sample=none',
@@ -68,6 +73,8 @@ def main():
         result = subprocess.run(invocation, stdout=log, stderr=subprocess.STDOUT)
     report = dict(nsys_version=version, command=invocation, exit_code=result.returncode,
                   log=str(log_path), nvtx_domain_exclude=args.nvtx_domain_exclude, validated=False)
+    report['capture_mode'] = 'single' if args.cuda_profiler_single_range else \
+        'repeat' if args.cuda_profiler_range else 'process'
     try:
         if result.returncode:
             raise RuntimeError(f'Nsight or the workload failed (exit {result.returncode})')

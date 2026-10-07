@@ -216,6 +216,12 @@ window, exact output size, exact stream extent, and original Adler32. It rejects
 gzip, raw DEFLATE, dictionaries, concatenation, and trailing bytes. This is a
 bounded subset, not a complete implementation of all RFC 1950 features.
 
+RFC 1950 framing, declared window and checksum parameters stay on the GPU in
+checked decoding. The large-stream path reads discovery and accepted-chain
+counters to size sorting, temporary allocations and launches; a fixed-block
+summary retry can require another counter read. Output and final status remain
+JAX device arrays for compiled consumers.
+
 Input/output bounds are 256 MiB; candidate and block limits are 262144.
 Each invocation uses its own temporary workspace, allocated and freed on XLA's
 stream. Private CUDA pools reuse freed workspace allocations, with one pool per

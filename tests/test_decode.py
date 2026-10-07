@@ -168,6 +168,22 @@ def _distance_window_stream():
     return payload, _header(cmf=0x08) + payload[2:], raw
 
 
+def _prefixed_distance_window_stream(prefix_bytes):
+    payload, _, tail = _distance_window_stream()
+    prefix = random.Random(prefix_bytes).randbytes(prefix_bytes)
+    blocks = [_stored(prefix[index:index + 65535], final=False)
+              for index in range(0, prefix_bytes, 65535)]
+    raw = prefix + tail
+    payload = _wrap(b"".join(blocks) + payload[2:-4], raw)
+    return payload, _header(cmf=0x08) + payload[2:], raw
+
+
+def _medium_period_stream():
+    period = random.Random(91577).randbytes(257)
+    raw = (period * ((262144 + 256) // 257))[:262144]
+    return _compressed(raw), raw
+
+
 def _dynamic_literal_fields(raw, final=True, long_codes=False,
                             single_eob=False):
     """Independent literal-only trees, with no LZ77 compressor decisions."""
@@ -319,6 +335,9 @@ def test_handbuilt_deflate_fixtures_match_independent_stdlib():
     for match_blocks in (257, 1050):
         payload, raw = _deep_reference_stream(match_blocks)
         assert zlib.decompress(payload) == raw
+    for prefix_bytes in (65537, 1048577):
+        payload, _, raw = _prefixed_distance_window_stream(prefix_bytes)
+        assert zlib.decompress(payload) == raw
 
 
 def _dense_prefix_stored_stream():
@@ -346,6 +365,18 @@ def test_discovery_stress_fixtures_match_independent_stdlib():
     bad_body = _bits(fields[:-1] + [(1, 1)])
     with pytest.raises(zlib.error):
         zlib.decompress(_wrap(bad_body, b""))
+
+
+def test_medium_repetitive_fixtures_match_independent_stdlib():
+    for size in (65536, 65537, 262144, 1048576):
+        raw = bytes(size)
+        assert zlib.decompress(_compressed(raw)) == raw
+    payload, raw = _medium_period_stream()
+    assert len(raw) / len(payload) >= 64
+    # Unique three-byte phases require distance >=257 for every encoded match.
+    period = raw[:257] + raw[:2]
+    assert len({period[index:index + 3] for index in range(257)}) == 257
+    assert zlib.decompress(payload) == raw
 
 
 @pytest.mark.parametrize("expected", [-1, 1.5, "4", True])
@@ -712,6 +743,119 @@ def test_large_jit_checked_errors_and_recovery(
         recovered, recovered_metadata = decode(source, size)
         np.testing.assert_array_equal(np.asarray(recovered_metadata), [0, 0])
         _assert_bytes(recovered, raw, device)
+
+
+@pytest.mark.parametrize("prefix_bytes", [65537, 1048577],
+                         ids=["direct-discovery", "prefix-discovery"])
+def test_jit_resident_framing_precedence_window_and_recovery(
+    cuda_device, forbid_cpu_inflation, prefix_bytes,
+):
+    import jax
+    from cuda_zlib import decompress_zlib_checked
+
+    device = jax.devices("gpu")[cuda_device]
+    payload, small_window, raw = _prefixed_distance_window_stream(prefix_bytes)
+    assert len(raw) > 65536
+    assert (len(payload) - 6 > 2**20) == (prefix_bytes > 2**20)
+    decode = jax.jit(lambda value: decompress_zlib_checked(value, len(raw), device))
+    source = jax.device_put(np.frombuffer(payload, np.uint8), device)
+    # Framing must win even when the Deflate body and Adler32 are also invalid.
+    damaged = b"\x07" + payload[3:-1] + bytes((payload[-1] ^ 1,))
+    cases = (
+        (_header(cmf=0x88) + damaged, 15),
+        (payload[:1] + bytes((payload[1] ^ 1,)) + damaged, 15),
+        (b"\x1f\x8b" + damaged, 16),
+        (_header(flags=0x20) + damaged, 17),
+        (small_window, 6),
+    )
+    for malformed, status in cases:
+        resident = jax.device_put(np.frombuffer(malformed, np.uint8), device)
+        _, metadata = decode(resident)
+        assert metadata.devices() == {device}
+        np.testing.assert_array_equal(np.asarray(metadata), [status, 0])
+        recovered, recovered_metadata = decode(source)
+        np.testing.assert_array_equal(np.asarray(recovered_metadata), [0, 0])
+        _assert_bytes(recovered, raw, device)
+
+
+def test_jit_dense_prefix_framing_precedence_and_retained_metadata(
+    cuda_device, forbid_cpu_inflation,
+):
+    import jax
+    import jax.numpy as jnp
+    from cuda_zlib import decompress_zlib_checked
+
+    device = jax.devices("gpu")[cuda_device]
+    payload, raw = _dense_prefix_stored_stream()
+    source = jax.device_put(np.frombuffer(payload, np.uint8), device)
+    decode = jax.jit(lambda value: decompress_zlib_checked(value, len(raw), device))
+    first, first_metadata = decode(source)
+    failed, bad_metadata = decode(source.at[1].set(source[1] ^ jnp.uint8(1)))
+    recovered, recovered_metadata = decode(source)
+    # Retain the first status/output through later calls before any host reads.
+    jax.block_until_ready((first, first_metadata, failed, bad_metadata,
+                           recovered, recovered_metadata))
+    del failed
+    gc.collect()
+    assert first.devices() == first_metadata.devices() == bad_metadata.devices() == {device}
+    np.testing.assert_array_equal(np.asarray(first_metadata), [0, 0])
+    np.testing.assert_array_equal(np.asarray(bad_metadata), [15, 0])
+    np.testing.assert_array_equal(np.asarray(recovered_metadata), [0, 0])
+    _assert_bytes(first, raw, device)
+    _assert_bytes(recovered, raw, device)
+
+
+@pytest.mark.parametrize("size", [65536, 65537, 262144, 1048576])
+def test_jit_checked_medium_zeros_checksum_recovery_and_retained_metadata(
+    cuda_device, forbid_cpu_inflation, size,
+):
+    import jax
+    import jax.numpy as jnp
+    from cuda_zlib import decompress_zlib_checked
+
+    device = jax.devices("gpu")[cuda_device]
+    raw = bytes(size)
+    source = jax.device_put(np.frombuffer(_compressed(raw), np.uint8), device)
+    decode = jax.jit(lambda value: decompress_zlib_checked(value, size, device))
+    first, first_metadata = decode(source)
+    failed, bad_metadata = decode(source.at[-1].set(source[-1] ^ jnp.uint8(1)))
+    recovered, recovered_metadata = decode(source)
+    # Preserve success/error metadata through all calls before reading it.
+    jax.block_until_ready((first, first_metadata, failed, bad_metadata,
+                           recovered, recovered_metadata))
+    del failed
+    gc.collect()
+    for metadata, status in ((first_metadata, 0), (bad_metadata, 21),
+                              (recovered_metadata, 0)):
+        assert metadata.devices() == {device}
+        np.testing.assert_array_equal(np.asarray(metadata), [status, 0])
+    _assert_bytes(first, raw, device)
+    _assert_bytes(recovered, raw, device)
+
+
+def test_jit_checked_medium_repetition_respects_declared_window(
+    cuda_device, forbid_cpu_inflation,
+):
+    import jax
+    from cuda_zlib import decompress_zlib_checked
+
+    device = jax.devices("gpu")[cuda_device]
+    payload, raw = _medium_period_stream()
+    small_window = _header(cmf=0x08) + payload[2:]
+    source, limited = [jax.device_put(np.frombuffer(value, np.uint8), device)
+                       for value in (payload, small_window)]
+    decode = jax.jit(lambda value: decompress_zlib_checked(value, len(raw), device))
+    first, first_metadata = decode(source)
+    failed, window_metadata = decode(limited)
+    recovered, recovered_metadata = decode(source)
+    jax.block_until_ready((first, first_metadata, failed, window_metadata,
+                           recovered, recovered_metadata))
+    for metadata, status in ((first_metadata, 0), (window_metadata, 6),
+                              (recovered_metadata, 0)):
+        assert metadata.devices() == {device}
+        np.testing.assert_array_equal(np.asarray(metadata), [status, 0])
+    _assert_bytes(first, raw, device)
+    _assert_bytes(recovered, raw, device)
 
 
 @pytest.mark.parametrize("match_blocks", [257, 1050], ids=["two-rounds", "three-rounds"])

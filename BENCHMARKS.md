@@ -417,34 +417,41 @@ or compatibility guarantee.
 
 ## Profiling
 
-Capture warmed CUDA calls with Nsight Systems:
+Capture warmed resident checked decompression with Nsight Systems:
 
 ```sh
 CUDACXX=/usr/local/cuda-12.1/bin/nvcc python benchmarks/trace.py \
-  --nsys /path/to/nsys --output traces/codec --cuda-profiler-range -- \
-  python benchmarks/profile.py --sizes 1048576 --workloads zeros random \
-  --samples 3 --cuda-profiler-range --output traces/wall.json
+  --nsys /path/to/nsys --output traces/decode --cuda-profiler-single-range -- \
+  python benchmarks/profile_resident.py --sizes 1048576 8388608 \
+  --workloads zeros text random --cuda-profiler-range --output traces/decode.json
 ```
 
-The range workload warms all requested shapes before the first capture, since
-new JAX compilation between repeated ranges can disconnect Nsight on the tested
-stack. Each profiler API range captures an extra completed codec call after warmup;
-startup and oracle checks are outside those ranges. The workload checks byte-exact outputs and forbids
-CPU codec calls during CUDA operations. Profiler overhead can affect timings;
-use the benchmark harness for throughput comparisons.
+The workload warms every requested shape, then completes one decode per case
+inside a single continuous profiler range. NVTX labels identify workload and
+uncompressed size. Inputs stay resident; both output and status are completed on
+the GPU. Status is checked before output bytes after capture, and CPU codec calls
+are forbidden during decoding. Capture retains all outputs until the range ends,
+so device memory grows with the sum of requested input and output sizes. Use
+fewer cases per process when memory is limited. Startup, compilation, uploads,
+oracle checks and file writes are outside the capture.
+
+For ordinary completed resident timings, run the workload directly without
+`--cuda-profiler-range` and choose `--samples`. These timings exclude initial
+uploads and post-call host status/byte checks. They measure a checked JIT API
+workflow and have a different scope from host-byte benchmarks above. Timings
+under Nsight are diagnostic; use separate normal runs for performance comparisons.
+`benchmarks/profile.py` also measures eager compression and both codec-produced
+and stdlib streams; `trace.py --cuda-profiler-range` supports its separate ranges.
 
 `trace.py` writes the Nsight report, SQLite export, log and a `.trace.json`
-manifest containing the CLI version and record counts. It requires successful
-execution, imported GPU kernels and CUDA API records, and rejects known import
-errors or a disconnected capture agent even when Nsight returns zero. Choose a
-fresh output prefix for each run.
+manifest containing the CLI version, capture mode and record counts. It requires
+successful execution, imported GPU kernels and CUDA API records, and rejects
+known import errors or a disconnected agent even when Nsight returns zero. Choose
+a fresh output prefix for each run. The single-range mode stops collection after
+one range while allowing the workload to finish its validation.
 
-The default `--nvtx-domain-exclude=TSL` keeps CUDA and other NVTX records while
-omitting JAX's TSL annotations, which cause registered-string import errors on
-the tested JAX 0.11.2 / Nsight Systems 2026.1.3 stack. On a compatible stack,
-`--nvtx-domain-exclude=""` includes all domains.
-
-The range workload leaves `environment.gpu_after` unset: launching `nvidia-smi`
-after the last capture can disconnect Nsight before deferred export. Collect
-that snapshot after `trace.py` exits. In-process wall times under Nsight are
-diagnostic; use a separate benchmark run for throughput.
+The default `--nvtx-domain-exclude=TSL` retains CUDA and other NVTX records while
+omitting JAX TSL annotations for import compatibility on JAX 0.11.2 / Nsight
+Systems 2026.1.3. On a compatible stack, `--nvtx-domain-exclude=""` includes all
+domains. Capture workloads leave `environment.gpu_after` unset; collect device
+snapshots after `trace.py` exits to avoid subprocesses during deferred export.
