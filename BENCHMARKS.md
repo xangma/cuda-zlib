@@ -9,18 +9,19 @@ stdlib zlib on its own host CPU. Results from different GPUs are not combined.
 **CPU was faster for every single-file case**, even with resident CUDA buffers.
 Including transfers and Python `bytes` outputs, 128-file CUDA batches beat CPU
 compression for random data at all three sizes, 4 KiB text, and 64 KiB zero/text
-files. CPU was faster for 256-byte zero/text and 4 KiB zero compression.
-At 64 KiB, batched host compression was **2.49–18.21×** faster than CPU.
+files. The 256-byte text result was near parity at **1.07×** CPU throughput.
+CPU was faster for 256-byte zeros and 4 KiB zero compression.
+At 64 KiB, batched host compression was **2.66–18.73×** faster than CPU.
 
-Batched host decompression beat CPU for 4 KiB zeros and 64 KiB zeros.
+Batched host decompression beat CPU for 4 KiB zeros and 64 KiB zero/text files.
 CPU was faster for all 256-byte files, 4 KiB text/random files, and 64 KiB random
-files. At 64 KiB, CUDA decompression was **9.15×** CPU for zeros, near parity
-at **1.05×** for text, and **0.92×** CPU for random bytes.
+files. At 64 KiB, CUDA decompression was **11.28×** CPU for zeros, **2.01×**
+for text, and near parity at **0.98×** CPU for random bytes.
 
 Packing independent streams into one CUDA call shares dispatch and allows files
 to execute concurrently. At 128 files, packed resident compression was
-**21–118×** faster than a compiled loop of single-file CUDA calls, and resident
-decompression was **11–128×** faster. These ratios compare current CUDA API
+**21–120×** faster than a compiled loop of single-file CUDA calls, and resident
+decompression was **12–129×** faster. These ratios compare current CUDA API
 workflows; the CPU comparisons above include host transfers and byte outputs.
 
 ### Amortized latency with 128 files
@@ -33,15 +34,15 @@ output copies. Decompression uses identical independent stdlib level-6 streams.
 
 | File size | Workload | CPU compression, level 1 | CUDA batch compression, resident | CUDA batch compression, host bytes | CPU decompression | CUDA batch decompression, resident | CUDA batch decompression, host bytes |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 256 B | Zero bytes | 3.40 | 1.17 | 9.43 | 1.27 | 1.56 | 9.99 |
-| 256 B | Generated text | 8.40 | 2.30 | 10.37 | 3.21 | 1.91 | 11.11 |
-| 256 B | Random bytes | 32.77 | 3.73 | 13.20 | 0.59 | 1.09 | 9.92 |
-| 4 KiB | Zero bytes | 7.90 | 2.21 | 10.95 | 14.64 | 1.75 | 10.72 |
-| 4 KiB | Generated text | 19.79 | 5.47 | 16.06 | 8.87 | 3.69 | 14.56 |
-| 4 KiB | Random bytes | 99.69 | 8.13 | 19.35 | 2.39 | 1.10 | 11.00 |
-| 64 KiB | Zero bytes | 105.59 | 4.66 | 42.40 | 224.34 | 4.28 | 24.53 |
-| 64 KiB | Generated text | 251.92 | 29.40 | 82.30 | 92.08 | 27.54 | 87.48 |
-| 64 KiB | Random bytes | 1724.55 | 47.64 | 94.70 | 35.15 | 3.73 | 38.20 |
+| 256 B | Zero bytes | 3.39 | 1.15 | 6.94 | 1.28 | 1.45 | 6.58 |
+| 256 B | Generated text | 8.30 | 2.23 | 7.75 | 3.28 | 1.90 | 6.67 |
+| 256 B | Random bytes | 30.84 | 3.51 | 10.44 | 0.60 | 1.10 | 6.28 |
+| 4 KiB | Zero bytes | 7.91 | 2.04 | 8.53 | 14.70 | 1.86 | 7.78 |
+| 4 KiB | Generated text | 19.80 | 5.38 | 13.62 | 8.71 | 3.51 | 10.81 |
+| 4 KiB | Random bytes | 99.94 | 7.77 | 16.21 | 2.39 | 1.40 | 8.39 |
+| 64 KiB | Zero bytes | 105.30 | 4.67 | 39.58 | 223.75 | 4.14 | 19.84 |
+| 64 KiB | Generated text | 251.35 | 28.85 | 67.04 | 92.08 | 27.21 | 45.79 |
+| 64 KiB | Random bytes | 1723.82 | 47.40 | 92.04 | 35.12 | 3.64 | 35.80 |
 
 ### Small-file plots
 
@@ -52,7 +53,9 @@ resident single-file comparison is one warmed `jax.jit` containing independent
 FFI calls; the packed workflow uses one batch FFI call. Host single-file timings
 use synchronous convenience APIs in a Python loop. Resident timings wait for
 all returned arrays, including metadata; metadata transfer and status checks
-occur afterward. Host APIs check status before returning.
+occur afterward. Host batch APIs reuse compiled calls for each static file
+layout; their first compilation is excluded by warmup. Host APIs check status
+before returning.
 
 ![Small-file host-byte compression and decompression, generated text](benchmarks/figures/small-batch/rtx4090-text-host-bytes.png)
 
@@ -71,7 +74,7 @@ Linux x86_64, Python 3.12.8, NumPy 2.2.6, JAX/JAXlib 0.11.2 and zlib 1.3.1.
 JAX reported CUDA platform `cuda 13040`, driver 610.57.04; the native library
 used `nvcc` 12.1.105 for `sm_89`. All codec and harness hashes in `source.sha256` in the
 [raw 36-case report](benchmarks/results/small-batch-rtx4090-20261007.json)
-match [7cb9c4b](https://github.com/xangma/cuda-zlib/tree/7cb9c4bccf613bfaace58e87c6d7059312106ad0).
+match [23d40f5](https://github.com/xangma/cuda-zlib/tree/23d40f51d803ea466fd4f31f4ab0f04234cdeafe).
 The staging directory was a source export without Git metadata; exact source
 SHA-256 hashes establish that snapshot. Payload and compressed-stream hashes,
 all samples, software versions and native build flags are also recorded.
@@ -96,7 +99,7 @@ utilization snapshots do not prove isolation. No parallel CPU codec baseline
 was measured.
 
 ```sh
-git checkout 7cb9c4bccf613bfaace58e87c6d7059312106ad0
+git checkout 23d40f51d803ea466fd4f31f4ab0f04234cdeafe
 python -m pip install . matplotlib
 CUDACXX=/path/to/nvcc XLA_PYTHON_CLIENT_PREALLOCATE=false \
   python benchmarks/small_batch.py --sizes 256 4096 65536 \
@@ -417,19 +420,31 @@ or compatibility guarantee.
 Capture warmed CUDA calls with Nsight Systems:
 
 ```sh
-CUDACXX=/usr/local/cuda-12.6/bin/nvcc python benchmarks/trace.py \
+CUDACXX=/usr/local/cuda-12.1/bin/nvcc python benchmarks/trace.py \
   --nsys /path/to/nsys --output traces/codec --cuda-profiler-range -- \
   python benchmarks/profile.py --sizes 1048576 --workloads zeros random \
   --samples 3 --cuda-profiler-range --output traces/wall.json
 ```
 
-The command was validated with Nsight Systems 2026.5.1. Each profiler API range
-captures an extra completed codec call after warmup; startup and oracle checks
-are outside those ranges. The workload checks byte-exact outputs and forbids
+The range workload warms all requested shapes before the first capture, since
+new JAX compilation between repeated ranges can disconnect Nsight on the tested
+stack. Each profiler API range captures an extra completed codec call after warmup;
+startup and oracle checks are outside those ranges. The workload checks byte-exact outputs and forbids
 CPU codec calls during CUDA operations. Profiler overhead can affect timings;
 use the benchmark harness for throughput comparisons.
 
 `trace.py` writes the Nsight report, SQLite export, log and a `.trace.json`
 manifest containing the CLI version and record counts. It requires successful
 execution, imported GPU kernels and CUDA API records, and rejects known import
-errors even when Nsight returns zero. Choose a fresh output prefix for each run.
+errors or a disconnected capture agent even when Nsight returns zero. Choose a
+fresh output prefix for each run.
+
+The default `--nvtx-domain-exclude=TSL` keeps CUDA and other NVTX records while
+omitting JAX's TSL annotations, which cause registered-string import errors on
+the tested JAX 0.11.2 / Nsight Systems 2026.1.3 stack. On a compatible stack,
+`--nvtx-domain-exclude=""` includes all domains.
+
+The range workload leaves `environment.gpu_after` unset: launching `nvidia-smi`
+after the last capture can disconnect Nsight before deferred export. Collect
+that snapshot after `trace.py` exits. In-process wall times under Nsight are
+diagnostic; use a separate benchmark run for throughput.
