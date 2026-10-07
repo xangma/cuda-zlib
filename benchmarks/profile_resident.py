@@ -132,7 +132,6 @@ def main():
         report['cases'].append(row)
 
     if args.cuda_profiler_range:
-        from cuda_zlib import _ffi
         toolkit = Path(_ffi._nvcc()).resolve().parent.parent
         profiler = ctypes.CDLL(str(toolkit / 'lib64/libcudart.so'))
         profiler.cudaSetDevice.argtypes = [ctypes.c_int]
