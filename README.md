@@ -245,8 +245,8 @@ dictionaries. Long fixed regions use fresh GPU token-boundary summaries when
 the actual stream requires them.
 
 Compression caches match tokens in a workspace of four bytes per input byte
-(256 MiB for a 64 MiB input). Decoding above 64 KiB reserves eight bytes per declared output
-byte for reference buffers under the default limits, plus up to 128 MiB of fixed
+(256 MiB for a 64 MiB input). Decoding above 64 KiB reserves eight bytes per
+declared output byte for reference buffers under the default limits, plus up to 128 MiB of fixed
 tile summaries and bounded candidate/block metadata. Scratch is allocated before
 the GPU determines the stream's status, including for eligible medium fast parses
 and malformed input. The 256 MiB output limit can require 2 GiB of reference

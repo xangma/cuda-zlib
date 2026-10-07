@@ -53,7 +53,8 @@ def main():
         axes[1].bar(position, throughput, width, label=label,
                     yerr=np.array([throughput-slow, fast-throughput]), capsize=3)
     for axis in axes:
-        axis.set_xticks(x, [f'{size/1024**2:g} MiB' for size in sizes])
+        axis.set_xticks(x, [f'{size/1024:g} KiB' if size < 1024**2 else
+                           f'{size/1024**2:g} MiB' for size in sizes])
         axis.set_xlabel('Uncompressed stream size')
         axis.set_axisbelow(True); axis.grid(axis='y', alpha=.2)
         axis.set_yscale('log')
@@ -72,6 +73,9 @@ def main():
     for extension in ('png', 'svg', 'pdf'):
         path = args.output_dir / ('resident-checked.' + extension)
         fig.savefig(path, dpi=180)
+        if extension == 'svg':
+            path.write_text('\n'.join(line.rstrip() for line in
+                                      path.read_text().splitlines()) + '\n')
         exports[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
     plt.close(fig)
     (args.output_dir/'resident-checked-manifest.json').write_text(json.dumps(
