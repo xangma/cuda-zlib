@@ -71,27 +71,37 @@ struct BitReader {
     u64 bits;
     u64 pos;
     u32 error;
-    u32 cache;
+    u64 cache;
     u32 cached;
 
     __device__ __forceinline__ u32 peek(u32 n) {
+        // Requests are at most 16 bits. cached counts only bits proven within
+        // [pos, bits), so this fast path preserves the slow path's bounds.
+        if (!error && cached && n <= cached)
+            return u32(cache) & ((1u << n) - 1);
         if (error || pos > bits || n > bits - pos) {
             error = 1;
             return 0;
         }
-        // Every request is at most 16 bits. Retaining unused bits avoids a
-        // byte load for each step of canonical fallback decoding. Refill reads
-        // only real payload bytes, with no speculative word load at the end.
-        if (!cached && n) {
-            u32 skip = u32(pos & 7);
-            cache = u32(data[pos >> 3]) >> skip;
-            cached = 8 - skip;
-        }
-        while (cached < n) {
-            cache |= u32(data[(pos + cached) >> 3]) << cached;
-            cached += 8;
-        }
-        return cache & ((1u << n) - 1);
+        if (!n) return 0;
+
+        const u64 remaining = bits - pos;
+        const u32 skip = u32(pos & 7);
+        const u64 byte = pos >> 3;
+        const u32 full_window_bits = 64 - skip;
+        // Full windows retain 57..64 bits. Near EOF, read only real bytes.
+        const u32 bytes = remaining >= full_window_bits ? 8u :
+            u32((remaining + skip + 7) / 8);
+        u64 word = 0;
+        // Byte assembly is safe for arbitrary pointer alignment. No rounded-
+        // down address or speculative read outside the payload is used.
+        #pragma unroll
+        for (u32 j = 0; j < 8; ++j)
+            if (j < bytes) word |= u64(data[byte + j]) << (8 * j);
+        cache = word >> skip;
+        cached = remaining < full_window_bits ? u32(remaining) :
+            full_window_bits;
+        return u32(cache) & ((1u << n) - 1);
     }
 
     __device__ __forceinline__ void drop(u32 n) {
