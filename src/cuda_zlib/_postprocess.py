@@ -4,37 +4,58 @@
 """CUDA checksum and reference-resolution kernels."""
 
 CUDA_SOURCE = r'''
+// Fields used to gate later kernels are immutable during each launch. Pending
+// and refine_status are scratch reductions, consumed by a separate finalizer.
+struct DecodeState {
+  unsigned int status;
+  unsigned int active;
+  unsigned int selector;
+  unsigned int pending;
+  unsigned int refine_status;
+};
+
 extern "C" __global__ void refine_roots(
-    const unsigned int* input, unsigned int* output, unsigned int size,
-    unsigned int* pending, unsigned int* status) {
-  unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int* first, unsigned int* second, unsigned int size,
+    DecodeState* state) {
+  // active is changed only between kernels, so all threads reach the vote
+  // together. Never gate on the error reduction written during this launch.
+  if (!state->active) return;
+  const unsigned int* input = state->selector ? second : first;
+  unsigned int* output = state->selector ? first : second;
+  const unsigned long long stride = (unsigned long long)blockDim.x * gridDim.x;
   int unresolved = 0;
-  if (i < size) {
+  for (unsigned long long index = (unsigned long long)blockIdx.x * blockDim.x + threadIdx.x;
+       index < size; index += stride) {
+    const unsigned int i = (unsigned int)index;
     unsigned int value = input[i];
     bool valid = true;
     for (int step = 0; step < 32 && !(value & 0x80000000u); ++step) {
-      if (value >= i) { atomicExch(status, 6u); valid = false; break; }
+      if (value >= i) { atomicExch(&state->refine_status, 6u); valid = false; break; }
       unsigned int next = input[value];
       if (!(next & 0x80000000u) && next >= value) {
-        atomicExch(status, 6u); valid = false; break;
+        atomicExch(&state->refine_status, 6u); valid = false; break;
       }
       value = next;
     }
     if (valid) {
       output[i] = value;
-      unresolved = !(value & 0x80000000u);
+      unresolved |= !(value & 0x80000000u);
     }
   }
-  // Include inactive and invalid threads in the barrier, but only valid
-  // unresolved roots in the vote. Signal pending once per block.
   int block_pending = __syncthreads_or(unresolved);
-  if (threadIdx.x == 0 && block_pending) atomicExch(pending, 1u);
+  if (threadIdx.x == 0 && block_pending) atomicExch(&state->pending, 1u);
 }
 // Resolved roots hold tagged literals. Gather the returned bytes while making
 // checksum partials, avoiding a separate gather launch and output read.
 extern "C" __global__ void write_adler_parts(
-    const unsigned int* roots, unsigned char* output, unsigned int size,
-    unsigned long long* partial_a, unsigned long long* partial_b) {
+    const unsigned int* first, const unsigned int* second,
+    unsigned char* output, unsigned int size,
+    unsigned long long* partial_a, unsigned long long* partial_b,
+    const DecodeState* state) {
+  // An emission/refinement error can leave roots unwritten. Keep the native
+  // output's initial zeros and do not read either root buffer in that case.
+  if (state->status || state->active) return;
+  const unsigned int* roots = state->selector ? second : first;
   __shared__ unsigned long long a[256], b[256];
   unsigned int i = blockIdx.x * 4096u + threadIdx.x;
   unsigned long long sa = 0, sb = 0;
@@ -88,7 +109,9 @@ extern "C" __global__ void adler_parts(
 extern "C" __global__ void adler_finish(
     const unsigned long long* partial_a,
     const unsigned long long* partial_b, unsigned int parts,
-    unsigned int size, unsigned int* checksum) {
+    unsigned int size, unsigned int* checksum, const DecodeState* state = nullptr) {
+  // Compression has no decode state. Failed decoding leaves partials unwritten.
+  if (state && (state->status || state->active)) return;
   __shared__ unsigned long long a[256], b[256];
   unsigned long long sa = 0, sb = 0;
   for (unsigned int i = threadIdx.x; i < parts; i += 256u) {
@@ -110,4 +133,5 @@ extern "C" __global__ void adler_finish(
     *checksum = (high << 16) | low;
   }
 }
+
 '''
