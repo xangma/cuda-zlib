@@ -187,7 +187,8 @@ def main():
             "native_builds": [json.loads(p.read_text()) for p in sorted(cache_root.glob("*/build.json"))],
             "gpu_snapshot_before": gpu_snapshot(),
             "codec_sha256": {str(p.relative_to(module_root)): hashlib.sha256(p.read_bytes()).hexdigest()
-                             for p in sorted([*module_root.glob("*.py"), *module_root.glob("native/*.cu")])},
+                               for p in sorted([*module_root.glob("*.py"), *module_root.glob("native/*.cu"),
+                                                *module_root.glob("native/*.cuh")])},
             "workspace_pool_before": cuda_zlib.workspace_pool_stats(device),
         },
         "startup": {"imports_and_cuda_init_seconds": init_seconds,

@@ -58,6 +58,9 @@ enum Status : U32 {
   kInvalidBounds = 23,
 };
 
+#include "batch_encode.cuh"
+#include "batch_decode.cuh"
+
 #define CUDA_TRY(expression)                     \
   do {                                           \
     cudaError_t error = (expression);             \
@@ -363,11 +366,17 @@ cudaError_t Compress(cudaStream_t stream, std::int64_t chunk_bytes,
   CUDA_TRY(workspace.Allocate(&tokens, size));
   CUDA_TRY(workspace.Allocate(&sizes, chunks));
   CUDA_TRY(workspace.Allocate(&status, chunks));
-  CUDA_TRY(workspace.Allocate(&ends, chunks));
   encoder::encode_chunks<<<chunks, 256, 0, stream>>>(
       input.typed_data(), U32(size), chunk, chunks, slot_bytes, scratch,
       sizes, status, tokens);
   CUDA_TRY(cudaGetLastError());
+  if (size <= 65536) {
+    SmallFinish<<<1, 256, 0, stream>>>(
+        input.typed_data(), U32(size), chunks, slot_bytes, scratch, sizes,
+        status, output->typed_data(), U32(capacity), result);
+    return cudaGetLastError();
+  }
+  CUDA_TRY(workspace.Allocate(&ends, chunks));
   CompressionPrefix<<<1, 1, 0, stream>>>(sizes, status, chunks, slot_bytes,
                                          capacity, ends, result);
   CUDA_TRY(cudaGetLastError());
@@ -401,13 +410,24 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
   if (!IsVector(*output) || output->element_count() > kMaxBytes)
     return SetStatus(stream, result, kInvalidBounds);
   const U32 expected = U32(output->element_count());
-  if (expected) CUDA_TRY(cudaMemsetAsync(output->typed_data(), 0, expected, stream));
-  if (!IsVector(input)) return SetStatus(stream, result, kInvalidBounds);
+  auto fail = [&](U32 status) -> cudaError_t {
+    if (expected) CUDA_TRY(cudaMemsetAsync(output->typed_data(), 0, expected, stream));
+    return SetStatus(stream, result, status);
+  };
+  if (!IsVector(input)) return fail(kInvalidBounds);
   const U64 full_size = U64(input.element_count());
   if (full_size > kMaxBytes || max_candidates < 1 ||
       max_candidates > kMaxCandidates || max_blocks < 1 || max_blocks > kMaxBlocks)
-    return SetStatus(stream, result, kInvalidBounds);
-  if (full_size < 8) return SetStatus(stream, result, kTruncatedZlib);
+    return fail(kInvalidBounds);
+  if (full_size < 8) return fail(kTruncatedZlib);
+  if (expected <= 65536 && full_size <= 131072 &&
+      max_candidates == kMaxCandidates && max_blocks == kMaxBlocks) {
+    SmallDecode<<<1, 32, 0, stream>>>(
+        input.typed_data(), U32(full_size), output->typed_data(), expected,
+        U32(max_blocks), result);
+    return cudaGetLastError();
+  }
+  if (expected) CUDA_TRY(cudaMemsetAsync(output->typed_data(), 0, expected, stream));
 
   // Only RFC 1950 framing bytes cross to host. Token parsing, index discovery,
   // matching, output reconstruction and checksum computation remain on CUDA.
@@ -588,11 +608,15 @@ ffi::Error RuntimeError(cudaError_t error) {
 
 template <typename Function>
 ffi::Error Execute(cudaStream_t stream, ffi::ResultBuffer<ffi::U32> metadata,
-                    Function&& function) {
+                    Function&& function, std::size_t files = 0) {
   try {
     // A malformed ABI result cannot safely receive the normal metadata status.
-    if (!IsVector(*metadata) || metadata->element_count() != 2)
-      return ffi::Error::InvalidArgument("codec metadata must have shape (2,)");
+    const auto dims = metadata->dimensions();
+    if (files ? (dims.size() != 2 || dims[0] != files || dims[1] != 2) :
+                (!IsVector(*metadata) || metadata->element_count() != 2))
+      return ffi::Error::InvalidArgument(files ?
+          "batch codec metadata must have shape (files, 2)" :
+          "codec metadata must have shape (2,)");
     Workspace workspace(stream);
     cudaError_t error = workspace.error();
     if (error == cudaSuccess) error = function(workspace);
@@ -622,6 +646,115 @@ ffi::Error DecompressImpl(cudaStream_t stream, std::int64_t max_candidates,
     return Decompress(stream, max_candidates, max_blocks, input, output,
                       metadata, workspace);
   });
+}
+
+using Sizes = ffi::Span<const std::int64_t>;
+
+ffi::Error CompressBatchImpl(cudaStream_t stream, std::int64_t chunk_bytes,
+                             Sizes input_sizes, ffi::Buffer<ffi::U8> input,
+                             ffi::ResultBuffer<ffi::U8> output,
+                             ffi::ResultBuffer<ffi::U32> metadata) {
+  const std::size_t count = input_sizes.size();
+  if (!count || count > kMaxBlocks)
+    return ffi::Error::InvalidArgument("batch file count must be in [1, 262144]");
+  return Execute(stream, metadata, [&](Workspace& workspace) -> cudaError_t {
+    if (!IsVector(input) || !IsVector(*output) ||
+        input.element_count() > kMaxBytes || output->element_count() > kMaxBytes ||
+        chunk_bytes < 256 || chunk_bytes > 65535) return cudaErrorInvalidValue;
+    const U32 chunk = U32(chunk_bytes);
+    U64 input_extent = 0, output_extent = 0, total_chunks = 0;
+    std::vector<BatchEncodeFile> files;
+    std::vector<BatchEncodeChunk> chunks;
+    files.reserve(count);
+    for (std::size_t i = 0; i < count; ++i) {
+      const auto size = input_sizes[i];
+      if (size < 0 || size > kMaxBytes) return cudaErrorInvalidValue;
+      const U64 n = std::max<U64>(1, (U64(size) + chunk - 1) / chunk);
+      const U64 capacity = U64(size) + n * 5 + 6;
+      if (2 * n - 1 > kMaxBlocks || input_extent + size > kMaxBytes ||
+          output_extent + capacity > kMaxBytes || total_chunks + n > kMaxBlocks)
+        return cudaErrorInvalidValue;
+      files.push_back({U32(input_extent), U32(size), U32(output_extent),
+                       U32(capacity), U32(total_chunks), U32(n)});
+      for (U32 j = 0; j < n; ++j) chunks.push_back({U32(i), j});
+      input_extent += size;
+      output_extent += capacity;
+      total_chunks += n;
+    }
+    if (input_extent != input.element_count() ||
+        output_extent != output->element_count()) return cudaErrorInvalidValue;
+    BatchEncodeFile* device_files = nullptr;
+    BatchEncodeChunk* device_chunks = nullptr;
+    U8* scratch = nullptr;
+    U32 *tokens = nullptr, *sizes = nullptr, *status = nullptr;
+    const U32 slot_bytes = (chunk * 9 + 7) / 8 + 16;
+    CUDA_TRY(workspace.Allocate(&device_files, count));
+    CUDA_TRY(workspace.Allocate(&device_chunks, total_chunks));
+    CUDA_TRY(workspace.Allocate(&scratch, total_chunks * slot_bytes));
+    CUDA_TRY(workspace.Allocate(&tokens, input_extent));
+    CUDA_TRY(workspace.Allocate(&sizes, total_chunks));
+    CUDA_TRY(workspace.Allocate(&status, total_chunks));
+    CUDA_TRY(cudaMemcpyAsync(device_files, files.data(), count * sizeof(files[0]),
+                             cudaMemcpyHostToDevice, stream));
+    CUDA_TRY(cudaMemcpyAsync(device_chunks, chunks.data(), chunks.size() * sizeof(chunks[0]),
+                             cudaMemcpyHostToDevice, stream));
+    // Descriptor storage is owned by this invocation. Complete the two uploads
+    // before releasing the host vectors; there are no per-file synchronizations.
+    CUDA_TRY(cudaStreamSynchronize(stream));
+    CUDA_TRY(cudaMemsetAsync(output->typed_data(), 0, output_extent, stream));
+    BatchEncode<<<U32(total_chunks), 256, 0, stream>>>(
+        input.typed_data(), chunk, slot_bytes, device_files, device_chunks,
+        U32(count), U32(total_chunks), scratch, sizes, status, tokens);
+    CUDA_TRY(cudaGetLastError());
+    BatchFinish<<<U32(count), 256, 0, stream>>>(
+        input.typed_data(), device_files, U32(count), U32(total_chunks), slot_bytes,
+        scratch, sizes, status, output->typed_data(), metadata->typed_data());
+    return cudaGetLastError();
+  }, count);
+}
+
+ffi::Error DecompressBatchImpl(cudaStream_t stream, Sizes input_sizes,
+                               Sizes output_sizes, ffi::Buffer<ffi::U8> input,
+                               ffi::Buffer<ffi::U32> encoded_metadata,
+                               ffi::ResultBuffer<ffi::U8> output,
+                               ffi::ResultBuffer<ffi::U32> metadata) {
+  const std::size_t count = input_sizes.size();
+  if (!count || count > kMaxBlocks || output_sizes.size() != count)
+    return ffi::Error::InvalidArgument("batch sizes must have matching nonempty lengths");
+  const auto dims = encoded_metadata.dimensions();
+  const bool has_lengths = encoded_metadata.element_count() != 0;
+  if (has_lengths ? (dims.size() != 2 || dims[0] != count || dims[1] != 2) :
+                    (dims.size() != 1))
+    return ffi::Error::InvalidArgument("encoded metadata must have shape (files, 2) or (0,)");
+  return Execute(stream, metadata, [&](Workspace& workspace) -> cudaError_t {
+    if (!IsVector(input) || !IsVector(*output) ||
+        input.element_count() > kMaxBytes || output->element_count() > kMaxBytes)
+      return cudaErrorInvalidValue;
+    std::vector<BatchDecodeFile> files;
+    files.reserve(count);
+    U64 input_extent = 0, output_extent = 0;
+    for (std::size_t i = 0; i < count; ++i) {
+      const auto size = input_sizes[i], expected = output_sizes[i];
+      if (size < 0 || expected < 0 || size > kMaxBytes || expected > kMaxBytes ||
+          input_extent + size > kMaxBytes || output_extent + expected > kMaxBytes)
+        return cudaErrorInvalidValue;
+      files.push_back({U32(input_extent), U32(size), U32(output_extent), U32(expected)});
+      input_extent += size;
+      output_extent += expected;
+    }
+    if (input_extent != input.element_count() || output_extent != output->element_count())
+      return cudaErrorInvalidValue;
+    BatchDecodeFile* device_files = nullptr;
+    CUDA_TRY(workspace.Allocate(&device_files, count));
+    CUDA_TRY(cudaMemcpyAsync(device_files, files.data(), count * sizeof(files[0]),
+                             cudaMemcpyHostToDevice, stream));
+    CUDA_TRY(cudaStreamSynchronize(stream));
+    BatchDecode<<<U32(count), 32, 0, stream>>>(
+        input.typed_data(), output->typed_data(), device_files, U32(count),
+        kMaxBlocks, metadata->typed_data(),
+        has_lengths ? encoded_metadata.typed_data() : nullptr);
+    return cudaGetLastError();
+  }, count);
 }
 
 #undef CUDA_TRY
@@ -675,5 +808,26 @@ XLA_FFI_DEFINE_HANDLER_SYMBOL(
         .Attr<std::int64_t>("max_candidates")
         .Attr<std::int64_t>("max_blocks")
         .Arg<ffi::Buffer<ffi::U8>>()
+        .Ret<ffi::Buffer<ffi::U8>>()
+        .Ret<ffi::Buffer<ffi::U32>>());
+
+XLA_FFI_DEFINE_HANDLER_SYMBOL(
+    CudaZlibCompressBatch, CompressBatchImpl,
+    ffi::Ffi::Bind()
+        .Ctx<ffi::PlatformStream<cudaStream_t>>()
+        .Attr<std::int64_t>("chunk_bytes")
+        .Attr<Sizes>("input_sizes")
+        .Arg<ffi::Buffer<ffi::U8>>()
+        .Ret<ffi::Buffer<ffi::U8>>()
+        .Ret<ffi::Buffer<ffi::U32>>());
+
+XLA_FFI_DEFINE_HANDLER_SYMBOL(
+    CudaZlibDecompressBatch, DecompressBatchImpl,
+    ffi::Ffi::Bind()
+        .Ctx<ffi::PlatformStream<cudaStream_t>>()
+        .Attr<Sizes>("input_sizes")
+        .Attr<Sizes>("output_sizes")
+        .Arg<ffi::Buffer<ffi::U8>>()
+        .Arg<ffi::Buffer<ffi::U32>>()
         .Ret<ffi::Buffer<ffi::U8>>()
         .Ret<ffi::Buffer<ffi::U32>>());

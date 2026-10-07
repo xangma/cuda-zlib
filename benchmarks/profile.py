@@ -73,7 +73,8 @@ def main():
                         'zlib_runtime': zlib.ZLIB_RUNTIME_VERSION},
         'source_sha256': {str(p.relative_to(Path(cuda_zlib.__file__).parent)): hashlib.sha256(p.read_bytes()).hexdigest()
                           for p in sorted([*Path(cuda_zlib.__file__).parent.glob('*.py'),
-                                           *Path(cuda_zlib.__file__).parent.glob('native/*.cu')])},
+                                             *Path(cuda_zlib.__file__).parent.glob('native/*.cu'),
+                                             *Path(cuda_zlib.__file__).parent.glob('native/*.cuh')])},
         'methodology': 'Warm completed API wall timings; one extra validated call per workflow. '
                        'Native build and per-workflow XLA compilation excluded. '
                        'Kernel durations require external Nsight capture; optional CUDA profiler API ranges. '

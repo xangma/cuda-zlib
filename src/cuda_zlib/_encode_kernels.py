@@ -254,16 +254,15 @@ __device__ void enc_emit(
 __device__ enc_u32 enc_extent(enc_u32 bits, bool final) {
   return final ? (bits+7u)/8u : (bits+3u+7u)/8u+4u;
 }
-extern "C" __global__ void encode_chunks(
+__device__ __forceinline__ void encode_chunk(
     const enc_u8* input, enc_u32 total, enc_u32 chunk_bytes, enc_u32 chunks,
-    enc_u32 slot_bytes, enc_u8* scratch, enc_u32* sizes, enc_u32* status,
-    enc_u32* tokens) {
+    enc_u32 chunk, enc_u32 slot_bytes, enc_u8* scratch, enc_u32* sizes,
+    enc_u32* status, enc_u32* tokens) {
   __shared__ enc_u32 last[8192];
   __shared__ enc_u32 freq[335], weight[571];
   __shared__ enc_u16 codes[335], parent[571], heap[286];
   __shared__ enc_u8 lengths[335], rle_symbols[316], rle_extras[316];
   __shared__ enc_u32 extra_bits, nll, ndist, ncl, rle_size, mode, extent, token_count;
-  enc_u32 chunk = blockIdx.x;
   if (chunk >= chunks) return;
   enc_u32 start = chunk * chunk_bytes;
   enc_u32 n = total - start;
@@ -353,6 +352,13 @@ extern "C" __global__ void encode_chunks(
   if (w.size != extent) { status[chunk] = 1; return; }
   sizes[chunk] = w.size;
   status[chunk] = w.error;
+}
+extern "C" __global__ void encode_chunks(
+    const enc_u8* input, enc_u32 total, enc_u32 chunk_bytes, enc_u32 chunks,
+    enc_u32 slot_bytes, enc_u8* scratch, enc_u32* sizes, enc_u32* status,
+    enc_u32* tokens) {
+  encode_chunk(input, total, chunk_bytes, chunks, blockIdx.x, slot_bytes,
+               scratch, sizes, status, tokens);
 }
 extern "C" __global__ void pack_chunks(
     const enc_u8* scratch, enc_u32 slot_bytes, const enc_u32* sizes,

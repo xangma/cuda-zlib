@@ -67,6 +67,8 @@ def _compile_library(architecture):
     native = Path(__file__).parent / "native" / "codec_ffi.cu"
     sources = {"codec_ffi.cu": native.read_text(), "encoder.cuh": encoder,
                "decoder.cuh": decoder, "postprocess.cuh": checksum}
+    for name in ("batch_encode.cuh", "batch_decode.cuh"):
+        sources[name] = (native.parent / name).read_text()
     try:
         version = subprocess.check_output([nvcc, "--version"], text=True, timeout=30)
     except (OSError, subprocess.SubprocessError) as exc:
@@ -122,8 +124,10 @@ def _load_library_cached(architecture):
     except OSError as exc:
         raise BackendUnavailable(f"could not load native CUDA library: {exc}") from exc
     _configure_workspace_pool(library)
-    names = tuple(f"cuda_zlib_{operation}_{architecture}" for operation in ("compress", "decompress"))
-    for name, symbol in zip(names, ("CudaZlibCompress", "CudaZlibDecompress")):
+    operations = ("compress", "decompress", "compress_batch", "decompress_batch")
+    names = tuple(f"cuda_zlib_{operation}_{architecture}" for operation in operations)
+    for name, symbol in zip(names, ("CudaZlibCompress", "CudaZlibDecompress",
+                                   "CudaZlibCompressBatch", "CudaZlibDecompressBatch")):
         jax.ffi.register_ffi_target(name, jax.ffi.pycapsule(getattr(library, symbol)), platform="CUDA")
     return library, names
 
@@ -161,7 +165,11 @@ def _backend(device):
 
 
 def load_backend(device):
-    return _backend(device)[1]
+    return _backend(device)[1][:2]
+
+
+def load_batch_backend(device):
+    return _backend(device)[1][2:]
 
 
 def workspace_pool_stats(device):

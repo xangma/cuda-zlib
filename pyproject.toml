@@ -25,7 +25,7 @@ test = ["pytest>=8"]
 where = ["src"]
 
 [tool.setuptools.package-data]
-cuda_zlib = ["native/*.cu"]
+cuda_zlib = ["native/*.cu", "native/*.cuh"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
