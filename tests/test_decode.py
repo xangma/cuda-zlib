@@ -281,6 +281,18 @@ def _grid_stride_stream():
     return _wrap(body, prefix + suffix), prefix + suffix
 
 
+def _deep_reference_stream(match_blocks):
+    seed = bytes(range(256)) + b"\x00\x01"
+    fixed = _codes([8] * 144 + [9] * 112 + [7] * 24 + [8] * 8)
+    fields = []
+    for index in range(match_blocks):
+        # Length 258, distance 258: every output byte references the prior block.
+        fields += [(int(index + 1 == match_blocks), 1), (1, 2), fixed[285],
+                   _code(16, 5), (1, 7), fixed[256]]
+    raw = seed * (match_blocks + 1)
+    return _wrap(_stored(seed, final=False) + _bits(fields), raw), raw
+
+
 def _assert_bytes(result, raw, device):
     import jax
     assert isinstance(result, jax.Array)
@@ -304,6 +316,9 @@ def test_handbuilt_deflate_fixtures_match_independent_stdlib():
     assert zlib.decompress(payload) == raw
     # stdlib accepts this smaller CINFO despite its over-window distance.
     assert zlib.decompress(small_window) == raw
+    for match_blocks in (257, 1050):
+        payload, raw = _deep_reference_stream(match_blocks)
+        assert zlib.decompress(payload) == raw
 
 
 def _dense_prefix_stored_stream():
@@ -656,3 +671,131 @@ def test_returned_array_survives_subsequent_decode(
     del second
     gc.collect()
     _assert_bytes(first, first_raw, cuda_device)
+
+
+@pytest.mark.parametrize("size", [65537, 1048577])
+def test_large_jit_checked_errors_and_recovery(
+    cuda_device, forbid_cpu_inflation, size,
+):
+    import jax
+    import jax.numpy as jnp
+    from cuda_zlib import decompress_zlib_checked
+
+    device = jax.devices("gpu")[cuda_device]
+    raw = random.Random(size).randbytes(size)
+    # Stored data keeps the larger input above the prefix-discovery threshold.
+    payload = _compressed(raw, level=0)
+    source = jax.device_put(np.frombuffer(payload, np.uint8), device)
+    decode = jax.jit(
+        lambda value, expected: decompress_zlib_checked(value, expected, device),
+        static_argnums=1,
+    )
+    cases = (
+        (source.at[0].set(jnp.uint8(0)), size, 15),
+        (source.at[-1].set(source[-1] ^ jnp.uint8(1)), size, 21),
+        (source.at[2].set((source[2] & jnp.uint8(0xF8)) | jnp.uint8(7)),
+         size, None),
+        (source, size - 1, None),
+        (source, size + 1, None),
+    )
+    for malformed, expected, wanted_status in cases:
+        failed, metadata = decode(malformed, expected)
+        assert failed.shape == (expected,) and failed.dtype == np.uint8
+        assert metadata.shape == (2,) and metadata.dtype == np.uint32
+        assert failed.devices() == metadata.devices() == {device}
+        status, reserved = map(int, np.asarray(metadata))
+        assert reserved == 0
+        if wanted_status is None:
+            assert status != 0
+        else:
+            assert status == wanted_status
+        recovered, recovered_metadata = decode(source, size)
+        np.testing.assert_array_equal(np.asarray(recovered_metadata), [0, 0])
+        _assert_bytes(recovered, raw, device)
+
+
+@pytest.mark.parametrize("match_blocks", [257, 1050], ids=["two-rounds", "three-rounds"])
+def test_jit_checked_deep_cross_block_references(
+    cuda_device, forbid_cpu_inflation, match_blocks,
+):
+    import jax
+    from cuda_zlib import decompress_zlib_checked
+
+    device = jax.devices("gpu")[cuda_device]
+    payload, raw = _deep_reference_stream(match_blocks)
+    # Both exceed SmallDecode's output limit; their chains need 2/3 32-hop rounds.
+    assert len(raw) > 65536
+    source = jax.device_put(np.frombuffer(payload, np.uint8), device)
+    decode = jax.jit(lambda value: decompress_zlib_checked(value, len(raw), device))
+    result, metadata = decode(source)
+    assert result.devices() == metadata.devices() == {device}
+    np.testing.assert_array_equal(np.asarray(metadata), [0, 0])
+    _assert_bytes(result, raw, device)
+
+
+def test_jit_checked_status_gates_numeric_consumer(
+    cuda_device, forbid_cpu_inflation,
+):
+    import jax
+    import jax.numpy as jnp
+    from cuda_zlib import decompress_zlib_checked
+
+    device = jax.devices("gpu")[cuda_device]
+    raw = (bytes(range(251)) * 262)[:65537]
+    source = jax.device_put(np.frombuffer(_compressed(raw), np.uint8), device)
+
+    @jax.jit
+    def consume(value):
+        output, metadata = decompress_zlib_checked(value, len(raw), device)
+        result = jax.lax.cond(
+            metadata[0] == 0,
+            lambda data: jnp.sum(data.astype(jnp.int32) * 3 + 7, dtype=jnp.int32),
+            lambda data: jnp.int32(-1),
+            output,
+        )
+        return result, metadata
+
+    wanted = int(np.sum(np.frombuffer(raw, np.uint8).astype(np.int64) * 3 + 7))
+    bad = source.at[-1].set(source[-1] ^ jnp.uint8(1))
+    for value, expected, status in ((source, wanted, 0), (bad, -1, 21),
+                                     (source, wanted, 0)):
+        result, metadata = consume(value)
+        assert result.devices() == metadata.devices() == {device}
+        np.testing.assert_array_equal(np.asarray(metadata), [status, 0])
+        assert int(np.asarray(result)) == expected
+
+
+def test_queued_checked_output_and_metadata_ownership(
+    cuda_device, forbid_cpu_inflation,
+):
+    import jax
+    import jax.numpy as jnp
+    from cuda_zlib import decompress_zlib_checked, trim_workspace_pool
+
+    device = jax.devices("gpu")[cuda_device]
+    raw = random.Random(441).randbytes(65537)
+    sources = [jax.device_put(np.frombuffer(_compressed(value, level=0), np.uint8),
+                              device) for value in (raw, raw[::-1])]
+    decode = jax.jit(lambda value: decompress_zlib_checked(value, len(raw), device))
+    queued = [decode(sources[0]),
+              decode(sources[1].at[-1].set(sources[1][-1] ^ jnp.uint8(1))),
+              decode(sources[1]), decode(sources[0].at[0].set(jnp.uint8(0)))]
+    # Submit every call before waiting or reading any output/status on the host.
+    jax.block_until_ready(queued)
+    first, first_metadata = queued[0]
+    errors = (queued[1][1], queued[3][1])
+    del queued, sources
+    gc.collect()
+    trim_workspace_pool(device)
+    replacement = jax.device_put(
+        np.frombuffer(_compressed(raw[::-1], level=0), np.uint8), device)
+    later, later_metadata = decode(replacement)
+    jax.block_until_ready((later, later_metadata))
+    assert first.devices() == first_metadata.devices() == {device}
+    assert all(metadata.devices() == {device} for metadata in errors)
+    np.testing.assert_array_equal(np.asarray(first_metadata), [0, 0])
+    for metadata, status in zip(errors, (21, 15)):
+        np.testing.assert_array_equal(np.asarray(metadata), [status, 0])
+    np.testing.assert_array_equal(np.asarray(later_metadata), [0, 0])
+    _assert_bytes(first, raw, device)
+    _assert_bytes(later, raw[::-1], device)

@@ -62,6 +62,28 @@ have no automatic differentiation rule. Handler execution includes bounded
 host control synchronization; a compiled call does not imply an entirely
 asynchronous pipeline.
 
+To process decoded bytes inside a compiled workflow, gate the consumer on the
+device status and return that status to the caller:
+
+```python
+import jax.numpy as jnp
+
+@jax.jit
+def decode_and_sum(stream):
+    output, metadata = cuda_zlib.decompress_zlib_checked(stream, 4096, device)
+    value = jax.lax.cond(
+        metadata[0] == 0,
+        lambda x: x.astype(jnp.float32).sum(),
+        lambda x: jnp.float32(-1),
+        output,
+    )
+    return value, metadata
+```
+
+Both returned buffers are owned by JAX. Failed decode output is invalid;
+the failure branch must return an explicit sentinel or error result without
+processing those bytes. Check the returned metadata at the application boundary.
+
 ## Multiple files
 
 Batch independent files to share dispatch, workspace and transfer costs:
@@ -213,9 +235,10 @@ dictionaries. Long fixed regions use fresh GPU token-boundary summaries when
 the actual stream requires them.
 
 Compression caches match tokens in a workspace of four bytes per input byte
-(256 MiB for a 64 MiB input). Decoding skips the second four-byte-per-output-byte
-reference workspace when every match resolves within its emitted segment, and
-gathers output bytes while calculating checksum partials. Large compressed
+(256 MiB for a 64 MiB input). Large-file decoding reserves four bytes per output
+byte for references, or eight bytes per output byte when there are multiple
+emitted blocks. Reference resolution and final error checks run on the device;
+output bytes are gathered while calculating checksum partials. Large compressed
 inputs use a speculative-prefix queue of about one eighth the compressed input
 size. The queue is bounded; dense prefixes use a GPU fallback path. Allocation
 failures remain possible even within the codec bounds.

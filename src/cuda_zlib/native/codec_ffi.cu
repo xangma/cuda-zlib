@@ -311,7 +311,8 @@ __global__ void CompressionPrefix(const U32* sizes, const U32* status,
   metadata[0] = U32(total);
 }
 
-__global__ void EmissionStatus(const U32* input, U32 blocks, U32* result) {
+__global__ void EmissionStatus(const U32* input, U32 blocks,
+                               checksum::DecodeState* state) {
   __shared__ U32 errors[256], pending[256];
   U32 error = 0, external = 0;
   for (U32 i = threadIdx.x; i < blocks; i += blockDim.x) {
@@ -328,14 +329,55 @@ __global__ void EmissionStatus(const U32* input, U32 blocks, U32* result) {
     }
     __syncthreads();
   }
-  if (!threadIdx.x) { result[0] = errors[0]; result[1] = pending[0]; }
+  if (!threadIdx.x) {
+    state->status = errors[0];
+    state->active = !errors[0] && pending[0];
+    state->selector = 0;
+    state->pending = 0;
+    state->refine_status = 0;
+  }
 }
 
-__global__ void VerifyChecksum(const U32* actual, U32 expected, U32* metadata) {
-  if (!blockIdx.x && !threadIdx.x) {
-    metadata[0] = *actual == expected ? 0u : U32(kAdlerMismatch);
-    metadata[1] = 0;
+// Each valid nonliteral emission root points before its accepted block's
+// prefix: local copies inherit a literal or that same earlier-block index.
+// Thus the initial reference depth is at most blocks-1. Every refinement pass
+// follows 32 links in the preceding snapshot; ceil(log32(blocks)) passes are
+// sufficient, with at most four passes under kMaxBlocks.
+U32 RefinementRounds(U32 blocks) {
+  U32 rounds = 0, covered = 1;
+  while (covered < blocks) { covered *= 32; ++rounds; }
+  return rounds;
+}
+
+__global__ void RefinementStatus(checksum::DecodeState* state, U32 last_round) {
+  if (blockIdx.x || threadIdx.x || !state->active) return;
+  if (state->refine_status) {
+    state->status = state->refine_status;
+    state->active = 0;
+    return;
   }
+  // Advance only after a completed pass. Skipped launches must not select an
+  // unwritten alternate buffer or move away from the first resolved snapshot.
+  state->selector ^= 1u;
+  if (!state->pending) state->active = 0;
+  else if (last_round) {
+    state->status = kReferenceDepthExceeded;
+    state->active = 0;
+  }
+  state->pending = 0;
+  state->refine_status = 0;
+}
+
+__global__ void VerifyDecompression(const checksum::DecodeState* state,
+                                    const U32* actual, U32 wanted,
+                                    U32* metadata) {
+  if (blockIdx.x || threadIdx.x) return;
+  U32 error = state->status;
+  if (!error && state->active) error = kReferenceDepthExceeded;
+  // Gather/checksum are skipped on prior failure, so actual may be unwritten.
+  if (!error && *actual != wanted) error = kAdlerMismatch;
+  metadata[0] = error;
+  metadata[1] = 0;
 }
 
 cudaError_t Compress(cudaStream_t stream, std::int64_t chunk_bytes,
@@ -551,8 +593,13 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
   if (!blocks) return SetStatus(stream, result, kInitialBlockMissing);
   if (blocks > block_capacity) return SetStatus(stream, result, 9);
   U32 *roots = nullptr, *emission = nullptr;
+  checksum::DecodeState* decode_state = nullptr;
   CUDA_TRY(workspace.Allocate(&roots, expected));
   CUDA_TRY(workspace.Allocate(&emission, std::size_t(blocks) * 2));
+  CUDA_TRY(workspace.Allocate(&decode_state, 1));
+  U32* alternate = roots;
+  const U32 rounds = RefinementRounds(blocks);
+  if (rounds) CUDA_TRY(workspace.Allocate(&alternate, expected));
   decoder::emit_blocks<<<blocks, 1, 0, stream>>>(
       data, length, block_starts, block_ends, prefix, block_sizes, blocks,
       expected, window, roots, emission);
@@ -565,38 +612,30 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
       data, length, block_starts, block_ends, prefix, block_sizes, blocks,
       expected, window, roots, emission);
   CUDA_TRY(cudaGetLastError());
-  EmissionStatus<<<1, 256, 0, stream>>>(emission, blocks, control + 2);
+  EmissionStatus<<<1, 256, 0, stream>>>(emission, blocks, decode_state);
   CUDA_TRY(cudaGetLastError());
-  CUDA_TRY(ReadWords(stream, control + 2, host.data(), host.size()));
-  if (host[0]) return SetStatus(stream, result, host[0]);
-  if (host[1]) {
-    U32* alternate = nullptr;
-    CUDA_TRY(workspace.Allocate(&alternate, expected));
-    bool resolved = false;
-    for (U32 round = 0; round < 28; ++round) {
-      CUDA_TRY(cudaMemsetAsync(control + 2, 0, 2 * sizeof(U32), stream));
-      checksum::refine_roots<<<std::max<U32>(1, (expected + 255) / 256),
-                               256, 0, stream>>>(
-          roots, alternate, expected, control + 2, control + 3);
-      CUDA_TRY(cudaGetLastError());
-      std::swap(roots, alternate);
-      CUDA_TRY(ReadWords(stream, control + 2, host.data(), host.size()));
-      if (host[1]) return SetStatus(stream, result, host[1]);
-      if (!host[0]) { resolved = true; break; }
-    }
-    if (!resolved) return SetStatus(stream, result, kReferenceDepthExceeded);
+  const U32 refine_grid = std::max<U32>(
+      1, std::min<U32>(16384, (expected + 255) / 256));
+  for (U32 round = 0; round < rounds; ++round) {
+    checksum::refine_roots<<<refine_grid, 256, 0, stream>>>(
+        roots, alternate, expected, decode_state);
+    CUDA_TRY(cudaGetLastError());
+    RefinementStatus<<<1, 1, 0, stream>>>(decode_state, round + 1 == rounds);
+    CUDA_TRY(cudaGetLastError());
   }
   const U32 parts = std::max<U32>(1, (expected + 4095) / 4096);
   U64 *partial_a = nullptr, *partial_b = nullptr;
   CUDA_TRY(workspace.Allocate(&partial_a, parts));
   CUDA_TRY(workspace.Allocate(&partial_b, parts));
   checksum::write_adler_parts<<<parts, 256, 0, stream>>>(
-      roots, output->typed_data(), expected, partial_a, partial_b);
+      roots, alternate, output->typed_data(), expected, partial_a, partial_b,
+      decode_state);
   CUDA_TRY(cudaGetLastError());
   checksum::adler_finish<<<1, 256, 0, stream>>>(
-      partial_a, partial_b, parts, expected, control + 2);
+      partial_a, partial_b, parts, expected, control + 2, decode_state);
   CUDA_TRY(cudaGetLastError());
-  VerifyChecksum<<<1, 1, 0, stream>>>(control + 2, wanted_checksum, result);
+  VerifyDecompression<<<1, 1, 0, stream>>>(
+      decode_state, control + 2, wanted_checksum, result);
   return cudaGetLastError();
 }
 
