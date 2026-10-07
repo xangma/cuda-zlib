@@ -1,0 +1,298 @@
+{
+  "schema_version": 1,
+  "report_type": "cuda-zlib-small-batch",
+  "source_report": "/Users/xangma/Documents/Codex/2026-10-05/cuda-zlib-extraction/work/optimise-codec/benchmarks/results/small-batch-rtx4090-20261007.json",
+  "source_report_sha256": "ef22a15624cdb920c02d05284adb17a707f8e02a52156fa77ad8774dc47f7a3a",
+  "plotter_sha256": "34a7a95e45b897c13a4af761ac5464753c461c7678e1938396de472dc464d239",
+  "measurement_source": {
+    "sha256": {
+      "benchmarks/small_batch.py": "9a18faa29c8b9c880ea8e88ed45532654fe8f11f2aa5cb8582a1e89c1e775d4e",
+      "benchmarks/benchmark.py": "9274ee758051b2d2aec9074e68aa1554c140e42eb2a5e3e6e01e7902270be907",
+      "benchmarks/plot_small_batch.py": "34a7a95e45b897c13a4af761ac5464753c461c7678e1938396de472dc464d239",
+      "src/cuda_zlib/__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
+      "src/cuda_zlib/_codec.py": "f355cdb26939ad42104f9c456d9b5fcca3923deb275fbdcc4038e57ba741ce3b",
+      "src/cuda_zlib/_decode_kernels.py": "e496634f220f8d79b2ff1bae6a0084409f564e112823505856255e8f0568396d",
+      "src/cuda_zlib/_encode_kernels.py": "bbbdd23f07b60a1cb15fd4f8f062be234b359b07a15d505c7d3afc31857d8c90",
+      "src/cuda_zlib/_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
+      "src/cuda_zlib/_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
+      "src/cuda_zlib/_postprocess.py": "fd12a0027a05ae31eb9ee44ef5b8392bf744bc23968a1a0d22de1de4f36c1e41",
+      "src/cuda_zlib/jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
+      "src/cuda_zlib/native/codec_ffi.cu": "9f2f1134f22beef8e8243df39ac039796101293d2daa8672ff838489925aa41d",
+      "src/cuda_zlib/native/batch_decode.cuh": "a9687fd7dbb4f2394a2ef900b61e030d0a707fa3bd2a50b750248a79cabec372",
+      "src/cuda_zlib/native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289"
+    },
+    "git": {
+      "commit": null,
+      "status": null
+    }
+  },
+  "environment": {
+    "os": "Linux",
+    "machine": "x86_64",
+    "cpu": "AMD Ryzen Threadripper PRO 3995WX 64-Cores",
+    "python": "3.12.8",
+    "numpy": "2.2.6",
+    "zlib_runtime": "1.3.1",
+    "jax": "0.11.2",
+    "jaxlib": "0.11.2",
+    "cuda_zlib": "0.1.0a1",
+    "backend": "JAX typed CUDA FFI",
+    "cuda_platform": "cuda 13040",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "gpu_snapshot_before": [
+      "NVIDIA GeForce RTX 4090, 610.57.04, 2802, 24564, 0, 47"
+    ],
+    "native_builds": [
+      {
+        "architecture": "sm_89",
+        "jaxlib": "0.11.2",
+        "compiler": "/usr/local/cuda-12.1/bin/nvcc",
+        "compiler_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2023 NVIDIA Corporation\nBuilt on Mon_Apr__3_17:16:06_PDT_2023\nCuda compilation tools, release 12.1, V12.1.105\nBuild cuda_12.1.r12.1/compiler.32688072_0\n",
+        "sources": {
+          "codec_ffi.cu": "e1de12eb3dd8ae627cfe203b9f06c7782a0fddd67572d2a4f25a7d603ada2725",
+          "encoder.cuh": "408800692ec277336fdc6d4f9f86e8fe688e2c9aaaafe50c3ed16592095e516f",
+          "decoder.cuh": "948eac407c0534e3d577273057c06f89837399558dd688eed7aaf66dfdc04b83",
+          "postprocess.cuh": "65004fc76920e432c543c3cb79adf7b19abc8cd5436410717c17830c41200dc4",
+          "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+          "batch_decode.cuh": "a9687fd7dbb4f2394a2ef900b61e030d0a707fa3bd2a50b750248a79cabec372"
+        },
+        "headers": {
+          "api.h": "1426ea8206a1b9f1824f460572ea731665eb7cb9def1f0fc166b13df4b955ad0",
+          "c_api.h": "9847993912aa1aadb2dac4af16eeb9d8bae3f470905b519977d1d09b3f37eedf",
+          "collectives_api.h": "59f78f7358e33ad4c98d9356cce45b43c22c745eb6e88785070889e546b7e0b4",
+          "collectives_c_api.h": "ed27017e78d9adc100927b868b8578941765aaee483c16138c6e6ec3d982063f",
+          "ffi.h": "0878473a1ee35fdd9ff15424d46a44602fb53019f0d0a9f5117abdb386c35129",
+          "record_api.h": "35214dc4910a1de61e8903adca060d8a1354070fb0a31936cf97c7ce9292ec37",
+          "record_c_api.h": "6972199566e88987f224e42aac1a6b433d4d9a25f1eaa6526288b4922ff02db0"
+        },
+        "flags": [
+          "-O3",
+          "-lineinfo",
+          "--std=c++17",
+          "--cudart=shared",
+          "-Xcompiler=-pthread",
+          "-ldl"
+        ]
+      },
+      {
+        "architecture": "sm_89",
+        "jaxlib": "0.11.2",
+        "compiler": "/usr/local/cuda-12.1/bin/nvcc",
+        "compiler_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2023 NVIDIA Corporation\nBuilt on Mon_Apr__3_17:16:06_PDT_2023\nCuda compilation tools, release 12.1, V12.1.105\nBuild cuda_12.1.r12.1/compiler.32688072_0\n",
+        "sources": {
+          "codec_ffi.cu": "9f2f1134f22beef8e8243df39ac039796101293d2daa8672ff838489925aa41d",
+          "encoder.cuh": "408800692ec277336fdc6d4f9f86e8fe688e2c9aaaafe50c3ed16592095e516f",
+          "decoder.cuh": "948eac407c0534e3d577273057c06f89837399558dd688eed7aaf66dfdc04b83",
+          "postprocess.cuh": "65004fc76920e432c543c3cb79adf7b19abc8cd5436410717c17830c41200dc4",
+          "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+          "batch_decode.cuh": "a9687fd7dbb4f2394a2ef900b61e030d0a707fa3bd2a50b750248a79cabec372"
+        },
+        "headers": {
+          "api.h": "1426ea8206a1b9f1824f460572ea731665eb7cb9def1f0fc166b13df4b955ad0",
+          "c_api.h": "9847993912aa1aadb2dac4af16eeb9d8bae3f470905b519977d1d09b3f37eedf",
+          "collectives_api.h": "59f78f7358e33ad4c98d9356cce45b43c22c745eb6e88785070889e546b7e0b4",
+          "collectives_c_api.h": "ed27017e78d9adc100927b868b8578941765aaee483c16138c6e6ec3d982063f",
+          "ffi.h": "0878473a1ee35fdd9ff15424d46a44602fb53019f0d0a9f5117abdb386c35129",
+          "record_api.h": "35214dc4910a1de61e8903adca060d8a1354070fb0a31936cf97c7ce9292ec37",
+          "record_c_api.h": "6972199566e88987f224e42aac1a6b433d4d9a25f1eaa6526288b4922ff02db0"
+        },
+        "flags": [
+          "-O3",
+          "-lineinfo",
+          "--std=c++17",
+          "--cudart=shared",
+          "-Xcompiler=-pthread",
+          "-ldl"
+        ]
+      }
+    ],
+    "workspace_pool_before": {
+      "retention_bytes": 1073741824,
+      "reserved_bytes": 0,
+      "used_bytes": 0,
+      "pool_count": 0
+    },
+    "gpu_snapshot_after": [
+      "NVIDIA GeForce RTX 4090, 610.57.04, 3002, 24564, 31, 48"
+    ],
+    "workspace_pool_after": {
+      "retention_bytes": 1073741824,
+      "reserved_bytes": 67108864,
+      "used_bytes": 0,
+      "pool_count": 1
+    }
+  },
+  "arguments": {
+    "sizes": [
+      256,
+      4096,
+      65536
+    ],
+    "counts": [
+      1,
+      8,
+      32,
+      128
+    ],
+    "workloads": [
+      "zeros",
+      "text",
+      "random"
+    ],
+    "samples": 7,
+    "seed": 20261007,
+    "device": 0,
+    "chunk_bytes": 32768,
+    "roundtrip": true,
+    "cpu_only": false
+  },
+  "methodology": {
+    "clock": "perf_counter; JAX block_until_ready on every returned array",
+    "warmup_calls_per_measurement": 1,
+    "warmup": "recorded separately; includes per-shape XLA compilation and first execution",
+    "throughput_denominator": "total uncompressed bytes / 2**20",
+    "per_file_latency": "total completed batch latency / file count; amortized, not individual file latency",
+    "cpu": "single-threaded stdlib zlib; level 1 compression; level 6 input streams for decompression",
+    "decode_inputs": "identical independent stdlib level 6 streams for CPU, single-file CUDA and batched CUDA",
+    "resident": "one warmed jax.jit call; single-file loop unrolled into independent FFI calls, or one packed batch FFI call; inputs already on GPU",
+    "resident_status": "per-file device metadata and bytes checked after timing; timed calls wait for metadata completion but do not copy status to the host",
+    "host_bytes": "Python bytes inputs and per-file bytes outputs; includes input packing, transfers, synchronous codec status checks, and output materialization",
+    "timing_includes": "output allocations, Python/JAX dispatch, GPU execution and completion; host-byte scope additionally includes transfers and bytes copies",
+    "timing_excludes": "payload generation, initial resident upload/packing, native build/registration, warmup/XLA compilation, post-timing oracle comparisons",
+    "validation": "last output from each timed workflow checked outside timing; stdlib decodes every compressed stream; decoded bytes match every input",
+    "roundtrip": "optional compiled padded batch compression then decompression; encoded lengths remain on device; both statuses checked after timing"
+  },
+  "plotted_operations": [
+    "compression",
+    "decompression"
+  ],
+  "roundtrip_plotted": false,
+  "exports": [
+    {
+      "file": "rtx4090-zeros-resident.png",
+      "sha256": "12ffdb01a9678366cb2a679f7660aa293c17b46a6a70df3326286460543580da",
+      "workload": "zeros",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-zeros-resident.svg",
+      "sha256": "8434267ef0fd3f5257a08b72d67d307e23630438795e5935bba5281d865a5024",
+      "workload": "zeros",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-zeros-resident.pdf",
+      "sha256": "4141cb940eb3e39c8f91ad3a14fce1cc8c7a05836c224ec8689902c88bbe9bb0",
+      "workload": "zeros",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-zeros-host-bytes.png",
+      "sha256": "d14fed933b14b9be3fa25cb074cec657a0e0cb9f3d3c1ff55dca64ace6e8cb21",
+      "workload": "zeros",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-zeros-host-bytes.svg",
+      "sha256": "65f436e3c5c4e0c190ebff6bf426d6d1e97da9bd78df69afa5159bd0f5ed491e",
+      "workload": "zeros",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-zeros-host-bytes.pdf",
+      "sha256": "ff2602f477a43c43e65b67f48ef61180cda5189b520be68a9f2e471de3a88229",
+      "workload": "zeros",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-text-resident.png",
+      "sha256": "110110ae385855cc4732a56ab44b68653d46580c36d6b2f285116190cfdf93c3",
+      "workload": "text",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-text-resident.svg",
+      "sha256": "74c01e75a8fce7f49355121bc782e4d0926b1b3ac8261ffaf56c3620c4bb4f47",
+      "workload": "text",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-text-resident.pdf",
+      "sha256": "95892742e6209a3dbf314dd2e2dca37e526ad57ccbe05c3b1a8fb7b490e6b80d",
+      "workload": "text",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-text-host-bytes.png",
+      "sha256": "3f8a1f2acf24c5f4c4c11bc2de378bf341b7200faa5900ef01bc241a171e6996",
+      "workload": "text",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-text-host-bytes.svg",
+      "sha256": "f698a4304ed9e107e11dba83c1d83883081996497aac63145240a7ddeb268897",
+      "workload": "text",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-text-host-bytes.pdf",
+      "sha256": "4c69711d6516a64cb18ccd72d3d0b1c39b068a73d767b3672f72a9657d5454f3",
+      "workload": "text",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-random-resident.png",
+      "sha256": "1055e79ac0b93a4a918be6a5c2140dbc44ca8ee1ec6ceb3f9419992853351c86",
+      "workload": "random",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-random-resident.svg",
+      "sha256": "dac844815913442d2a4503df265ba7225eba868be51a871b07013dcb19904833",
+      "workload": "random",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-random-resident.pdf",
+      "sha256": "9c5f0e5cc059aecd0cccf2070f7ffcbba992338783e4e3548036f26852a5fe46",
+      "workload": "random",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-random-host-bytes.png",
+      "sha256": "2c5bf0f365b577cec62a9114b3be29f6ed582c8ba6eee3fe7954ebf9bc8c9c46",
+      "workload": "random",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-random-host-bytes.svg",
+      "sha256": "b27a4aa8c2a009d1cfd1c01f9f384e2afac674cfc074b1343cf7c1c5ef18ec67",
+      "workload": "random",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx4090-random-host-bytes.pdf",
+      "sha256": "38d474456717f8a8c6d76099a86563386a87d3d39a3761ef991ce79e3a0418c7",
+      "workload": "random",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    }
+  ]
+}

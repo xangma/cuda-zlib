@@ -121,6 +121,17 @@ and checksum reductions. DEFLATE bit parsing still follows stream order.
 
 ## Performance
 
+For small files, prefer CPU unless batching or device-resident processing suits
+the workflow. On an RTX 4090, CPU won every measured single-file case at 256 B,
+4 KiB and 64 KiB. With 128 independent files per packed call, host-byte
+compression of 64 KiB files beat CPU by 1.82–17.20×. Decompression beat CPU for
+zero/text files, while random-byte decoding remained slightly slower. See the
+[small-file results](BENCHMARKS.md#independent-small-files-on-rtx-4090) for
+resident timings, CPU comparisons and batch-count plots.
+
+The following single-stream measurements use a separate RTX 3090 source
+snapshot recorded in [BENCHMARKS.md](BENCHMARKS.md#recorded-cuda-results).
+
 On an RTX 3090 with an AMD Threadripper PRO 3995WX, warm **64 MiB**
 compression measured **3.88–12.52×** the throughput of the same CPU's
 single-threaded stdlib zlib level 1. Decoding identical stdlib level-6 streams

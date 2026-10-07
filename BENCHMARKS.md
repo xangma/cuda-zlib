@@ -1,5 +1,113 @@
 # General byte-stream benchmarks
 
+Two measured datasets are reported separately: independent small files on an
+RTX 4090, and single larger streams on an RTX 3090. Each uses single-threaded
+stdlib zlib on its own host CPU. Results from different GPUs are not combined.
+
+## Independent small files on RTX 4090
+
+**CPU was faster for every single-file case**, even with resident CUDA buffers.
+Packing multiple independent streams into one CUDA call amortizes dispatch and
+allows files to execute concurrently. At 128 files, packed resident compression
+was **35–121×** faster than a compiled loop of single-file CUDA calls, and
+resident decompression was **11–129×** faster. These compare available API
+workflows on the same source snapshot.
+
+That is not the speedup over CPU. Including transfers and Python `bytes`
+outputs, 128-file batches beat CPU compression for random data at all three
+sizes and for 64 KiB zero/text files. The 4 KiB text compression result was
+near CPU parity. CPU remained faster for 256-byte zero/text compression,
+4 KiB zero compression, all 256-byte decompression, and 4 KiB text/random
+decompression. At 64 KiB, batched host decompression was **9.49×** CPU for
+zeros and **1.79×** for text; CPU was slightly faster for random bytes.
+
+### Amortized latency with 128 files
+
+Values are **microseconds per file = total completed call time / 128**; they
+are not the latency of an individual file. Lower is better. CPU uses one thread
+and host `bytes`; CUDA resident inputs/outputs stay on device. CUDA host timings
+start and finish with `bytes`, including packing, transfers, status checks and
+output copies. Decompression uses identical independent stdlib level-6 streams.
+
+| File size | Workload | CPU compression, level 1 | CUDA batch compression, resident | CUDA batch compression, host bytes | CPU decompression | CUDA batch decompression, resident | CUDA batch decompression, host bytes |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 256 B | Zero bytes | 3.44 | 1.61 | 9.40 | 1.27 | 1.74 | 8.90 |
+| 256 B | Generated text | 8.20 | 2.38 | 9.62 | 3.22 | 2.04 | 9.89 |
+| 256 B | Random bytes | 30.73 | 3.68 | 13.05 | 0.58 | 1.09 | 9.54 |
+| 4 KiB | Zero bytes | 7.85 | 3.51 | 12.61 | 14.65 | 1.59 | 10.65 |
+| 4 KiB | Generated text | 19.81 | 6.48 | 18.66 | 8.78 | 3.52 | 14.39 |
+| 4 KiB | Random bytes | 99.94 | 8.36 | 20.77 | 2.39 | 1.37 | 12.97 |
+| 64 KiB | Zero bytes | 105.15 | 16.59 | 57.62 | 224.15 | 4.23 | 23.62 |
+| 64 KiB | Generated text | 251.77 | 38.48 | 79.43 | 92.35 | 27.04 | 51.45 |
+| 64 KiB | Random bytes | 1725.84 | 49.73 | 100.35 | 35.06 | 3.64 | 36.93 |
+
+### Small-file plots
+
+The plots show 256 B, 4 KiB and 64 KiB files at counts 1, 8, 32 and 128.
+Points are medians of seven completed calls; whiskers show sample minimum and
+maximum. Lines connect measured counts, not an inferred crossover. The
+resident single-file comparison is one warmed `jax.jit` containing independent
+FFI calls; the packed workflow uses one batch FFI call. Host single-file timings
+use synchronous convenience APIs in a Python loop. Resident metadata is waited
+for and validated outside timing; host APIs check it before returning.
+
+![Small-file host-byte compression and decompression, generated text](benchmarks/figures/small-batch/rtx4090-text-host-bytes.png)
+
+[Host text SVG](benchmarks/figures/small-batch/rtx4090-text-host-bytes.svg) ·
+[Host text PDF](benchmarks/figures/small-batch/rtx4090-text-host-bytes.pdf) ·
+[Resident text plot](benchmarks/figures/small-batch/rtx4090-text-resident.png) ·
+[Zero-byte host plot](benchmarks/figures/small-batch/rtx4090-zeros-host-bytes.png) ·
+[Random-byte host plot](benchmarks/figures/small-batch/rtx4090-random-host-bytes.png).
+All six plots have PNG, SVG and PDF exports in
+[the small-file figure directory](benchmarks/figures/small-batch).
+
+### Small-file environment and reproduction
+
+Measured 2026-10-07 on an RTX 4090 with an AMD Threadripper PRO 3995WX,
+Linux x86_64, Python 3.12.8, NumPy 2.2.6, JAX/JAXlib 0.11.2 and zlib 1.3.1.
+JAX reported CUDA platform `cuda 13040`, driver 610.57.04; the native library
+used `nvcc` 12.1.105 for `sm_89`. All codec and harness source hashes in the
+[raw 36-case report](benchmarks/results/small-batch-rtx4090-20261007.json)
+match [8363446](https://github.com/xangma/cuda-zlib/tree/8363446113eddc6a782d2c31a803a6d37ca87cec).
+The staging directory was a source export without Git metadata; exact source
+SHA-256 hashes establish that snapshot. Payload and compressed-stream hashes,
+all samples, software versions and native build flags are also recorded.
+
+Each workflow has one untimed warmup, including per-shape XLA compilation,
+and seven timed completed calls. Native build/registration, initial resident
+uploads, payload generation and oracle checks are excluded. Status, bytes and
+zero padding are checked after timing; stdlib decodes CUDA output, and CUDA
+decodes independent stdlib streams. All 36 cases passed, including a compiled
+padded batch round trip with encoded lengths kept on device; round-trip samples
+are in the JSON but are not plotted. Compression sizes differ between codecs;
+encoded sizes are recorded and CUDA has no equivalent to zlib's levels.
+
+The native cache was already built: imports/CUDA initialization took 1.178 s,
+and cache load/registration took 0.008 s. This does not measure a cold native
+build. The private workspace pool used a 1 GiB retention threshold and ended
+with 64 MiB reserved and zero live scratch. This was a shared workstation;
+utilization snapshots do not prove isolation. No parallel CPU codec baseline
+was measured.
+
+```sh
+git checkout 8363446113eddc6a782d2c31a803a6d37ca87cec
+python -m pip install . matplotlib
+CUDACXX=/path/to/nvcc XLA_PYTHON_CLIENT_PREALLOCATE=false \
+  python benchmarks/small_batch.py --sizes 256 4096 65536 \
+  --counts 1 8 32 128 --workloads zeros text random --samples 7 \
+  --seed 20261007 --device 0 --roundtrip --output small-batch.json
+python benchmarks/plot_small_batch.py small-batch.json \
+  --output-dir small-batch-figures
+```
+
+Use an existing compatible GPU JAX installation, or install `".[cuda12]"`
+when setting up a CUDA 12 runtime. `--cpu-only`
+runs real CPU measurements without JAX or CUDA. The plotter rejects incomplete
+matrices and inconsistent summaries; its manifest hashes every export and the
+source report.
+
+## Single-stream results on RTX 3090
+
 These results compare cuda-zlib on an **RTX 3090** with **single-threaded stdlib
 zlib on the same AMD Threadripper PRO 3995WX CPU**, using five synthetic workloads
 at 64 KiB, 1 MiB and 64 MiB.
