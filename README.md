@@ -81,6 +81,10 @@ host allocation. `compress_zlib_batch` and `decompress_zlib_batch` return tuples
 of completed JAX arrays. Exact per-file JAX slicing adds dispatch work; prefer
 packed outputs in compiled workflows.
 
+Host batch APIs reuse compiled calls in bounded process caches keyed by device
+and file sizes, plus chunk size for compression. The first call for each layout
+includes XLA compilation; warm that layout before measuring steady throughput.
+
 For `jax.jit`, supply one flat buffer and static file sizes:
 
 ```python
@@ -124,10 +128,10 @@ and checksum reductions. DEFLATE bit parsing still follows stream order.
 For small files, prefer CPU unless batching or device-resident processing suits
 the workflow. On an RTX 4090, CPU won every measured single-file case at 256 B,
 4 KiB and 64 KiB. With 128 independent files per packed call, host-byte
-compression of 64 KiB files beat CPU by 2.49–18.21×. Decompression beat CPU by
-9.15× for zeros, was near parity at 1.05× for text, and was slightly slower for
-random bytes.
-The measured source is [7cb9c4b](https://github.com/xangma/cuda-zlib/tree/7cb9c4bccf613bfaace58e87c6d7059312106ad0). See the
+compression of 64 KiB files beat CPU by 2.66–18.73×. Decompression beat CPU by
+11.28× for zeros and 2.01× for text; random bytes were near parity at 0.98× CPU
+throughput.
+The measured source is [23d40f5](https://github.com/xangma/cuda-zlib/tree/23d40f51d803ea466fd4f31f4ab0f04234cdeafe). See the
 [small-file results](BENCHMARKS.md#independent-small-files-on-rtx-4090) for
 resident timings, CPU comparisons and batch-count plots.
 

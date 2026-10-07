@@ -10,11 +10,18 @@ import sqlite3
 import subprocess
 
 
-def validate_trace(database, log):
+def validate_log(log):
     # Nsight can return zero and create a partial report after an import error.
     if any(message in log for message in
-           ('TargetProfilingFailed', 'ProcessEventsError', 'Cannot find string for an exterior index')):
+           ('TargetProfilingFailed', 'ProcessEventsError', 'Cannot find string for an exterior index',
+            'Importation succeeded with non-fatal errors')):
         raise RuntimeError('Nsight failed to import CUDA records; see the trace log')
+    if 'Connection to Agent lost' in log:
+        raise RuntimeError('Nsight capture agent disconnected; see the trace log')
+
+
+def validate_trace(database, log):
+    validate_log(log)
     if not database.is_file():
         raise RuntimeError('Nsight did not export the SQLite trace')
     with sqlite3.connect(database.resolve().as_uri() + '?mode=ro', uri=True) as connection:
@@ -36,6 +43,8 @@ def main():
     parser.add_argument('--output', type=Path, required=True, help='new report prefix')
     parser.add_argument('--cuda-profiler-range', action='store_true',
                         help='capture each cudaProfilerStart/Stop range, excluding startup')
+    parser.add_argument('--nvtx-domain-exclude', default='TSL',
+                        help='excluded NVTX domains (default: TSL, for JAX import compatibility; empty includes all)')
     parser.add_argument('command', nargs=argparse.REMAINDER, help='workload command after --')
     args = parser.parse_args()
     command = args.command[1:] if args.command[:1] == ['--'] else args.command
@@ -49,6 +58,8 @@ def main():
     version = subprocess.check_output([args.nsys, '--version'], text=True).strip()
     flags = ['--capture-range=cudaProfilerApi', '--capture-range-end=repeat', '--kill=none'] \
         if args.cuda_profiler_range else []
+    if args.nvtx_domain_exclude:
+        flags.append('--nvtx-domain-exclude=' + args.nvtx_domain_exclude)
     invocation = [args.nsys, 'profile', '--trace=cuda,nvtx', '--sample=none',
                   '--cpuctxsw=none', '--discard-environment=true', '--export=sqlite',
                   '--output=' + str(prefix), *flags, *command]
@@ -56,10 +67,11 @@ def main():
     with log_path.open('w') as log:
         result = subprocess.run(invocation, stdout=log, stderr=subprocess.STDOUT)
     report = dict(nsys_version=version, command=invocation, exit_code=result.returncode,
-                  log=str(log_path), validated=False)
+                  log=str(log_path), nvtx_domain_exclude=args.nvtx_domain_exclude, validated=False)
     try:
         if result.returncode:
             raise RuntimeError(f'Nsight or the workload failed (exit {result.returncode})')
+        validate_log(log_path.read_text())
         reports = sorted(prefix.parent.glob(prefix.name + '*.nsys-rep'))
         if not reports:
             raise RuntimeError('Nsight did not produce a report')

@@ -77,6 +77,7 @@ def main():
                                              *Path(cuda_zlib.__file__).parent.glob('native/*.cuh')])},
         'methodology': 'Warm completed API wall timings; one extra validated call per workflow. '
                        'Native build and per-workflow XLA compilation excluded. '
+                       'Range mode warms all requested workflows before the first capture. '
                        'Kernel durations require external Nsight capture; optional CUDA profiler API ranges. '
                        'Generation, validation and stream transfers excluded. CPU codec forbidden '
                        'inside timed/profiled calls. Frozen streams permit identical decode comparisons.',
@@ -85,6 +86,26 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if args.save_streams:
         args.save_streams.mkdir(parents=True, exist_ok=True)
+
+    if profiler:
+        # New JAX compilation between repeated captures can disconnect Nsight's
+        # agent. Warm every shape first, releasing each case's buffers in turn.
+        for size in args.sizes:
+            for workload in args.workloads:
+                raw = make_payload(workload, size, args.seed)
+                device_raw = jax.device_put(np.frombuffer(raw, dtype=np.uint8), device)
+                stream = guarded(lambda: cuda_zlib.compress_zlib(device_raw, args.device))
+                own = np.asarray(stream).tobytes()
+                check(originals['decompress'](own), raw)
+                if args.streams_from:
+                    own = (args.streams_from / (f'{workload}-{size}.zlib')).read_bytes()
+                for payload in (own, originals['compress'](raw, 6)):
+                    device_stream = jax.device_put(np.frombuffer(payload, dtype=np.uint8), device)
+                    out = guarded(lambda: cuda_zlib.decompress_zlib(device_stream, size, args.device))
+                    check(np.asarray(out).tobytes(), raw)
+                    del out, device_stream
+                del stream, device_raw
+        report['all_workflows_warmed_before_capture'] = True
 
     def run(fn, validate, size):
         result, wall = measure(lambda: guarded(fn), args.samples, size)
@@ -138,7 +159,9 @@ def main():
             print(stem, {k: round(v['wall']['median_seconds'] * 1000, 3)
                          for k, v in timings.items()}, flush=True)
             del stream, device_raw
-    report['environment']['gpu_after'] = gpu_snapshot()
+    # nvidia-smi after cudaProfilerStop can disconnect Nsight's capture agent
+    # before deferred reports are exported. Run it after trace.py exits instead.
+    report['environment']['gpu_after'] = None if args.cuda_profiler_range else gpu_snapshot()
     args.output.write_text(json.dumps(report, indent=2) + '\n')
 
 

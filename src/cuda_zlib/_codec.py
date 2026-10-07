@@ -3,6 +3,8 @@
 
 """Bounded RFC 1950 CUDA codec using JAX-owned buffers and XLA FFI."""
 
+from functools import lru_cache
+
 import numpy as np
 
 from ._errors import BackendUnavailable, CodecError, UnsupportedStream
@@ -292,6 +294,22 @@ def _split_batch(buffer, sizes, extents=None):
     return tuple(results)
 
 
+@lru_cache(maxsize=32)
+def _host_batch_encoder(device, sizes, chunk_bytes):
+    jax = _jax()
+    return jax.jit(lambda data: compress_zlib_batch_padded(
+        data, sizes, device, chunk_bytes=chunk_bytes),
+        in_shardings=jax.sharding.SingleDeviceSharding(device))
+
+
+@lru_cache(maxsize=32)
+def _host_batch_decoder(device, sizes, expected):
+    jax = _jax()
+    return jax.jit(lambda data: decompress_zlib_batch_checked(
+        data, sizes, expected, device),
+        in_shardings=jax.sharding.SingleDeviceSharding(device))
+
+
 def compress_zlib_batch(inputs, device=0, *, chunk_bytes=32768):
     """Return completed exact-length JAX streams for a sequence of files.
 
@@ -323,12 +341,15 @@ def compress_zlib_batch_host(inputs, device=0, *, chunk_bytes=32768):
     """Return a tuple of bytes streams, using one packed output transfer.
 
     This synchronous convenience API is useful for many small host files.
+    Compiled calls are reused in a bounded cache by device, layout and chunk size.
     """
     selected = _select_device(device)
     packed, sizes = _pack_batch(inputs, selected)
-    output, metadata = compress_zlib_batch_padded(packed, sizes, selected, chunk_bytes=chunk_bytes)
+    capacities = _batch_capacities(sizes, chunk_bytes)
+    raw = np.frombuffer(packed, np.uint8) if isinstance(packed, bytes) else packed
+    output, metadata = _host_batch_encoder(selected, sizes, chunk_bytes)(raw)
     lengths = _check_batch(metadata, "CUDA batch compression", True)[:, 0]
-    views = _split_batch(np.asarray(output), _batch_capacities(sizes, chunk_bytes), lengths)
+    views = _split_batch(np.asarray(output), capacities, lengths)
     return tuple(view.tobytes() for view in views)
 
 
@@ -337,11 +358,15 @@ def decompress_zlib_batch_host(payloads, expected_sizes, device=0):
 
     Every stream is decoded and checked independently on CUDA. Returned views
     keep their storage alive across subsequent calls. This API is synchronous.
+    Compiled calls are reused in a bounded cache by device and both layouts.
     """
     selected = _select_device(device)
     packed, sizes = _pack_batch(payloads, selected)
     expected = _batch_sizes(expected_sizes, "expected_sizes")
-    output, metadata = decompress_zlib_batch_checked(packed, sizes, expected, selected)
+    if len(sizes) != len(expected):
+        raise ValueError("input_sizes and expected_sizes must have matching lengths")
+    raw = np.frombuffer(packed, np.uint8) if isinstance(packed, bytes) else packed
+    output, metadata = _host_batch_decoder(selected, sizes, expected)(raw)
     _check_batch(metadata, "CUDA batch decompression")
     jax = _jax()
     sharding = jax.sharding.SingleDeviceSharding(selected, memory_kind="pinned_host")
