@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 xangma
 # SPDX-License-Identifier: MIT
-"""Render the measured RTX 3090 benchmark as PNG, SVG, and PDF figures."""
+"""Render measured byte-stream benchmarks as PNG, SVG, and PDF figures."""
 
 import argparse
 import hashlib
@@ -58,6 +58,14 @@ ALL_KEYS = {series[1] for series in COMPRESSION + DECOMPRESSION + STREAM_LAYOUT}
 ALL_KEYS.add("cuda_compress_host_device")
 
 
+def report_identifier(path):
+    """Use a portable repository-relative name, or a basename for external data."""
+    try:
+        return path.resolve().relative_to(ROOT.parent).as_posix()
+    except ValueError:
+        return path.name
+
+
 def positive(value, label):
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(f"{label}: expected a number")
@@ -90,7 +98,7 @@ def load_results(path):
         identity = (case["workload"], case["input_bytes"])
         if identity not in expected or identity in cases:
             raise ValueError(f"Unexpected or duplicate case: {identity}")
-        if not case["validation"].startswith("all outputs byte-exact"):
+        if not case["validation"].startswith(("all outputs byte-exact", "last returned output from each timed workflow byte-exact")):
             raise ValueError(f"Missing byte-exact validation: {identity}")
         if set(case["timings"]) != ALL_KEYS:
             raise ValueError(f"Incomplete or unknown timing keys: {identity}")
@@ -344,10 +352,14 @@ def save_figure(fig, output, name):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, default=ROOT / "results" / "rtx3090-ffi-20261007.json")
+    parser.add_argument("--input", type=Path, default=ROOT / "results" / "rtx4090-20261007.json")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "figures")
+    parser.add_argument("--validate-only", action="store_true", help="validate the report without writing figures")
     args = parser.parse_args()
     report, cases, source_hash = load_results(args.input)
+    if args.validate_only:
+        print(f"Validated {len(cases)} cases; source SHA-256 {source_hash}")
+        return
     configure_style()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     specifications = (
@@ -386,14 +398,16 @@ def main():
                     "ratio_formula": f"timings.{cpu}.median_seconds / timings.{cuda}.median_seconds"}
                    for label, cpu, cuda, color in CPU_SPEEDUP],
     }
-    try:
-        source_name = args.input.resolve().relative_to(ROOT).as_posix()
-    except ValueError:
-        source_name = args.input.name
     manifest = {
-        "schema_version": 1, "source": source_name, "source_sha256": source_hash,
+        "schema_version": 1, "source": report_identifier(args.input), "source_sha256": source_hash,
         "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "renderer": {"matplotlib": matplotlib.__version__, "numpy": np.__version__, "backend": "Agg"},
+        "measurement_source": {
+            "revision": report.get("source_revision", report["environment"].get("source_commit")),
+            "harness_sha256": report.get("harness_sha256"),
+            "sha256": report["environment"]["codec_sha256"],
+        },
+        "environment": report["environment"], "arguments": report["arguments"],
         "source_created_utc": report["created_utc"], "validated_cases": len(cases),
         "validated_timing_keys": sorted(ALL_KEYS),
         "samples_per_measurement": {"cuda": report["arguments"]["samples"], "cpu": report["arguments"]["cpu_samples"]},

@@ -7,7 +7,6 @@ import argparse
 import gc
 import hashlib
 import json
-import os
 import platform
 import statistics
 import subprocess
@@ -19,9 +18,9 @@ from pathlib import Path
 import numpy as np
 
 try:
-    from .benchmark import CHUNK_BYTES, MAX_BYTES, cpu_model, gpu_snapshot, make_payload
+    from .benchmark import CHUNK_BYTES, MAX_BYTES, cpu_model, gpu_snapshot, make_payload, native_build, source_revision
 except ImportError:
-    from benchmark import CHUNK_BYTES, MAX_BYTES, cpu_model, gpu_snapshot, make_payload
+    from benchmark import CHUNK_BYTES, MAX_BYTES, cpu_model, gpu_snapshot, make_payload, native_build, source_revision
 
 REPORT_TYPE = "cuda-zlib-small-batch"
 WORKLOADS = ("zeros", "text", "random")
@@ -174,6 +173,10 @@ def main():
             parser.error("matrix exceeds the 256 MiB aggregate input/output limit")
         if max(args.counts) * chunks > 262144 or 2 * chunks - 1 > 262144:
             parser.error("matrix exceeds the aggregate chunk limit")
+    try:
+        revision = source_revision()
+    except ValueError as exc:
+        parser.error(str(exc))
 
     environment = {"os": platform.system(), "machine": platform.machine(),
                    "cpu": cpu_model(), "python": platform.python_version(),
@@ -193,17 +196,18 @@ def main():
         cuda_zlib.compile_kernels(selected)
         startup["compile_kernels_seconds"] = time.perf_counter() - start
         module_root = Path(cuda_zlib.__file__).resolve().parent
-        cache_root = Path(os.environ.get("CUDA_ZLIB_CACHE_DIR", str(
-            Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "cuda-zlib")))
+        loaded_build = native_build(selected)
         environment.update({"jax": jax.__version__, "jaxlib": jaxlib.__version__,
                             "cuda_zlib": cuda_zlib.__version__, "backend": "JAX typed CUDA FFI",
                             "cuda_platform": selected.client.platform_version, "gpu": selected.device_kind,
                             "gpu_snapshot_before": gpu_snapshot(),
-                            "native_builds": [json.loads(p.read_text()) for p in sorted(cache_root.glob("*/build.json"))],
+                            "native_build": loaded_build,
+                            "native_builds": [loaded_build["identity"]],
                             "workspace_pool_before": cuda_zlib.workspace_pool_stats(selected)})
 
     report = {
         "schema_version": 1, "report_type": REPORT_TYPE,
+        "source_revision": revision, "harness_sha256": sha256(Path(__file__).read_bytes()),
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "arguments": {key: value for key, value in vars(args).items() if key != "output"},
         "environment": environment, "source": source_snapshot(module_root), "startup": startup,
@@ -323,7 +327,7 @@ def main():
                     "encoded_bytes": {key: [len(stream) for stream in values] for key, values in encoded.items()},
                     "encoded_sha256": {key: [sha256(stream) for stream in values] for key, values in encoded.items()},
                     "timings": timings,
-                    "validation": "all timed workflow outputs byte-exact; every compressed stream decoded by stdlib",
+                    "validation": "last returned output from each timed workflow byte-exact; every returned compressed stream decoded by stdlib",
                 })
                 save(report, args.output)
                 print(f"pass {workload}: {count} files x {size} bytes", flush=True)
