@@ -35,7 +35,8 @@ __device__ __forceinline__ void DecodeMatch(U8* output, U32 begin,
 
 __device__ __noinline__ void DecodeOneFile(
     const U8* input, U32 input_size, U8* output, U32 output_size,
-    U32 max_blocks, U32* metadata, decoder::DecodeTables& tables) {
+    U32 max_blocks, U32* metadata, decoder::DecodeTables& tables,
+    bool parallel_finish = false) {
   constexpr U32 mask = 0xffffffffu;
   const U32 lane = threadIdx.x;
   U32 error = 0, produced = 0, final = 0, blocks = 0;
@@ -48,8 +49,10 @@ __device__ __noinline__ void DecodeOneFile(
     if (!lane) { metadata[0] = kInvalidBounds; metadata[1] = 0; }
     return;
   }
-  // Checked APIs return a fully initialized allocation even on invalid input.
-  for (U32 i = lane; i < output_size; i += 32) output[i] = 0;
+  // Parallel finishing requires a stream-ordered output clear before
+  // parsing and an Adler verifier afterward. Small/batch callers retain both.
+  if (!parallel_finish)
+    for (U32 i = lane; i < output_size; i += 32) output[i] = 0;
   __syncwarp(mask);
   if (!lane) {
     if (input_size < 8) {
@@ -167,7 +170,7 @@ __device__ __noinline__ void DecodeOneFile(
   }
 
   error = __shfl_sync(mask, error, 0);
-  if (!error) {
+  if (!error && !parallel_finish) {
     __syncwarp(mask);
     U64 sum = 0, weighted = 0;
     for (U32 i = lane; i < output_size; i += 32) {
@@ -224,8 +227,9 @@ __global__ void BatchDecode(const U8* input, U8* output,
 }
 
 __global__ void SmallDecode(const U8* input, U32 input_size, U8* output,
-                            U32 output_size, U32 max_blocks, U32* metadata) {
+                            U32 output_size, U32 max_blocks, U32* metadata,
+                            bool parallel_finish = false) {
   __shared__ decoder::DecodeTables tables;
   DecodeOneFile(input, input_size, output, output_size, max_blocks, metadata,
-                tables);
+                tables, parallel_finish);
 }

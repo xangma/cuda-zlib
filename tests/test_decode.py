@@ -184,6 +184,32 @@ def _medium_period_stream():
     return _compressed(raw), raw
 
 
+def _medium_compound_stream(history_error=False, window_error=False, reserved=False):
+    fixed = _codes([8] * 144 + [9] * 112 + [7] * 24 + [8] * 8)
+    fields = [(1, 1), (1, 2)]  # Final fixed-Huffman block.
+    if history_error:
+        # Length 258, distance 1 before any literal. The raw bytes below give
+        # an intended extent/checksum, not a valid history oracle.
+        fields += [fixed[285], _code(0, 5)]
+        produced = 258
+    else:
+        fields.append(fixed[65])
+        produced = 1
+    matches, literals = divmod(70000 - produced, 258)
+    fields += [fixed[285], _code(0, 5)] * matches
+    fields += [fixed[65]] * literals
+    raw = b"A" * 70000
+    if window_error:
+        # Existing history is sufficient, but CINFO=0 declares only 256 bytes.
+        fields += [fixed[285], _code(16, 5), (0, 7)]  # Distance 257.
+        raw += b"A" * 258
+    fields.append(fixed[286 if reserved else 256])
+    payload = _wrap(_bits(fields), raw)
+    if window_error:
+        payload = _header(cmf=0x08) + payload[2:]
+    return payload, raw
+
+
 def _dynamic_literal_fields(raw, final=True, long_codes=False,
                             single_eob=False):
     """Independent literal-only trees, with no LZ77 compressor decisions."""
@@ -309,6 +335,30 @@ def _deep_reference_stream(match_blocks):
     return _wrap(_stored(seed, final=False) + _bits(fields), raw), raw
 
 
+def _fixed_summary_stream(invalid=False):
+    prefix, literals = b"A" * 17, bytes(range(256)) * 4
+    fixed = _codes([8] * 144 + [9] * 112 + [7] * 24 + [8] * 8)
+    fields = _dynamic_literal_fields(prefix, final=False) + [(1, 1), (1, 2)]
+    fields += [fixed[value] for value in literals]
+    if invalid:
+        fields.append(fixed[286])  # Reserved literal/length symbol after valid data.
+    fields.append(fixed[256])
+    raw = prefix + literals
+    return _wrap(_bits(fields), raw), raw
+
+
+def _limited_checked_decoder(device, expected, candidates=4096, blocks=256):
+    import jax
+    from cuda_zlib._ffi import load_backend
+
+    _, target = load_backend(device)
+    call = jax.ffi.ffi_call(target, (
+        jax.ShapeDtypeStruct((expected,), np.uint8),
+        jax.ShapeDtypeStruct((2,), np.uint32)), vmap_method="sequential")
+    return jax.jit(lambda value: call(value, max_candidates=np.int64(candidates),
+                                    max_blocks=np.int64(blocks)))
+
+
 def _assert_bytes(result, raw, device):
     import jax
     assert isinstance(result, jax.Array)
@@ -368,7 +418,7 @@ def test_discovery_stress_fixtures_match_independent_stdlib():
 
 
 def test_medium_repetitive_fixtures_match_independent_stdlib():
-    for size in (65536, 65537, 262144, 1048576):
+    for size in (65536, 65537, 262144, 1048576, 1048577):
         raw = bytes(size)
         assert zlib.decompress(_compressed(raw)) == raw
     payload, raw = _medium_period_stream()
@@ -377,6 +427,30 @@ def test_medium_repetitive_fixtures_match_independent_stdlib():
     period = raw[:257] + raw[:2]
     assert len({period[index:index + 3] for index in range(257)}) == 257
     assert zlib.decompress(payload) == raw
+
+
+def test_medium_compound_fixtures_match_independent_stdlib():
+    for window_error in (False, True):
+        payload, raw = _medium_compound_stream(window_error=window_error)
+        # stdlib accepts the CINFO violation; the codec separately enforces it.
+        assert zlib.decompress(payload) == raw
+    for options in ({"history_error": True, "reserved": True},
+                    {"window_error": True, "reserved": True}):
+        payload, _ = _medium_compound_stream(**options)
+        with pytest.raises(zlib.error):
+            zlib.decompress(payload)
+    payload, _ = _medium_compound_stream()
+    with pytest.raises(zlib.error):
+        zlib.decompress(payload[:-1] + bytes((payload[-1] ^ 1,)))
+
+
+def test_fixed_summary_and_missing_final_fixtures_match_stdlib():
+    payload, raw = _fixed_summary_stream()
+    assert zlib.decompress(payload) == raw
+    with pytest.raises(zlib.error):
+        zlib.decompress(_fixed_summary_stream(invalid=True)[0])
+    with pytest.raises(zlib.error):
+        zlib.decompress(_wrap(_stored(b"A", final=False), b"A"))
 
 
 @pytest.mark.parametrize("expected", [-1, 1.5, "4", True])
@@ -805,7 +879,7 @@ def test_jit_dense_prefix_framing_precedence_and_retained_metadata(
     _assert_bytes(recovered, raw, device)
 
 
-@pytest.mark.parametrize("size", [65536, 65537, 262144, 1048576])
+@pytest.mark.parametrize("size", [65536, 65537, 262144, 1048576, 1048577])
 def test_jit_checked_medium_zeros_checksum_recovery_and_retained_metadata(
     cuda_device, forbid_cpu_inflation, size,
 ):
@@ -831,6 +905,47 @@ def test_jit_checked_medium_zeros_checksum_recovery_and_retained_metadata(
         np.testing.assert_array_equal(np.asarray(metadata), [status, 0])
     _assert_bytes(first, raw, device)
     _assert_bytes(recovered, raw, device)
+
+
+def test_jit_checked_medium_compound_precedence_and_recovery(
+    cuda_device, forbid_cpu_inflation,
+):
+    import jax
+    from cuda_zlib import decompress_zlib_checked
+
+    device = jax.devices("gpu")[cuda_device]
+    payload, raw = _medium_compound_stream()
+    history_reserved, _ = _medium_compound_stream(history_error=True, reserved=True)
+    window_reserved, window_raw = _medium_compound_stream(window_error=True, reserved=True)
+    window, _ = _medium_compound_stream(window_error=True)
+    cases = (
+        # Reserved symbols take precedence over history/window emission checks.
+        (history_reserved, len(raw), 4),
+        (window_reserved, len(window_raw), 4),
+        # The last match exceeds both the requested extent and declared window.
+        (window, len(window_raw) - 1, 7),
+        (payload[:-1] + bytes((payload[-1] ^ 1,)), len(raw), 21),
+    )
+    decode = jax.jit(
+        lambda value, expected: decompress_zlib_checked(value, expected, device),
+        static_argnums=1,
+    )
+    source = jax.device_put(np.frombuffer(payload, np.uint8), device)
+    queued = [decode(source, len(raw))]
+    statuses = [0]
+    for malformed, expected, status in cases:
+        resident = jax.device_put(np.frombuffer(malformed, np.uint8), device)
+        queued.extend((decode(resident, expected), decode(source, len(raw))))
+        statuses.extend((status, 0))
+    # Retain every output/status until all failures and recoveries have run.
+    jax.block_until_ready(queued)
+    del source, resident
+    gc.collect()
+    for (output, metadata), status in zip(queued, statuses):
+        assert output.devices() == metadata.devices() == {device}
+        np.testing.assert_array_equal(np.asarray(metadata), [status, 0])
+        if status == 0:
+            _assert_bytes(output, raw, device)
 
 
 def test_jit_checked_medium_repetition_respects_declared_window(
@@ -943,3 +1058,88 @@ def test_queued_checked_output_and_metadata_ownership(
     np.testing.assert_array_equal(np.asarray(later_metadata), [0, 0])
     _assert_bytes(first, raw, device)
     _assert_bytes(later, raw[::-1], device)
+
+
+def test_native_checked_limits_and_error_recovery(cuda_device, forbid_cpu_inflation):
+    import jax
+
+    device = jax.devices("gpu")[cuda_device]
+    empty, raw = _dynamic_tree_stream("single-eob")
+    embedded, embedded_raw = _embedded_candidate_stream()
+    many, _ = _many_dynamic_stream(empty=True)
+    cases = (
+        (empty, 0, 0, 256, 23),
+        (empty, 0, 4096, 0, 23),
+        (empty, 0, 262145, 256, 23),
+        (empty, 0, 4096, 262145, 23),
+        (b"", 0, 4096, 256, 14),
+        (b"\x00" + empty[1:], 0, 4096, 256, 15),
+        (_wrap(_stored(b"A", final=False), b"A"), 1, 4096, 256, 1),
+        (embedded, len(embedded_raw), 1, 256, 18),
+        (many, 0, 4096, 127, 9),
+    )
+    source = jax.device_put(np.frombuffer(empty, np.uint8), device)
+    recover = _limited_checked_decoder(device, 0)
+    retained = []
+    for payload, expected, candidates, blocks, status in cases:
+        decode = _limited_checked_decoder(device, expected, candidates, blocks)
+        resident = jax.device_put(np.frombuffer(payload, np.uint8), device)
+        failed, metadata = decode(resident)
+        recovered, recovered_metadata = recover(source)
+        retained.append((failed, metadata, recovered, recovered_metadata, status))
+    jax.block_until_ready(retained)
+    for _, metadata, recovered, recovered_metadata, status in retained:
+        assert metadata.devices() == recovered_metadata.devices() == {device}
+        np.testing.assert_array_equal(np.asarray(metadata), [status, 0])
+        np.testing.assert_array_equal(np.asarray(recovered_metadata), [0, 0])
+        _assert_bytes(recovered, raw, device)
+
+
+def test_native_checked_fixed_summary_fallback_and_recovery(
+    cuda_device, forbid_cpu_inflation,
+):
+    import jax
+
+    device = jax.devices("gpu")[cuda_device]
+    payload, raw = _fixed_summary_stream()
+    invalid, _ = _fixed_summary_stream(invalid=True)
+    decode = _limited_checked_decoder(device, len(raw))
+    source, malformed = [jax.device_put(np.frombuffer(value, np.uint8), device)
+                         for value in (payload, invalid)]
+    # The fixed block follows an unaligned dynamic boundary without a stored seed.
+    first, metadata = decode(source)
+    failed, error = decode(malformed)
+    recovered, recovered_metadata = decode(source)
+    jax.block_until_ready((first, metadata, failed, error, recovered, recovered_metadata))
+    for value, status in ((metadata, 0), (error, 4), (recovered_metadata, 0)):
+        assert value.devices() == {device}
+        np.testing.assert_array_equal(np.asarray(value), [status, 0])
+    _assert_bytes(first, raw, device)
+    _assert_bytes(recovered, raw, device)
+
+
+def test_native_checked_dense_fallback_discards_earlier_seeds(
+    cuda_device, forbid_cpu_inflation,
+):
+    import jax
+    import jax.numpy as jnp
+
+    device = jax.devices("gpu")[cuda_device]
+    earlier, earlier_raw = _many_dynamic_stream(empty=False)
+    dense, dense_raw = _dense_prefix_stored_stream()
+    prime = _limited_checked_decoder(device, len(earlier_raw))
+    decode = _limited_checked_decoder(device, len(dense_raw))
+    previous, previous_metadata = prime(jax.device_put(np.frombuffer(earlier, np.uint8), device))
+    source = jax.device_put(np.frombuffer(dense, np.uint8), device)
+    first, metadata = decode(source)
+    failed, error = decode(source.at[-1].set(source[-1] ^ jnp.uint8(1)))
+    recovered, recovered_metadata = decode(source)
+    jax.block_until_ready((previous, previous_metadata, first, metadata, failed,
+                           error, recovered, recovered_metadata))
+    for value, status in ((previous_metadata, 0), (metadata, 0), (error, 21),
+                          (recovered_metadata, 0)):
+        assert value.devices() == {device}
+        np.testing.assert_array_equal(np.asarray(value), [status, 0])
+    _assert_bytes(previous, earlier_raw, device)
+    _assert_bytes(first, dense_raw, device)
+    _assert_bytes(recovered, dense_raw, device)

@@ -126,32 +126,62 @@ API measurements elsewhere; no CPU speedup is inferred from this dataset.
 
 | Stream size | Workload | Compressed bytes | Completed latency (ms) | Throughput (MiB/s) |
 | --- | --- | ---: | ---: | ---: |
-| 1 MiB | Zero bytes | 1039 | 5.700 | 175.4 |
-| 1 MiB | Generated text | 108353 | 20.783 | 48.1 |
-| 1 MiB | Random bytes | 1048902 | 0.715 | 1398.6 |
-| 8 MiB | Zero bytes | 8163 | 21.128 | 378.7 |
-| 8 MiB | Generated text | 863857 | 21.488 | 372.3 |
-| 8 MiB | Random bytes | 8391174 | 1.821 | 4393.5 |
+| 64 KiB | Zero bytes | 84 | 0.525 | 119.1 |
+| 64 KiB | Generated text | 7064 | 3.662 | 17.1 |
+| 64 KiB | Integer counters | 22701 | 15.420 | 4.1 |
+| 64 KiB | Gaussian floats | 60690 | 17.159 | 3.6 |
+| 64 KiB | Random bytes | 65562 | 0.482 | 129.7 |
+| 128 KiB | Zero bytes | 149 | 0.793 | 157.6 |
+| 128 KiB | Generated text | 13844 | 6.657 | 18.8 |
+| 128 KiB | Integer counters | 45357 | 9.341 | 13.4 |
+| 128 KiB | Gaussian floats | 121341 | 5.309 | 23.5 |
+| 128 KiB | Random bytes | 131118 | 0.410 | 304.7 |
+| 256 KiB | Zero bytes | 277 | 1.266 | 197.5 |
+| 256 KiB | Generated text | 27438 | 12.866 | 19.4 |
+| 256 KiB | Integer counters | 90669 | 9.329 | 26.8 |
+| 256 KiB | Gaussian floats | 242751 | 5.309 | 47.1 |
+| 256 KiB | Random bytes | 262230 | 0.445 | 561.8 |
+| 1 MiB | Zero bytes | 1039 | 4.262 | 234.6 |
+| 1 MiB | Generated text | 108353 | 22.218 | 45.0 |
+| 1 MiB | Integer counters | 362577 | 9.629 | 103.8 |
+| 1 MiB | Gaussian floats | 971070 | 5.495 | 182.0 |
+| 1 MiB | Random bytes | 1048902 | 0.691 | 1447.5 |
+| 8 MiB | Zero bytes | 8163 | 21.198 | 377.4 |
+| 8 MiB | Generated text | 863857 | 22.591 | 354.1 |
+| 8 MiB | Integer counters | 2900368 | 9.756 | 820.0 |
+| 8 MiB | Gaussian floats | 7769095 | 6.834 | 1170.6 |
+| 8 MiB | Random bytes | 8391174 | 1.869 | 4280.9 |
+| 64 MiB | Zero bytes | 65238 | 23.136 | 2766.3 |
+| 64 MiB | Generated text | 6907553 | 26.782 | 2389.7 |
+| 64 MiB | Integer counters | 23203543 | 15.970 | 4007.6 |
+| 64 MiB | Gaussian floats | 62153557 | 21.658 | 2955.0 |
+| 64 MiB | Random bytes | 67129345 | 11.336 | 5645.9 |
 
 ![Resident checked decode latency and throughput on RTX 4090](benchmarks/figures/resident-checked.png)
 
 Medians use 31 completed calls after all shapes are warmed; whiskers show sample
-minimum/maximum. Axes are logarithmic. Every case passed status and independent
-byte checks; CPU codec functions are forbidden during CUDA calls.
+minimum/maximum. Axes are logarithmic. The final returned sample in each case
+passed status and independent byte checks; CPU codec functions are forbidden
+during every timed CUDA call.
 [SVG](benchmarks/figures/resident-checked.svg) ·
 [PDF](benchmarks/figures/resident-checked.pdf) ·
 [Raw samples and hashes](benchmarks/results/resident-checked-rtx4090-20261007.json).
 
 Measured 2026-10-07 on RTX 4090, driver 610.57.04, JAX/JAXlib 0.11.2,
 Python 3.12.8 and nvcc 12.1.105. Package and harness hashes match
-[39ac535](https://github.com/xangma/cuda-zlib/tree/39ac5353a131f006b3eaa30dc9451785630ab8a1).
-The private workspace pool ended with 96 MiB retained and zero live scratch.
+[cb5a629](https://github.com/xangma/cuda-zlib/tree/cb5a6299a26a9221bbac7e6f1201ce052930bcc9).
+The raw report records the loaded native library's cache identity, source/header
+hashes, compiler and flags. The private workspace pool ended with
+576 MiB retained and zero live scratch, using a 1 GiB release threshold.
+Pool reservation excludes JAX inputs and outputs. Decoding above 64 KiB eagerly
+allocates reference, candidate and summary buffers; see the [workspace bounds](README.md#installation).
 The workstation was shared; device snapshots do not establish isolation.
 
 ```sh
+git checkout cb5a6299a26a9221bbac7e6f1201ce052930bcc9
 CUDACXX=/path/to/nvcc XLA_PYTHON_CLIENT_PREALLOCATE=false \
-  python benchmarks/profile_resident.py --sizes 1048576 8388608 \
-  --workloads zeros text random --seed 20261007 --samples 31 --output resident.json
+  python benchmarks/profile_resident.py --sizes 65536 131072 262144 1048576 8388608 67108864 \
+  --workloads zeros text uint32 float32 random --seed 20261007 --samples 31 --output resident.json
 python benchmarks/plot_resident.py resident.json --output-dir resident-figures
 ```
 

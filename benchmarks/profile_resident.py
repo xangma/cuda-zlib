@@ -24,7 +24,7 @@ import jax
 import jaxlib
 import numpy as np
 import cuda_zlib
-from cuda_zlib import _codec
+from cuda_zlib import _codec, _ffi
 from benchmark import WORKLOADS, make_payload, gpu_snapshot
 
 
@@ -45,6 +45,16 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     device = _codec._select_device(args.device)
     cuda_zlib.compile_kernels(device)
+    library, targets = _ffi._backend(device)
+    library_path = Path(library._name).resolve()
+    build_path = library_path.parent / 'build.json'
+    native_build = {
+        'cache_key': library_path.parent.name,
+        'library_sha256': hashlib.sha256(library_path.read_bytes()).hexdigest(),
+        'build_sha256': hashlib.sha256(build_path.read_bytes()).hexdigest(),
+        'identity': json.loads(build_path.read_text()),
+        'ffi_targets': list(targets),
+    }
     originals = {name: getattr(zlib, name) for name in
                  ('compress', 'decompress', 'compressobj', 'decompressobj')}
 
@@ -83,6 +93,7 @@ def main():
         'source_sha256': {str(path.relative_to(source)): hashlib.sha256(path.read_bytes()).hexdigest()
                           for path in sorted(source.rglob('*'))
                           if path.suffix in ('.py', '.cu', '.cuh')},
+        'native_build': native_build,
         'methodology': 'Completed warm JIT checked decompression with resident inputs. '
                        'Native build, XLA compilation, generation, upload, status and byte checks '
                        'excluded. CPU codec forbidden inside calls. All shapes warmed before '
@@ -121,7 +132,6 @@ def main():
         report['cases'].append(row)
 
     if args.cuda_profiler_range:
-        from cuda_zlib import _ffi
         toolkit = Path(_ffi._nvcc()).resolve().parent.parent
         profiler = ctypes.CDLL(str(toolkit / 'lib64/libcudart.so'))
         profiler.cudaSetDevice.argtypes = [ctypes.c_int]

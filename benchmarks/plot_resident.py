@@ -44,7 +44,7 @@ def main():
         low = np.array([min(row['seconds']) * 1000 for row in selected])
         high = np.array([max(row['seconds']) * 1000 for row in selected])
         position = x + (i - (len(workloads) - 1) / 2) * width
-        label = {'zeros': 'Zero bytes', 'text': 'Generated text', 'random': 'Random bytes'}.get(workload, workload)
+        label = {'zeros': 'Zero bytes', 'text': 'Generated text', 'uint32': 'Integer counters', 'float32': 'Gaussian floats', 'random': 'Random bytes'}.get(workload, workload)
         axes[0].bar(position, latency, width, label=label,
                     yerr=np.array([latency-low, high-latency]), capsize=3)
         throughput = np.array(sizes) / 1024**2 / (latency / 1000)
@@ -53,7 +53,8 @@ def main():
         axes[1].bar(position, throughput, width, label=label,
                     yerr=np.array([throughput-slow, fast-throughput]), capsize=3)
     for axis in axes:
-        axis.set_xticks(x, [f'{size/1024**2:g} MiB' for size in sizes])
+        axis.set_xticks(x, [f'{size/1024:g} KiB' if size < 1024**2 else
+                           f'{size/1024**2:g} MiB' for size in sizes])
         axis.set_xlabel('Uncompressed stream size')
         axis.set_axisbelow(True); axis.grid(axis='y', alpha=.2)
         axis.set_yscale('log')
@@ -72,6 +73,9 @@ def main():
     for extension in ('png', 'svg', 'pdf'):
         path = args.output_dir / ('resident-checked.' + extension)
         fig.savefig(path, dpi=180)
+        if extension == 'svg':
+            path.write_text('\n'.join(line.rstrip() for line in
+                                      path.read_text().splitlines()) + '\n')
         exports[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
     plt.close(fig)
     (args.output_dir/'resident-checked-manifest.json').write_text(json.dumps(
