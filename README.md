@@ -147,43 +147,33 @@ and checksum reductions. DEFLATE bit parsing still follows stream order.
 
 ## Performance
 
-For small files, prefer CPU unless batching or device-resident processing suits
-the workflow. On an RTX 4090, CPU won every measured single-file case at 256 B,
-4 KiB and 64 KiB. With 128 independent files per packed call, host-byte
-compression of 64 KiB files beat CPU by 2.66–18.73×. Decompression beat CPU by
-11.28× for zeros and 2.01× for text; random bytes were near parity at 0.98× CPU
-throughput.
-The measured source is [23d40f5](https://github.com/xangma/cuda-zlib/tree/23d40f51d803ea466fd4f31f4ab0f04234cdeafe). See the
-[small-file results](BENCHMARKS.md#independent-small-files-on-rtx-4090) for
-resident timings, CPU comparisons and batch-count plots.
+On an RTX 4090 with an AMD Threadripper PRO 3995WX, warm **64 MiB** host-byte
+compression measured **7.55–16.53×** the throughput of single-threaded CPU
+zlib level 1. Decoding identical stdlib level-6 streams measured **1.12–5.12×**
+CPU throughput. Both comparisons include uploads, downloads, allocations, codec
+validation and conversion to Python `bytes`.
 
-For compiled consumers, [resident checked decode measurements and plots](BENCHMARKS.md#resident-checked-decoding-on-rtx-4090) report completed JIT latency
-without uploads or host status checks.
+At **64 KiB**, CPU compression and decompression were faster for every workload.
+At **1 MiB**, host-byte compression measured **1.04–5.20×** CPU level-1
+throughput. Decompression was faster on CUDA only for Gaussian float32
+(**1.12×**); CPU won the other four workloads.
+Compression sizes differ across codecs; CUDA has no zlib-equivalent level.
 
-The following single-stream measurements use a separate RTX 3090 source
-snapshot recorded in [BENCHMARKS.md](BENCHMARKS.md#recorded-cuda-results).
+**CPU was faster for every measured single-file small-input case** (256 B, 4 KiB
+and 64 KiB), including resident CUDA workflows.
+With **128 independent 64 KiB files**, host-byte compression measured
+**2.76–18.70×** CPU level-1 throughput. Host-byte decompression measured
+**9.26×** CPU for zeros, **1.97×** for text and **0.96×** for random bytes.
+See [small-file results and batch-count plots](BENCHMARKS.md#independent-small-files-on-rtx-4090).
 
-On an RTX 3090 with an AMD Threadripper PRO 3995WX, warm **64 MiB**
-compression measured **3.88–12.52×** the throughput of the same CPU's
-single-threaded stdlib zlib level 1. Decoding identical stdlib level-6 streams
-measured **1.06–4.42×** CPU throughput: GPU decoding was faster across all five
-workloads, with random bytes close to CPU parity.
-Both comparisons include GPU uploads, downloads, codec validation and conversion
-to host bytes. Host-array output is measured separately in the benchmark tables.
+For compiled consumers, [resident checked decode measurements](BENCHMARKS.md#resident-checked-decoding-on-rtx-4090)
+report completed JIT latency without uploads or host status transfers. That
+dataset has a separate timing scope and does not report CPU speedup.
 
-At **64 KiB**, CPU compression and decompression were faster for every measured
-workload. At **1 MiB**, compression depended on the workload and CPU
-decompression was faster throughout. Compression sizes differ between codecs;
-these results cover five synthetic workloads and the recorded hardware.
+![64 MiB host-byte GPU speedup over same-host CPU](benchmarks/figures/cpu-speedup.png)
 
-The run used a 1 GiB private-workspace retention threshold and ended with
-544 MiB reserved and no live scratch. Retaining unused pages allows workspace
-reuse between calls and keeps GPU memory reserved.
-
-![64 MiB GPU speedup over same-host CPU, including transfers](benchmarks/figures/cpu-speedup.png)
-
-See [BENCHMARKS.md](BENCHMARKS.md) for per-workload ratios, compressed sizes,
-startup costs, timing scopes and reproduction commands.
+[BENCHMARKS.md](BENCHMARKS.md) records the measured source, per-workload ratios,
+compressed sizes, startup costs, memory accounting and reproduction commands.
 
 ## Installation
 
