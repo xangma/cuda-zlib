@@ -10,17 +10,17 @@ stdlib zlib on its own host CPU. Results from different GPUs are not combined.
 Including transfers and Python `bytes` outputs, 128-file CUDA batches beat CPU
 compression for random data at all three sizes, 4 KiB text, and 64 KiB zero/text
 files. CPU was faster for 256-byte zero/text and 4 KiB zero compression.
-At 64 KiB, batched host compression was **2.47–17.70×** faster than CPU.
+At 64 KiB, batched host compression was **2.49–18.21×** faster than CPU.
 
-Batched host decompression beat CPU for 4 KiB zeros and 64 KiB zero/text files.
+Batched host decompression beat CPU for 4 KiB zeros and 64 KiB zeros.
 CPU was faster for all 256-byte files, 4 KiB text/random files, and 64 KiB random
-files. At 64 KiB, CUDA decompression was **9.14×** CPU for zeros and **1.81×**
-for text; its random-byte throughput was **0.91×** CPU.
+files. At 64 KiB, CUDA decompression was **9.15×** CPU for zeros, near parity
+at **1.05×** for text, and **0.92×** CPU for random bytes.
 
 Packing independent streams into one CUDA call shares dispatch and allows files
 to execute concurrently. At 128 files, packed resident compression was
-**31–119×** faster than a compiled loop of single-file CUDA calls, and resident
-decompression was **14–127×** faster. These ratios compare current CUDA API
+**21–118×** faster than a compiled loop of single-file CUDA calls, and resident
+decompression was **11–128×** faster. These ratios compare current CUDA API
 workflows; the CPU comparisons above include host transfers and byte outputs.
 
 ### Amortized latency with 128 files
@@ -33,15 +33,15 @@ output copies. Decompression uses identical independent stdlib level-6 streams.
 
 | File size | Workload | CPU compression, level 1 | CUDA batch compression, resident | CUDA batch compression, host bytes | CPU decompression | CUDA batch decompression, resident | CUDA batch decompression, host bytes |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 256 B | Zero bytes | 3.48 | 1.51 | 9.45 | 1.28 | 1.38 | 9.78 |
-| 256 B | Generated text | 8.30 | 2.40 | 9.94 | 3.23 | 1.92 | 9.69 |
-| 256 B | Random bytes | 30.89 | 3.75 | 11.49 | 0.59 | 0.88 | 9.92 |
-| 4 KiB | Zero bytes | 7.89 | 2.00 | 10.79 | 14.63 | 1.62 | 10.56 |
-| 4 KiB | Generated text | 19.80 | 5.56 | 14.94 | 8.70 | 3.85 | 14.38 |
-| 4 KiB | Random bytes | 100.01 | 7.87 | 19.49 | 2.38 | 1.13 | 10.80 |
-| 64 KiB | Zero bytes | 105.34 | 4.67 | 42.71 | 223.76 | 4.26 | 24.47 |
-| 64 KiB | Generated text | 253.00 | 29.24 | 73.17 | 92.82 | 27.69 | 51.36 |
-| 64 KiB | Random bytes | 1731.12 | 47.85 | 97.79 | 35.19 | 3.79 | 38.54 |
+| 256 B | Zero bytes | 3.40 | 1.17 | 9.43 | 1.27 | 1.56 | 9.99 |
+| 256 B | Generated text | 8.40 | 2.30 | 10.37 | 3.21 | 1.91 | 11.11 |
+| 256 B | Random bytes | 32.77 | 3.73 | 13.20 | 0.59 | 1.09 | 9.92 |
+| 4 KiB | Zero bytes | 7.90 | 2.21 | 10.95 | 14.64 | 1.75 | 10.72 |
+| 4 KiB | Generated text | 19.79 | 5.47 | 16.06 | 8.87 | 3.69 | 14.56 |
+| 4 KiB | Random bytes | 99.69 | 8.13 | 19.35 | 2.39 | 1.10 | 11.00 |
+| 64 KiB | Zero bytes | 105.59 | 4.66 | 42.40 | 224.34 | 4.28 | 24.53 |
+| 64 KiB | Generated text | 251.92 | 29.40 | 82.30 | 92.08 | 27.54 | 87.48 |
+| 64 KiB | Random bytes | 1724.55 | 47.64 | 94.70 | 35.15 | 3.73 | 38.20 |
 
 ### Small-file plots
 
@@ -71,7 +71,7 @@ Linux x86_64, Python 3.12.8, NumPy 2.2.6, JAX/JAXlib 0.11.2 and zlib 1.3.1.
 JAX reported CUDA platform `cuda 13040`, driver 610.57.04; the native library
 used `nvcc` 12.1.105 for `sm_89`. All codec and harness hashes in `source.sha256` in the
 [raw 36-case report](benchmarks/results/small-batch-rtx4090-20261007.json)
-match [1994273](https://github.com/xangma/cuda-zlib/tree/19942736ab608ac2d81b6a19a8f8023fdc0e0637).
+match [7cb9c4b](https://github.com/xangma/cuda-zlib/tree/7cb9c4bccf613bfaace58e87c6d7059312106ad0).
 The staging directory was a source export without Git metadata; exact source
 SHA-256 hashes establish that snapshot. Payload and compressed-stream hashes,
 all samples, software versions and native build flags are also recorded.
@@ -88,7 +88,7 @@ padded batch round trip with encoded lengths kept on device; round-trip samples
 are in the JSON but are not plotted. Compression sizes differ between codecs;
 encoded sizes are recorded and CUDA has no equivalent to zlib's levels.
 
-The native cache was already built: imports/CUDA initialization took 1.174 s,
+The native cache was already built: imports/CUDA initialization took 1.159 s,
 and cache load/registration took 0.008 s. This does not measure a cold native
 build. The private workspace pool used a 1 GiB retention threshold and ended
 with 64 MiB reserved and zero live scratch. This was a shared workstation;
@@ -96,7 +96,7 @@ utilization snapshots do not prove isolation. No parallel CPU codec baseline
 was measured.
 
 ```sh
-git checkout 19942736ab608ac2d81b6a19a8f8023fdc0e0637
+git checkout 7cb9c4bccf613bfaace58e87c6d7059312106ad0
 python -m pip install . matplotlib
 CUDACXX=/path/to/nvcc XLA_PYTHON_CLIENT_PREALLOCATE=false \
   python benchmarks/small_batch.py --sizes 256 4096 65536 \
