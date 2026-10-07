@@ -19,7 +19,7 @@ sizes and for 64 KiB zero/text files. The 4 KiB text compression result was
 near CPU parity. CPU remained faster for 256-byte zero/text compression,
 4 KiB zero compression, all 256-byte decompression, and 4 KiB text/random
 decompression. At 64 KiB, batched host decompression was **9.49×** CPU for
-zeros and **1.79×** for text; CPU was slightly faster for random bytes.
+zeros and **1.80×** for text; CPU was slightly faster for random bytes.
 
 ### Amortized latency with 128 files
 
@@ -48,8 +48,9 @@ Points are medians of seven completed calls; whiskers show sample minimum and
 maximum. Lines connect measured counts, not an inferred crossover. The
 resident single-file comparison is one warmed `jax.jit` containing independent
 FFI calls; the packed workflow uses one batch FFI call. Host single-file timings
-use synchronous convenience APIs in a Python loop. Resident metadata is waited
-for and validated outside timing; host APIs check it before returning.
+use synchronous convenience APIs in a Python loop. Resident timings wait for
+all returned arrays, including metadata; metadata transfer and status checks
+occur afterward. Host APIs check status before returning.
 
 ![Small-file host-byte compression and decompression, generated text](benchmarks/figures/small-batch/rtx4090-text-host-bytes.png)
 
@@ -66,17 +67,20 @@ All six plots have PNG, SVG and PDF exports in
 Measured 2026-10-07 on an RTX 4090 with an AMD Threadripper PRO 3995WX,
 Linux x86_64, Python 3.12.8, NumPy 2.2.6, JAX/JAXlib 0.11.2 and zlib 1.3.1.
 JAX reported CUDA platform `cuda 13040`, driver 610.57.04; the native library
-used `nvcc` 12.1.105 for `sm_89`. All codec and harness source hashes in the
+used `nvcc` 12.1.105 for `sm_89`. All codec and harness hashes in `source.sha256` in the
 [raw 36-case report](benchmarks/results/small-batch-rtx4090-20261007.json)
 match [8363446](https://github.com/xangma/cuda-zlib/tree/8363446113eddc6a782d2c31a803a6d37ca87cec).
 The staging directory was a source export without Git metadata; exact source
 SHA-256 hashes establish that snapshot. Payload and compressed-stream hashes,
 all samples, software versions and native build flags are also recorded.
+`environment.native_builds` inventories the cache, including an older build;
+it is not a list of libraries loaded for this run.
 
 Each workflow has one untimed warmup, including per-shape XLA compilation,
 and seven timed completed calls. Native build/registration, initial resident
-uploads, payload generation and oracle checks are excluded. Status, bytes and
-zero padding are checked after timing; stdlib decodes CUDA output, and CUDA
+uploads, payload generation and oracle checks are excluded. Benchmark oracle
+checks of status, bytes and zero padding occur after timing; host APIs also
+validate status within their timed calls. Stdlib decodes CUDA output, and CUDA
 decodes independent stdlib streams. All 36 cases passed, including a compiled
 padded batch round trip with encoded lengths kept on device; round-trip samples
 are in the JSON but are not plotted. Compression sizes differ between codecs;
