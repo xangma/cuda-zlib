@@ -2,14 +2,14 @@
   "schema_version": 1,
   "report_type": "cuda-zlib-small-batch",
   "source_report": "benchmarks/results/small-batch-rtx4090-20261008.json",
-  "source_report_sha256": "fb587e63e2002781845060654fe4d0ff0d5cb05bc0491e8a80dbf4b2c3b6b124",
+  "source_report_sha256": "8bbeeeb340efee4946a4f493c0ca1ba209a5b4f9899e4de018976d71df72dbe1",
   "plotter_sha256": "dccf04b22ee1a8c6492edee5867f5a8a57faf83b5b16c198f48b7f8494fb77a2",
   "renderer": {
     "matplotlib": "3.11.1",
     "numpy": "2.5.2",
     "backend": "Agg"
   },
-  "source_revision": "0bc6e40d55bc23e10e1502757adc97c5945b315e",
+  "source_revision": "d2214ed0bd47e68eaa081f6285c2b5bff3052357",
   "harness_sha256": "3ec5ae27414a0c829cf7af3d042afff6992f525f05c5ccfab3751b1db87c0bbc",
   "measurement_source": {
     "sha256": {
@@ -18,14 +18,14 @@
       "benchmarks/plot_small_batch.py": "dccf04b22ee1a8c6492edee5867f5a8a57faf83b5b16c198f48b7f8494fb77a2",
       "src/cuda_zlib/__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
       "src/cuda_zlib/_codec.py": "0a0a5484f90a55cf53530b3dc837a12b2a293d5bb88c0b9426758d17409af5d2",
-      "src/cuda_zlib/_decode_kernels.py": "288e2dcce80b53fa68af7a99909c1bb01b00b4476ba91ef48af3fe94981b23d8",
+      "src/cuda_zlib/_decode_kernels.py": "d69278ca4eecf8cfdb06e350e1bca1f56e04c6ad916e4b4053738651bdbcc1c0",
       "src/cuda_zlib/_encode_kernels.py": "514bd9aba9978010f4a1659209ac0a6b9b0e72a043d6605805c4c698f6d87964",
       "src/cuda_zlib/_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
       "src/cuda_zlib/_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
       "src/cuda_zlib/_postprocess.py": "bfbc7664b4c6255890388716f4e16999676ebe2b37c900c5e41eafad387ea307",
       "src/cuda_zlib/jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
       "src/cuda_zlib/native/codec_ffi.cu": "b357d982698f0d3905ee35f0fd47c20c8e3d12ec93df6998764f2335db1f722b",
-      "src/cuda_zlib/native/batch_decode.cuh": "65544604248924cdbd14bd39eb6a85181f8eebdd3f2e3f296f28ad36579a04a4",
+      "src/cuda_zlib/native/batch_decode.cuh": "6ce2e87e14aef6ebd26634920cfe7961161bfb74ec5a3bed9f027a34d489cb9b",
       "src/cuda_zlib/native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289"
     },
     "git": {
@@ -47,14 +47,14 @@
     "cuda_platform": "cuda 13040",
     "gpu": "NVIDIA GeForce RTX 4090",
     "gpu_snapshot_before": [
-      "NVIDIA GeForce RTX 4090, 610.57.04, 2812, 24564, 3, 60"
+      "NVIDIA GeForce RTX 4090, 610.57.04, 2802, 24564, 0, 47"
     ],
     "native_build": {
-      "cache_key": "ef44d0384a59b8ff737c94d4573785e8f3f587744862e7894cb590f2d59bd7ff",
-      "library": "/dev/shm/cuda-zlib-decompression-20261008-01a10cd3/cache-reader/ef44d0384a59b8ff737c94d4573785e8f3f587744862e7894cb590f2d59bd7ff/codec_ffi.so",
-      "library_sha256": "ad41d1707a2a0822630a35a4ac0ec98a41acff524aa3e727b1abdf01c37c83ab",
-      "build": "/dev/shm/cuda-zlib-decompression-20261008-01a10cd3/cache-reader/ef44d0384a59b8ff737c94d4573785e8f3f587744862e7894cb590f2d59bd7ff/build.json",
-      "build_sha256": "c49d79192fe0881a44617e7c32ea39773397816179b4e89cb660aadbdc1dc785",
+      "cache_key": "a0c51ef6ad4506fbb39fc0955c4e250e6c5d18cad48675fd5020b0b6978611c0",
+      "library": "/dev/shm/cuda-zlib-backreferences-20261008-01a10cd3/cache-final/a0c51ef6ad4506fbb39fc0955c4e250e6c5d18cad48675fd5020b0b6978611c0/codec_ffi.so",
+      "library_sha256": "5893e261036d61fede984f8144f8b3abc5ed2436055592b84880012dfc5f1293",
+      "build": "/dev/shm/cuda-zlib-backreferences-20261008-01a10cd3/cache-final/a0c51ef6ad4506fbb39fc0955c4e250e6c5d18cad48675fd5020b0b6978611c0/build.json",
+      "build_sha256": "c3bade384c40e460394ac6bc9ead0c7eb6f0655bc6b48044061aa3d9dcba117b",
       "identity": {
         "architecture": "sm_89",
         "jaxlib": "0.11.2",
@@ -63,10 +63,10 @@
         "sources": {
           "codec_ffi.cu": "b357d982698f0d3905ee35f0fd47c20c8e3d12ec93df6998764f2335db1f722b",
           "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
-          "decoder.cuh": "e750b102426cb15a5c790b6618a8ef150d758ff4491f3f13ced914a9529d7ab5",
+          "decoder.cuh": "ede9e61e95ae57ac4543e447511e3518996b62c3345f325a254061b8524f88b8",
           "postprocess.cuh": "31579be73cd0fd6fc120b0ee6accd9267df5ed66c88f9170208bdd506664a38e",
           "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
-          "batch_decode.cuh": "65544604248924cdbd14bd39eb6a85181f8eebdd3f2e3f296f28ad36579a04a4"
+          "batch_decode.cuh": "6ce2e87e14aef6ebd26634920cfe7961161bfb74ec5a3bed9f027a34d489cb9b"
         },
         "headers": {
           "api.h": "1426ea8206a1b9f1824f460572ea731665eb7cb9def1f0fc166b13df4b955ad0",
@@ -102,10 +102,10 @@
         "sources": {
           "codec_ffi.cu": "b357d982698f0d3905ee35f0fd47c20c8e3d12ec93df6998764f2335db1f722b",
           "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
-          "decoder.cuh": "e750b102426cb15a5c790b6618a8ef150d758ff4491f3f13ced914a9529d7ab5",
+          "decoder.cuh": "ede9e61e95ae57ac4543e447511e3518996b62c3345f325a254061b8524f88b8",
           "postprocess.cuh": "31579be73cd0fd6fc120b0ee6accd9267df5ed66c88f9170208bdd506664a38e",
           "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
-          "batch_decode.cuh": "65544604248924cdbd14bd39eb6a85181f8eebdd3f2e3f296f28ad36579a04a4"
+          "batch_decode.cuh": "6ce2e87e14aef6ebd26634920cfe7961161bfb74ec5a3bed9f027a34d489cb9b"
         },
         "headers": {
           "api.h": "1426ea8206a1b9f1824f460572ea731665eb7cb9def1f0fc166b13df4b955ad0",
@@ -133,7 +133,7 @@
       "pool_count": 0
     },
     "gpu_snapshot_after": [
-      "NVIDIA GeForce RTX 4090, 610.57.04, 3012, 24564, 28, 59"
+      "NVIDIA GeForce RTX 4090, 610.57.04, 3002, 24564, 50, 47"
     ],
     "workspace_pool_after": {
       "retention_bytes": 1073741824,
@@ -209,126 +209,126 @@
   "exports": [
     {
       "file": "rtx4090-zeros-resident.png",
-      "sha256": "710f0c61f8d9969763bc244365e599a2efd8a78484840acec31c6731e2e1b78b",
+      "sha256": "7c5d510ff4c4506fda2dbc8bd9de748d84a5ff61696b81fcf0541e8914d3906f",
       "workload": "zeros",
       "scope": "resident",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-zeros-resident.svg",
-      "sha256": "e83716c38fc1f142f16b280467d47e5fba6e00623d3fc3345f2aa58596cbc7aa",
+      "sha256": "90959a2443c9ca23d513e4c47eb4a7dcfb29f08f30f63bdfcaff7f056e880283",
       "workload": "zeros",
       "scope": "resident",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-zeros-resident.pdf",
-      "sha256": "0f45dfe956f3ccd3f80b25a15c60380b152cd86a122443d24d4403555821a55d",
+      "sha256": "8aa36bb36419491255f1dbd4dff445d1e5ef222b58fbd678fafc658d6a5ab145",
       "workload": "zeros",
       "scope": "resident",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-zeros-host-bytes.png",
-      "sha256": "89710aec76726b6b10240d0ec9cce2e885fcbaecf18c5b1a976057c879a3957b",
+      "sha256": "49443d75efb5c2d2c90177ef1e998e74273a0f474bd1ccfb00b6bd3087b99ad0",
       "workload": "zeros",
       "scope": "host_bytes",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-zeros-host-bytes.svg",
-      "sha256": "4861806e6d22799848e3b9cf611088a25ba5cd5663e0423149d3abf0c8a218ad",
+      "sha256": "a7ba1fc2f1187a4fafd7d473a88d3bac1e17c1a3ab59f2e34ec7ff2abd1aef38",
       "workload": "zeros",
       "scope": "host_bytes",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-zeros-host-bytes.pdf",
-      "sha256": "a880bdfe2a68f7f812725eb2c0727a4318e865235f937f4a76db65c82fd02cbc",
+      "sha256": "385bc61d795b4cfde3d73185e2ed4102506454293ed768567d15edbbff2eb133",
       "workload": "zeros",
       "scope": "host_bytes",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-text-resident.png",
-      "sha256": "ca3408b5915cb82fd0c975cb92733f7c9ea170bd1806fd5cac1312479983e98b",
+      "sha256": "98433c40696f193d56f83136b9c6a5be37ab82764b6e9222a03bdcaaebc35260",
       "workload": "text",
       "scope": "resident",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-text-resident.svg",
-      "sha256": "2552402e2a062e38d6e684695fba1c2242fa575b00614723b965d7feb1444269",
+      "sha256": "9537f82ec4978ea597ed4fac5c9e3723b3b2faa5dd2e1e378e0640521a985066",
       "workload": "text",
       "scope": "resident",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-text-resident.pdf",
-      "sha256": "d03e138ea729376ddbd1c9b74f2bb33b00d6d575736f72f634adb7ed91b0f228",
+      "sha256": "a1fa6d3b2baf37f9abfd0bb0e4fce5404f6ac0e540c2cce522da545175f287ca",
       "workload": "text",
       "scope": "resident",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-text-host-bytes.png",
-      "sha256": "3ffbc4626e6bd881bb10863f0a7c46051f8fc72eca941c911bced54ff8576350",
+      "sha256": "0bedb23c294d0bd428d915b959c5facc85a72abe009ca5d2d0d28e9630f2962e",
       "workload": "text",
       "scope": "host_bytes",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-text-host-bytes.svg",
-      "sha256": "77458339c19f9f4450dca73396aa43dd6fc0de315ee3a12a6516fded955c6569",
+      "sha256": "fd35d3d95e49448bbe64f300aea94b300f8712a7a41f590f27ef42fdfcfbbc90",
       "workload": "text",
       "scope": "host_bytes",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-text-host-bytes.pdf",
-      "sha256": "a4aa766b6ff872dbdf4f3783a2abc7f6fbeb3d3716b59121e5bc6514c1386162",
+      "sha256": "fb3fe40d531b7590ef7de01c0ed614446dbb3d50dc7b14e8d8f8da789e4a3d32",
       "workload": "text",
       "scope": "host_bytes",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-random-resident.png",
-      "sha256": "1cf0c1351b367d107baf5cf9f3eb2df36193fc9a695f78dd888941b5bcc4a1e9",
+      "sha256": "b64fe548b329d781bd4f4eb8b5d7a3761f1eb38cc9ce3a28581fd2d9220a969d",
       "workload": "random",
       "scope": "resident",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-random-resident.svg",
-      "sha256": "64a9af25ba5e6d43c307f10cc02c2013f93ca0df3a3492e4a5256006ef1f2060",
+      "sha256": "c671e3548ccccc363714aedba74966f7f4f72bd8e5a82d7ecf9a9812f0a0727e",
       "workload": "random",
       "scope": "resident",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-random-resident.pdf",
-      "sha256": "265014ecf4d4736f1f0e337efae51a3a8424f1bac7f03b2c859e6a0dc80d8b12",
+      "sha256": "3045439ee5d3aa130b81f8ce95cde390155525e2f050cd1c9c49c2045d394e8c",
       "workload": "random",
       "scope": "resident",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-random-host-bytes.png",
-      "sha256": "72e010ff409c43d49e09bfd2759a91901b8e06505f361610dbe63539b1c5ba14",
+      "sha256": "8c46daa75ebd6db3a18ada4794fed360490e0fe471af6b673e4770f1162c5b8a",
       "workload": "random",
       "scope": "host_bytes",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-random-host-bytes.svg",
-      "sha256": "628a36aa404d7116692ff036f6fc237bbc0ec5e756d0411e1d07ed45ffd46c76",
+      "sha256": "0daf39911a0ba5c42dede15b5f4c1593d1b1c78d4e7a98ef66ec418182be1057",
       "workload": "random",
       "scope": "host_bytes",
       "metric": "median total call seconds / file count, in microseconds"
     },
     {
       "file": "rtx4090-random-host-bytes.pdf",
-      "sha256": "e1f2b276c77777cec131b328accb4ebb70ec0c87632fafbe5def3e7b11e3b7d6",
+      "sha256": "2e019f29a48dfe98a8882a341c62bb02082fa9bbfc0f28c0177d8a013ab64b90",
       "workload": "random",
       "scope": "host_bytes",
       "metric": "median total call seconds / file count, in microseconds"
