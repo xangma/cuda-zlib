@@ -221,6 +221,35 @@ int main(int argc, char** argv) {
         for (u32 alignment = 0; alignment < 4; ++alignment)
             protected_read_tail(roots, words, begin, length, alignment, serial);
     }
+    // Eight-seed groups need every prefix split, including all offsets within
+    // a middle group. Keep these additional canary checks in one page beside
+    // the final protected page rather than revisiting the full scratch buffer.
+    u32* short_roots = roots + words - begin;
+    for (u32 length = 4; length <= 258; ++length) {
+        for (u32 distance : {length - 1, length, length + 1}) {
+            const u32 middle = (distance / 2) & ~7u;
+            std::vector<u32> cuts;
+            for (u32 offset = 0; offset <= 8; ++offset) {
+                cuts.push_back(offset);
+                cuts.push_back(middle + offset);
+            }
+            std::sort(cuts.begin(), cuts.end());
+            cuts.erase(std::unique(cuts.begin(), cuts.end()), cuts.end());
+            for (u32 split : cuts) {
+                if (split > distance) continue;
+                for (u32 alignment = 0; alignment < 8; ++alignment) {
+                    const u32 tail = (begin - length - alignment) & 7u;
+                    const u32 at = begin - length - tail;
+                    check_seed(short_roots, begin, at - distance + split, at,
+                               distance, length, serial);
+                }
+                protected_seed(external, roots, begin, begin, distance,
+                               length, split, serial);
+            }
+        }
+        for (u32 alignment = 4; alignment < 8; ++alignment)
+            protected_read_tail(roots, begin * 4, begin, length, alignment, serial);
+    }
     return munmap(mapping, page * (active + 2)) != 0;
 }
 
