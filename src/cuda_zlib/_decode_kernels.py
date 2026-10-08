@@ -616,6 +616,7 @@ __device__ __noinline__ BlockInfo emit_warp_block(
     return result;
 }
 
+template <bool Emit>
 __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
                                             u64 start, u32 limit,
                                             u32 prefix, u32* roots,
@@ -642,7 +643,7 @@ __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
             result.status = 1;
             return result;
         }
-        if (roots)
+        if constexpr (Emit)
             for (u32 j = 0; j < n; ++j)
                 roots[prefix + j] = 0x80000000u | data[(r.pos >> 3) + j];
         produced = n;
@@ -664,17 +665,20 @@ __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
         const u8 distance_extra[30] = {
             0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13};
         while (!r.error) {
-            if (type == 1 && fixed_budget && !roots &&
-                (produced >= fixed_budget || r.pos - start >= u64(fixed_budget) * 8)) {
-                r.error = 13;
-                break;
+            if constexpr (!Emit) {
+                if (type == 1 && fixed_budget &&
+                    (produced >= fixed_budget || r.pos - start >= u64(fixed_budget) * 8)) {
+                    r.error = 13;
+                    break;
+                }
             }
             int symbol = ll.decode(r);
             if (r.error) break;
             if (symbol == 256) break;
             if (symbol < 256) {
                 if (produced >= limit) { r.error = 7; break; }
-                if (roots) roots[prefix + produced] = 0x80000000u | u32(symbol);
+                if constexpr (Emit)
+                    roots[prefix + produced] = 0x80000000u | u32(symbol);
                 ++produced;
                 continue;
             }
@@ -695,7 +699,7 @@ __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
             if (!distance || distance > window_bytes) { r.error = 6; break; }
             // Speculative metadata cannot know preceding-block history.
             // Emission has the accepted chain's absolute output prefix.
-            if (roots) {
+            if constexpr (Emit) {
                 if (distance > prefix + produced) { r.error = 6; break; }
                 if (distance > produced) result.external = 1;
                 emit_match_roots(roots, prefix, prefix + produced,
@@ -862,7 +866,7 @@ extern "C" __global__ void describe_candidates(
     if (threadIdx.x) return;
     const u32 count = *count_device;
     for (u64 i = blockIdx.x; i < count; i += gridDim.x) {
-        BlockInfo info = parse_block(data, input_bytes, starts[i],
+        BlockInfo info = parse_block<false>(data, input_bytes, starts[i],
                                      expected_bytes, 0, (u32*)0, tables,
                                      32768, 65536);
         ends[i] = info.end;
@@ -1034,7 +1038,7 @@ extern "C" __global__ void select_chain(
             // boundary, never because a speculative candidate was expensive.
             if (type == 1) { *chain_status = 13; return; }
             if (type == 2) { *chain_status = 10; return; }
-            info = parse_block(data, input_bytes, next,
+            info = parse_block<false>(data, input_bytes, next,
                                expected_bytes - output, 0, (u32*)0, tables);
         }
         if (info.status) { *chain_status = info.status; return; }
@@ -1109,7 +1113,7 @@ extern "C" __global__ void emit_blocks(
                 // Stored roots are filled by the following cooperative
                 // kernel, keeping compressed CTAs at one resident warp.
                 if (!err && type != 0) {
-                    BlockInfo info = parse_block(
+                    BlockInfo info = parse_block<true>(
                         data, input_bytes, start, size, prefix, roots,
                         tables, window_bytes);
                     err = info.status;
