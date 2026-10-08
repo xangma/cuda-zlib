@@ -11,12 +11,41 @@ struct BatchDecodeFile {
   U32 output_size;
 };
 
+// Metadata is captured after a successful table build and held as values.
+// Output stores cannot alias these scalars; the canonical decoder is unchanged.
+template<int N, int PrimaryBits>
+__device__ __forceinline__ int SmallHuffmanDecode(
+    decoder::BitReader& r, const decoder::Huffman<N, PrimaryBits>& table,
+    U32 maximum, U32 lookup) {
+  if (lookup && !r.error && r.pos <= r.bits &&
+      PrimaryBits <= r.bits - r.pos) {
+      decoder::u16 entry = table.primary[r.peek(PrimaryBits)];
+      if (entry) {
+          r.drop(entry >> 9);
+          return entry & 511;
+      }
+  }
+  decoder::u32 code = 0, first = 0, index = 0;
+  for (decoder::u32 len = 1; len <= maximum; ++len) {
+      code |= r.take(1);
+      if (r.error) return -1;
+      if (code < first + table.count[len])
+          return int(table.symbols[index + code - first]);
+      index += table.count[len];
+      first = (first + table.count[len]) << 1;
+      code <<= 1;
+  }
+  r.error = 4;
+  return -1;
+}
+
 // Small/batch token decoding keeps base/extra calculation in registers.
 // The ordinary decoder retains its original helpers.
 __device__ __forceinline__ int SmallFixedToken(
     decoder::BitReader& r, const decoder::DecodeTables& tables,
+    U32 ll_maximum, U32 ll_lookup, U32 dd_maximum, U32 dd_lookup,
     U32& size, U32& distance, U32 window_bytes = 32768) {
-  const int symbol = tables.ll.decode(r);
+  const int symbol = SmallHuffmanDecode(r, tables.ll, ll_maximum, ll_lookup);
   size = 0;
   distance = 0;
   if (r.error || symbol == 256) return symbol;
@@ -28,7 +57,7 @@ __device__ __forceinline__ int SmallFixedToken(
       3 + ((4 + (index & 3)) << length_extra);
   size = length_base + r.take(length_extra);
   if (r.error) return symbol;
-  const int ds = tables.dd.decode(r);
+  const int ds = SmallHuffmanDecode(r, tables.dd, dd_maximum, dd_lookup);
   if (r.error) return symbol;
   if (ds < 0 || ds > 29) { r.error = 4; return symbol; }
   const U32 distance_index = U32(ds);
@@ -42,13 +71,15 @@ __device__ __forceinline__ int SmallFixedToken(
 
 __device__ __forceinline__ U32 SmallExtendRepeatRun(
     decoder::BitReader& r, const decoder::DecodeTables& tables,
+    U32 ll_maximum, U32 ll_lookup, U32 dd_maximum, U32 dd_lookup,
     U32 length, U32 available, U32 window_bytes, U64 end) {
   // Preserve the ordinary parser's checkpoint, limit and error precedence.
   while (length < 8192 && r.pos < end) {
     const decoder::BitReader saved = r;
     U32 next_length, next_distance;
-    const int symbol = SmallFixedToken(r, tables, next_length, next_distance,
-                                      window_bytes);
+    const int symbol = SmallFixedToken(
+        r, tables, ll_maximum, ll_lookup, dd_maximum, dd_lookup,
+        next_length, next_distance, window_bytes);
     if (r.error || symbol == 256 || next_distance != 1 || r.pos > end ||
         next_length > available - length || next_length > 8192 - length) {
       r = saved;
@@ -89,6 +120,7 @@ __device__ __noinline__ void DecodeOneFile(
   const U32 lane = threadIdx.x;
   U32 error = 0, produced = 0, final = 0, blocks = 0;
   U32 window = 0, wanted_checksum = 0;
+  U32 ll_maximum = 0, ll_lookup = 0, dd_maximum = 0, dd_lookup = 0;
   bool need_header = true, complete = false;
   decoder::BitReader reader = {nullptr, 0, 0, 0, 0, 0};
 
@@ -157,10 +189,15 @@ __device__ __noinline__ void DecodeOneFile(
               decoder::dynamic_tables(reader, tables.ll, tables.dd, tables.cl);
           need_header = false;
           if (error) break;
+          ll_maximum = tables.ll.maximum;
+          ll_lookup = tables.ll.lookup;
+          dd_maximum = tables.dd.maximum;
+          dd_lookup = tables.dd.lookup;
         }
         U32 size, token_distance;
         const int symbol = SmallFixedToken(
-            reader, tables, size, token_distance, window);
+            reader, tables, ll_maximum, ll_lookup, dd_maximum, dd_lookup,
+            size, token_distance, window);
         if (reader.error) { error = reader.error; break; }
         if (symbol == 256) {
           complete = final != 0;
@@ -176,7 +213,8 @@ __device__ __noinline__ void DecodeOneFile(
         if (size >= 32) {
           begin = produced;
           length = token_distance == 1 ? SmallExtendRepeatRun(
-              reader, tables, size, output_size - produced, window,
+              reader, tables, ll_maximum, ll_lookup, dd_maximum, dd_lookup,
+              size, output_size - produced, window,
               reader.bits) : size;
           distance = token_distance;
           produced += length;
@@ -345,6 +383,7 @@ __device__ __noinline__ void DecodeOneFileShared(
   const U32 lane = threadIdx.x;
   U32 error = 0, produced = 0, final = 0, blocks = 0;
   U32 window = 0, wanted_checksum = 0;
+  U32 ll_maximum = 0, ll_lookup = 0, dd_maximum = 0, dd_lookup = 0;
   bool need_header = true, complete = false;
   decoder::BitReader reader = {nullptr, 0, 0, 0, 0, 0};
 
@@ -413,10 +452,15 @@ __device__ __noinline__ void DecodeOneFileShared(
               decoder::dynamic_tables(reader, tables.ll, tables.dd, tables.cl);
           need_header = false;
           if (error) break;
+          ll_maximum = tables.ll.maximum;
+          ll_lookup = tables.ll.lookup;
+          dd_maximum = tables.dd.maximum;
+          dd_lookup = tables.dd.lookup;
         }
         U32 size, token_distance;
         const int symbol = SmallFixedToken(
-            reader, tables, size, token_distance, window);
+            reader, tables, ll_maximum, ll_lookup, dd_maximum, dd_lookup,
+            size, token_distance, window);
         if (reader.error) { error = reader.error; break; }
         if (symbol == 256) {
           complete = final != 0;
@@ -432,7 +476,8 @@ __device__ __noinline__ void DecodeOneFileShared(
         if (size >= 32) {
           begin = produced;
           length = token_distance == 1 ? SmallExtendRepeatRun(
-              reader, tables, size, output_size - produced, window,
+              reader, tables, ll_maximum, ll_lookup, dd_maximum, dd_lookup,
+              size, output_size - produced, window,
               reader.bits) : size;
           distance = token_distance;
           produced += length;
