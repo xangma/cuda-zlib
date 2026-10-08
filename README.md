@@ -148,23 +148,23 @@ and checksum reductions. DEFLATE bit parsing still follows stream order.
 ## Performance
 
 On an RTX 4090 with an AMD Threadripper PRO 3995WX, warm **64 MiB** host-byte
-compression measured **7.53–16.72×** the throughput of single-threaded CPU
-zlib level 1. Decoding identical stdlib level-6 streams measured **1.12–5.32×**
+compression measured **7.60–16.12×** the throughput of single-threaded CPU
+zlib level 1. Decoding identical stdlib level-6 streams measured **1.14–5.25×**
 CPU throughput. Both comparisons include uploads, downloads, allocations, codec
 validation and conversion to Python `bytes`.
 
 At **64 KiB**, CPU compression and decompression were faster for every workload.
-At **1 MiB**, host-byte compression measured **1.03–5.24×** CPU level-1
-throughput. Generated-text compression was near parity (**1.03×** CPU level-1
-throughput). Decompression was faster on CUDA for zeros (**1.19×**) and Gaussian
-float32 (**1.50×**); CPU won the other three workloads.
+At **1 MiB**, host-byte compression measured **1.04–5.26×** CPU level-1
+throughput. Generated-text compression was near parity (**1.04×** CPU level-1
+throughput). Decompression was faster on CUDA for zeros (**1.32×**) and Gaussian
+float32 (**1.47×**); CPU won the other three workloads.
 Compression sizes differ across codecs; CUDA has no zlib-equivalent level.
 
-**CPU was faster for every measured single-file small-input case** (256 B, 4 KiB
-and 64 KiB), including resident CUDA workflows.
+**CPU host-byte workflows were faster for every measured single-file small-input
+case** (256 B, 4 KiB and 64 KiB) than the matching CUDA host-byte workflows.
 With **128 independent 64 KiB files**, host-byte compression measured
-**2.68–18.31×** CPU level-1 throughput. Host-byte decompression measured
-**10.08×** CPU for zeros, **2.12×** for text and **0.93×** for random bytes.
+**2.55–18.77×** CPU level-1 throughput. Host-byte decompression measured
+**10.84×** CPU for zeros, **2.34×** for text and **0.91×** for random bytes.
 See [small-file results and batch-count plots](BENCHMARKS.md#independent-small-files-on-rtx-4090).
 
 For compiled consumers, [resident checked decode measurements](BENCHMARKS.md#resident-checked-decoding-on-rtx-4090)
