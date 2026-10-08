@@ -148,23 +148,24 @@ and checksum reductions. DEFLATE bit parsing still follows stream order.
 ## Performance
 
 On an RTX 4090 with an AMD Threadripper PRO 3995WX, warm **64 MiB** host-byte
-compression measured **7.60–16.12×** the throughput of single-threaded CPU
+compression measured **7.52–16.90×** the throughput of single-threaded CPU
 zlib level 1. Decoding identical stdlib level-6 streams measured **1.14–5.25×**
 CPU throughput. Both comparisons include uploads, downloads, allocations, codec
 validation and conversion to Python `bytes`.
 
 At **64 KiB**, CPU compression and decompression were faster for every workload.
-At **1 MiB**, host-byte compression measured **1.04–5.26×** CPU level-1
-throughput. Generated-text compression was near parity (**1.04×** CPU level-1
-throughput). Decompression was faster on CUDA for zeros (**1.32×**) and Gaussian
-float32 (**1.47×**); CPU won the other three workloads.
+At **1 MiB**, host-byte compression measured **1.06–5.25×** CPU level-1
+throughput. Generated-text compression measured **1.06×** CPU level-1
+throughput. Decompression was faster on CUDA for zeros (**1.36×**) and Gaussian float32
+(**1.50×**). CPU won the other three workloads.
 Compression sizes differ across codecs; CUDA has no zlib-equivalent level.
 
 **CPU host-byte workflows were faster for every measured single-file small-input
 case** (256 B, 4 KiB and 64 KiB) than the matching CUDA host-byte workflows.
 With **128 independent 64 KiB files**, host-byte compression measured
-**2.55–18.77×** CPU level-1 throughput. Host-byte decompression measured
-**10.84×** CPU for zeros, **2.34×** for text and **0.91×** for random bytes.
+**2.48–19.00×** CPU level-1 throughput. Host-byte decompression measured
+**10.98×** CPU for zeros, **2.36×** for text and **1.00×**
+for random bytes (near parity).
 See [small-file results and batch-count plots](BENCHMARKS.md#independent-small-files-on-rtx-4090).
 
 For compiled consumers, [resident checked decode measurements](BENCHMARKS.md#resident-checked-decoding-on-rtx-4090)
