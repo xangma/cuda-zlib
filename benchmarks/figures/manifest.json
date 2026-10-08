@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "source": "benchmarks/results/rtx4090-20261008.json",
-  "source_sha256": "5e4feade3b6ed852758c8d4f014fd5a02ebdf434b6bb0753f5b31147ef50ec32",
+  "source_sha256": "3370af2a7b47e9603cdca90db1b929c5e50f2f677101717426012d316a43d210",
   "script_sha256": "1dc51e5a2c8f2b9ba80df27e6fc51107a3dda8b655333c0e35c59153c55f593b",
   "renderer": {
-    "matplotlib": "3.11.1",
-    "numpy": "2.5.2",
+    "matplotlib": "3.10.3",
+    "numpy": "2.3.5",
     "backend": "Agg"
   },
   "measurement_source": {
-    "revision": "ac3b441fb9a48f3bdbbf51ffe3625afb6a78b812",
+    "revision": "2bff50496a8d61ad6c907145aa57610ffa7af887",
     "harness_sha256": "a542c79b14b3380a81fea08e33db9d3f566599c0349f5c1ca1add8d558022f7e",
     "sha256": {
       "__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
@@ -20,9 +20,9 @@
       "_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
       "_postprocess.py": "bfbc7664b4c6255890388716f4e16999676ebe2b37c900c5e41eafad387ea307",
       "jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
-      "native/batch_decode.cuh": "6ce2e87e14aef6ebd26634920cfe7961161bfb74ec5a3bed9f027a34d489cb9b",
+      "native/batch_decode.cuh": "d79f1f3da9a258e0025f21ba4e8015014ab21487a5157046b87710b6aed342cb",
       "native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
-      "native/codec_ffi.cu": "e06cca50d2ec8b06d95668877d70c8369fed9ed2b24ff4a4820af6c5b86914ea"
+      "native/codec_ffi.cu": "892c568342627f59eff0f60dc4785749cee4bac2a8d8efe196e3280dedc1c7e2"
     }
   },
   "environment": {
@@ -39,23 +39,23 @@
     "cuda_platform": "cuda 13040",
     "gpu": "NVIDIA GeForce RTX 4090",
     "native_build": {
-      "cache_key": "2d67aa0c1d145aa5ac3499af8aa8c5fc7b92e69ef440b0426983d56ab2f22dc1",
-      "library": "/dev/shm/cuda-zlib-overlap-20261008-01a10cd3/cache-final/2d67aa0c1d145aa5ac3499af8aa8c5fc7b92e69ef440b0426983d56ab2f22dc1/codec_ffi.so",
-      "library_sha256": "601acec2bdbcb7538732cd910f09231e3d0100c9790eebce0c25e903ae0481ee",
-      "build": "/dev/shm/cuda-zlib-overlap-20261008-01a10cd3/cache-final/2d67aa0c1d145aa5ac3499af8aa8c5fc7b92e69ef440b0426983d56ab2f22dc1/build.json",
-      "build_sha256": "f930d2483fdfb8c155fa6b26228a7bcbaf89cef0a7e7ace10a58b7c3579162dc",
+      "cache_key": "8bcc3ad96bc7375277138579a8e1b0420c337cccab3686aafedf6939fc6a5333",
+      "library": "/dev/shm/cuda-zlib-specialized-small-20261008-01a10cd3/cache-final/8bcc3ad96bc7375277138579a8e1b0420c337cccab3686aafedf6939fc6a5333/codec_ffi.so",
+      "library_sha256": "30805252dace54f674fa8f2556b43f098930862dc1a06298ef10ae9969e968e3",
+      "build": "/dev/shm/cuda-zlib-specialized-small-20261008-01a10cd3/cache-final/8bcc3ad96bc7375277138579a8e1b0420c337cccab3686aafedf6939fc6a5333/build.json",
+      "build_sha256": "4d8a922de237943efc092f70f158f86adf72e13f1dc367d72879edf1a057f0b1",
       "identity": {
         "architecture": "sm_89",
         "jaxlib": "0.11.2",
         "compiler": "/usr/local/cuda-12.1/bin/nvcc",
         "compiler_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2023 NVIDIA Corporation\nBuilt on Mon_Apr__3_17:16:06_PDT_2023\nCuda compilation tools, release 12.1, V12.1.105\nBuild cuda_12.1.r12.1/compiler.32688072_0\n",
         "sources": {
-          "codec_ffi.cu": "e06cca50d2ec8b06d95668877d70c8369fed9ed2b24ff4a4820af6c5b86914ea",
+          "codec_ffi.cu": "892c568342627f59eff0f60dc4785749cee4bac2a8d8efe196e3280dedc1c7e2",
           "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
           "decoder.cuh": "199aae623c576a7e2c7e6b17dbf93ddd9a84748999bc107fef049bdb7bc39107",
           "postprocess.cuh": "31579be73cd0fd6fc120b0ee6accd9267df5ed66c88f9170208bdd506664a38e",
           "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
-          "batch_decode.cuh": "6ce2e87e14aef6ebd26634920cfe7961161bfb74ec5a3bed9f027a34d489cb9b"
+          "batch_decode.cuh": "d79f1f3da9a258e0025f21ba4e8015014ab21487a5157046b87710b6aed342cb"
         },
         "headers": {
           "api.h": "1426ea8206a1b9f1824f460572ea731665eb7cb9def1f0fc166b13df4b955ad0",
@@ -89,12 +89,12 @@
         "compiler": "/usr/local/cuda-12.1/bin/nvcc",
         "compiler_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2023 NVIDIA Corporation\nBuilt on Mon_Apr__3_17:16:06_PDT_2023\nCuda compilation tools, release 12.1, V12.1.105\nBuild cuda_12.1.r12.1/compiler.32688072_0\n",
         "sources": {
-          "codec_ffi.cu": "e06cca50d2ec8b06d95668877d70c8369fed9ed2b24ff4a4820af6c5b86914ea",
+          "codec_ffi.cu": "892c568342627f59eff0f60dc4785749cee4bac2a8d8efe196e3280dedc1c7e2",
           "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
           "decoder.cuh": "199aae623c576a7e2c7e6b17dbf93ddd9a84748999bc107fef049bdb7bc39107",
           "postprocess.cuh": "31579be73cd0fd6fc120b0ee6accd9267df5ed66c88f9170208bdd506664a38e",
           "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
-          "batch_decode.cuh": "6ce2e87e14aef6ebd26634920cfe7961161bfb74ec5a3bed9f027a34d489cb9b"
+          "batch_decode.cuh": "d79f1f3da9a258e0025f21ba4e8015014ab21487a5157046b87710b6aed342cb"
         },
         "headers": {
           "api.h": "1426ea8206a1b9f1824f460572ea731665eb7cb9def1f0fc166b13df4b955ad0",
@@ -116,7 +116,7 @@
       }
     ],
     "gpu_snapshot_before": [
-      "NVIDIA GeForce RTX 4090, 610.57.04, 2928, 24564, 0, 45"
+      "NVIDIA GeForce RTX 4090, 610.57.04, 2920, 24564, 2, 50"
     ],
     "codec_sha256": {
       "__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
@@ -127,9 +127,9 @@
       "_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
       "_postprocess.py": "bfbc7664b4c6255890388716f4e16999676ebe2b37c900c5e41eafad387ea307",
       "jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
-      "native/batch_decode.cuh": "6ce2e87e14aef6ebd26634920cfe7961161bfb74ec5a3bed9f027a34d489cb9b",
+      "native/batch_decode.cuh": "d79f1f3da9a258e0025f21ba4e8015014ab21487a5157046b87710b6aed342cb",
       "native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
-      "native/codec_ffi.cu": "e06cca50d2ec8b06d95668877d70c8369fed9ed2b24ff4a4820af6c5b86914ea"
+      "native/codec_ffi.cu": "892c568342627f59eff0f60dc4785749cee4bac2a8d8efe196e3280dedc1c7e2"
     },
     "workspace_pool_before": {
       "retention_bytes": 1073741824,
@@ -138,7 +138,7 @@
       "pool_count": 0
     },
     "gpu_snapshot_after": [
-      "NVIDIA GeForce RTX 4090, 610.57.04, 4331, 24564, 74, 51"
+      "NVIDIA GeForce RTX 4090, 610.57.04, 4386, 24564, 0, 58"
     ],
     "workspace_pool_after": {
       "retention_bytes": 1073741824,
@@ -166,7 +166,7 @@
     "device": 0,
     "cpu_only": false
   },
-  "source_created_utc": "2026-10-08T10:07:57.407771+00:00",
+  "source_created_utc": "2026-10-08T12:32:05.227061+00:00",
   "validated_cases": 15,
   "validated_timing_keys": [
     "cpu_compress_level1",
@@ -204,9 +204,9 @@
   "figures": {
     "compression-throughput": {
       "exports_sha256": {
-        "compression-throughput.png": "74363972560a143c63a05d901e2556064943bee7cb0b6a9fee5025927c572f20",
-        "compression-throughput.svg": "afdc4b63216034ae2ab42f28863d667ab40693c4eb12a0e65f04f27bdc872ec8",
-        "compression-throughput.pdf": "84ac0f809efb2bce876176c2e22846ee7322509e337be8bf2526a78ae6084818"
+        "compression-throughput.png": "52f6c818d385879859d105bb1331377efb5003ec1d3f66a24e9fbe77861a8cd8",
+        "compression-throughput.svg": "c260a0744236718c03ced3a25f252024de8dc378f1db42063701d2ab37b4d880",
+        "compression-throughput.pdf": "ea428a9f670e7d573506fcc63a44dd034544bbb09088114b3a2e58ad5b71eb4c"
       },
       "workloads": [
         "zeros",
@@ -244,9 +244,9 @@
     },
     "encoded-size": {
       "exports_sha256": {
-        "encoded-size.png": "6b35b546f5b506dfd317e4430d570881c302d873f4aabd4c9a6c023602cfb2ca",
-        "encoded-size.svg": "2e3dbcb43d665cb4d5ab31303bd53538c4ac0a934e2125069ef37544f78004c4",
-        "encoded-size.pdf": "8c373dc8dc4516fe5ca01800a590401cb1db60bf1dc2b09f5dc98d93edfb2463"
+        "encoded-size.png": "1b4e862705d96d69a1e76e9554ada93a6c43577e2abbca9a4e22a3806b80a00f",
+        "encoded-size.svg": "142157948d87f558bfd999fed769ad144ec8842d9dfa9e9fe2640b61f3a808e2",
+        "encoded-size.pdf": "1eb2ce6406e4c4d0992187797d0cb44e581dd9bdff73a6b924f61ad57a70b5d9"
       },
       "workloads": [
         "zeros",
@@ -278,9 +278,9 @@
     },
     "decompression-throughput": {
       "exports_sha256": {
-        "decompression-throughput.png": "ed385dbb7a27d6159d256d108dbbbb2faf3621ce146d0071c1c1394a16edb690",
-        "decompression-throughput.svg": "d02cc1a3524d5c6415703a6f92c0640f91bf347977ae0feaad46871e4a8f56c2",
-        "decompression-throughput.pdf": "fcb0299b0df11b87ee468b0aa55622be364944ebc5ac70e5965351ef16c2e48c"
+        "decompression-throughput.png": "5e064351d8e1096feeeca767f274c73909176caaaf61f1fe040bb8e5daa11bf8",
+        "decompression-throughput.svg": "d3e07b3003af76da94e6a7833c47e8de2a7d4e5866a5b601079d2b42d007a91d",
+        "decompression-throughput.pdf": "71c64986ec702ea8baf62da5e11f4b0d1925a6367e8f92690a670a02b1acfadd"
       },
       "workloads": [
         "zeros",
@@ -318,9 +318,9 @@
     },
     "decode-stream-layout": {
       "exports_sha256": {
-        "decode-stream-layout.png": "51673919efb8cbf7488bf09586da32b9b41c7ba859a68181614aa922d7996531",
-        "decode-stream-layout.svg": "debeaabd0be5285e2f7a546f98fae8a381324aeddb47ab75b49ef59dc6031b29",
-        "decode-stream-layout.pdf": "4d0c0eb2599033904c7de4044702b67334b3e208ed83211e7b0698491ce0a696"
+        "decode-stream-layout.png": "2a1c49486c9d3058062a5480f050061153d8d467e56dbc306b8fbe4e5651f97d",
+        "decode-stream-layout.svg": "980a6c07791583a4d6f2cc38e2b47631cdd2184bbba9ae2ed231a86f980d29ba",
+        "decode-stream-layout.pdf": "e967a3ce57d6853eba4421da01f4af8929dc802bc46cdd922b62af5cd0d8c69e"
       },
       "workloads": [
         "zeros",
@@ -356,9 +356,9 @@
     },
     "cpu-speedup": {
       "exports_sha256": {
-        "cpu-speedup.png": "7ac8dbf7af32a566c3f9c1554b5c9e5ac1268131e65468fd18fc76426cde7fe0",
-        "cpu-speedup.svg": "6e1904a450526100901441de1b1cb42681bf303a732e5e53a2fc6fb50d20ffcb",
-        "cpu-speedup.pdf": "8a89a364a28fa5a488ed04d8da8497213103be963338cd857ee2cbbfb96297c7"
+        "cpu-speedup.png": "2ac801c30deac09c433aed3f28350a994ec708ad4ad11a80ea20d052dfaa2b7c",
+        "cpu-speedup.svg": "2d89941f35be0cdfaf7ef2c379a64098c9fd365f8bb9350eac118730516554b2",
+        "cpu-speedup.pdf": "b2834a53b137b4be6228e6b675ab35f352a756eb3a5ac1b19a2e93d2b6dbc1a2"
       },
       "workloads": [
         "zeros",
