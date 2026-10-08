@@ -357,6 +357,27 @@ __device__ __forceinline__ int fixed_token(
     return symbol;
 }
 
+__device__ __forceinline__ u32 extend_repeat_run(
+    BitReader& r, const DecodeTables& tables, u32 length, u32 available,
+    u32 window_bytes, u64 end) {
+    // Consecutive distance-one matches share the same preceding seed. Keep
+    // runs bounded, and leave every other token (including errors/EOB) for
+    // the ordinary parser so its checks and failure precedence are preserved.
+    while (length < 8192 && r.pos < end) {
+        const BitReader saved = r;
+        u32 next_length, next_distance;
+        const int symbol = fixed_token(r, tables, next_length, next_distance,
+                                       window_bytes);
+        if (r.error || symbol == 256 || next_distance != 1 || r.pos > end ||
+            next_length > available - length || next_length > 8192 - length) {
+            r = saved;
+            break;
+        }
+        length += next_length;
+    }
+    return length;
+}
+
 __device__ FixedSummary scan_fixed_region(
     BitReader& r, u64 tile_end, const DecodeTables& tables) {
     FixedSummary info = {r.pos, ~u64(0), 0, 0, 0, 0};
@@ -395,6 +416,14 @@ __device__ __forceinline__ void emit_match_roots(
     if (distance == 1) {
         u32 value = first < prefix ? first : roots[first];
         for (u32 j = 0; j < length; ++j) roots[begin + j] = value;
+    } else if (length == 3 && distance >= 3) {
+        // Independent seed reads can overlap before publishing this short match.
+        const u32 a = first < prefix ? first : roots[first];
+        const u32 b = first + 1 < prefix ? first + 1 : roots[first + 1];
+        const u32 c = first + 2 < prefix ? first + 2 : roots[first + 2];
+        roots[begin] = a;
+        roots[begin + 1] = b;
+        roots[begin + 2] = c;
     } else {
         u32 source = first;
         for (u32 j = 0; j < length; ++j) {
@@ -445,7 +474,16 @@ __device__ __forceinline__ void emit_warp_match(
         u32 value = 0;
         if (!lane) value = first < prefix ? first : roots[first];
         value = __shfl_sync(mask, value, 0);
-        for (u32 j = lane; j < length; j += 32) roots[begin + j] = value;
+        // Align the middle to 16 bytes, retaining bounded scalar ends.
+        u32 head = (4 - (begin & 3u)) & 3u;
+        if (head > length) head = length;
+        if (lane < head) roots[begin + lane] = value;
+        const u32 vectors = (length - head) / 4;
+        uint4* aligned = reinterpret_cast<uint4*>(roots + begin + head);
+        const uint4 repeated = {value, value, value, value};
+        for (u32 j = lane; j < vectors; j += 32) aligned[j] = repeated;
+        const u32 tail = head + vectors * 4;
+        if (lane < length - tail) roots[begin + tail + lane] = value;
     } else {
         // Compute modulo only once per lane, then advance within the seed.
         // Every source precedes begin, even when length exceeds distance.
@@ -507,10 +545,12 @@ __device__ __noinline__ BlockInfo emit_warp_block(
                     }
                     if (token_distance > result.size) result.external = 1;
                     if (size >= 32 && blockDim.x >= 32) {
-                        length = size;
+                        length = token_distance == 1 ? extend_repeat_run(
+                            r, tables, size, limit - result.size, window_bytes,
+                            segment ? end : r.bits) : size;
                         distance = token_distance;
                         begin = prefix + result.size;
-                        result.size += size;
+                        result.size += length;
                         break;
                     }
                     emit_match_roots(roots, prefix, prefix + result.size,
