@@ -41,11 +41,10 @@ __device__ __forceinline__ int SmallHuffmanDecode(
 
 // Small/batch token decoding keeps base/extra calculation in registers.
 // The ordinary decoder retains its original helpers.
-__device__ __forceinline__ int SmallFixedToken(
-    decoder::BitReader& r, const decoder::DecodeTables& tables,
-    U32 ll_maximum, U32 ll_lookup, U32 dd_maximum, U32 dd_lookup,
-    U32& size, U32& distance, U32 window_bytes = 32768) {
-  const int symbol = SmallHuffmanDecode(r, tables.ll, ll_maximum, ll_lookup);
+__device__ __forceinline__ int SmallTokenRemainder(
+    decoder::BitReader& r, const decoder::DecodeTables& tables, int symbol,
+    U32 dd_maximum, U32 dd_lookup, U32& size, U32& distance,
+    U32 window_bytes = 32768) {
   size = 0;
   distance = 0;
   if (r.error || symbol == 256) return symbol;
@@ -67,6 +66,15 @@ __device__ __forceinline__ int SmallFixedToken(
   distance = distance_base + r.take(distance_extra);
   if (!r.error && (!distance || distance > window_bytes)) r.error = 6;
   return symbol;
+}
+
+__device__ __forceinline__ int SmallFixedToken(
+    decoder::BitReader& r, const decoder::DecodeTables& tables,
+    U32 ll_maximum, U32 ll_lookup, U32 dd_maximum, U32 dd_lookup,
+    U32& size, U32& distance, U32 window_bytes = 32768) {
+  const int symbol = SmallHuffmanDecode(r, tables.ll, ll_maximum, ll_lookup);
+  return SmallTokenRemainder(r, tables, symbol, dd_maximum, dd_lookup,
+      size, distance, window_bytes);
 }
 
 __device__ __forceinline__ U32 SmallExtendRepeatRun(
@@ -375,6 +383,29 @@ __device__ __forceinline__ void DecodeMatchShared(SharedDecodeOutput output, U32
   }
 }
 
+// Each lane probes one bounded bit offset, then all lanes follow only the
+// actual literal successor chain. The caller publishes stores with __syncwarp.
+__device__ __forceinline__ U32 SmallSharedLiteralRun(
+    const decoder::u16* primary, U64 cache, U32 cached,
+    SharedDecodeOutput output, U32 begin, U32 available, U32& consumed) {
+  constexpr U32 mask = 0xffffffffu;
+  const U32 lane = threadIdx.x;
+  const U32 entry = lane + 9 <= cached ?
+      U32(primary[U32(cache >> lane) & 511u]) : 0;
+  const U32 capacity = available < 32 ? available : 32;
+  U32 offset = 0, count = 0, byte = 0;
+  while (offset < 32 && count < capacity) {
+    const U32 current = __shfl_sync(mask, entry, offset);
+    if (!current || (current & 511u) >= 256) break;
+    if (lane == count) byte = current & 511u;
+    offset += current >> 9;
+    ++count;
+  }
+  if (lane < count) output[begin + lane] = U8(byte);
+  consumed = offset;
+  return count;
+}
+
 __device__ __noinline__ void DecodeOneFileShared(
     const U8* input, U32 input_size, SharedDecodeOutput output, U32 output_size,
     U32 max_blocks, U32* metadata, decoder::DecodeTables& tables,
@@ -419,9 +450,11 @@ __device__ __noinline__ void DecodeOneFileShared(
   }
 
   while (true) {
-    // Lane zero advances through literals and short matches. The remaining
-    // lanes rendezvous only for a stored block, a long match or termination.
+    // Lane zero keeps the canonical token path; a completed literal can
+    // rendezvous with the warp for a bounded additional literal prefix.
     U32 action = 0, length = 0, begin = 0, distance = 0, input_begin = 0;
+    U64 literal_cache = 0;
+    U32 literal_cached = 0;
     if (!lane) {
       while (!error && !complete) {
         if (need_header) {
@@ -458,8 +491,10 @@ __device__ __noinline__ void DecodeOneFileShared(
           dd_lookup = tables.dd.lookup;
         }
         U32 size, token_distance;
-        const int symbol = SmallFixedToken(
-            reader, tables, ll_maximum, ll_lookup, dd_maximum, dd_lookup,
+        int symbol = SmallHuffmanDecode(reader, tables.ll, ll_maximum, ll_lookup);
+      finish_token:
+        symbol = SmallTokenRemainder(
+            reader, tables, symbol, dd_maximum, dd_lookup,
             size, token_distance, window);
         if (reader.error) { error = reader.error; break; }
         if (symbol == 256) {
@@ -470,6 +505,24 @@ __device__ __noinline__ void DecodeOneFileShared(
         if (size > output_size - produced) { error = 7; break; }
         if (!token_distance) {
           output[produced++] = U8(symbol);
+          if (ll_lookup && !reader.error && reader.pos <= reader.bits &&
+              9 <= reader.bits - reader.pos && produced < output_size) {
+            const U32 entry = U32(tables.ll.primary[reader.peek(9)]);
+            if (entry && (entry & 511u) < 256) {
+              literal_cache = reader.cache;
+              literal_cached = reader.cached;
+              begin = produced;
+              length = output_size - produced;
+              action = 3;
+              break;
+            }
+            if (entry) {
+              // Decode this token at the current position without a loop handoff.
+              reader.drop(entry >> 9);
+              symbol = int(entry & 511u);
+              goto finish_token;
+            }
+          }
           continue;
         }
         if (token_distance > produced) { error = 6; break; }
@@ -516,6 +569,18 @@ __device__ __noinline__ void DecodeOneFileShared(
     if (action == 1) {
       distance = __shfl_sync(mask, distance, 0);
       DecodeMatchShared(output, begin, distance, length);
+    } else if (action == 3) {
+      literal_cache = __shfl_sync(mask, literal_cache, 0);
+      literal_cached = __shfl_sync(mask, literal_cached, 0);
+      U32 consumed = 0;
+      const U32 literals = SmallSharedLiteralRun(
+          tables.ll.primary, literal_cache, literal_cached,
+          output, begin, length, consumed);
+      if (!lane && literals) {
+        // The leader reader still holds the dispatched literal reservoir.
+        reader.drop(consumed);
+        produced += literals;
+      }
     } else {
       input_begin = __shfl_sync(mask, input_begin, 0);
       for (U32 j = lane; j < length; j += 32)
