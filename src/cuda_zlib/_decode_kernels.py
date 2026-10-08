@@ -424,6 +424,25 @@ __device__ __forceinline__ void emit_match_roots(
         roots[begin] = a;
         roots[begin + 1] = b;
         roots[begin + 2] = c;
+    } else if (length >= 4 && distance >= length) {
+        // All seeds precede this match. Read independent roots before stores
+        // so their memory latency can overlap, including prefix straddles.
+        u32 j = 0;
+        for (; j + 4 <= length; j += 4) {
+            const u32 source = first + j;
+            const u32 a = source < prefix ? source : roots[source];
+            const u32 b = source + 1 < prefix ? source + 1 : roots[source + 1];
+            const u32 c = source + 2 < prefix ? source + 2 : roots[source + 2];
+            const u32 d = source + 3 < prefix ? source + 3 : roots[source + 3];
+            roots[begin + j] = a;
+            roots[begin + j + 1] = b;
+            roots[begin + j + 2] = c;
+            roots[begin + j + 3] = d;
+        }
+        for (; j < length; ++j) {
+            const u32 source = first + j;
+            roots[begin + j] = source < prefix ? source : roots[source];
+        }
     } else {
         u32 source = first;
         for (u32 j = 0; j < length; ++j) {
