@@ -616,13 +616,15 @@ __device__ __noinline__ BlockInfo emit_warp_block(
     return result;
 }
 
-template <bool Emit>
+// Metadata token counts use external; emission retains its history flag.
+template <bool Emit, bool Count = false, int Caller = 0>
 __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
                                             u64 start, u32 limit,
                                             u32 prefix, u32* roots,
                                             DecodeTables& tables,
                                             u32 window_bytes = 32768,
                                             u32 fixed_budget = 0) {
+    static_assert(!Emit || !Count, "token count is metadata only");
     BitReader r = {data, u64(bytes) * 8, start, 0};
     BlockInfo result = {start, 0, 0, 0, 0};
     result.final = r.take(1);
@@ -647,6 +649,7 @@ __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
             for (u32 j = 0; j < n; ++j)
                 roots[prefix + j] = 0x80000000u | data[(r.pos >> 3) + j];
         produced = n;
+        if constexpr (Count) result.external = n;
         r.seek(r.pos + u64(n) * 8);
     } else {
         Huffman<288, 9>& ll = tables.ll;
@@ -679,6 +682,7 @@ __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
                 if (produced >= limit) { r.error = 7; break; }
                 if constexpr (Emit)
                     roots[prefix + produced] = 0x80000000u | u32(symbol);
+                if constexpr (Count) ++result.external;
                 ++produced;
                 continue;
             }
@@ -704,6 +708,170 @@ __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
                 if (distance > produced) result.external = 1;
                 emit_match_roots(roots, prefix, prefix + produced,
                                  distance, length);
+            }
+            if constexpr (Count) ++result.external;
+            produced += length;
+        }
+    }
+    result.end = r.pos;
+    result.size = produced;
+    result.status = r.error;
+    return result;
+}
+
+
+// Parser and writer occupy distinct warps in the same CTA.
+// Slots are owned exclusively by their producer or consumer between atomics.
+constexpr u32 PIPELINE_TOKENS = 32;
+struct PipelineToken { u32 begin, length, code; };
+using PipelineAtomic = cuda::atomic_ref<u32, cuda::thread_scope_block>;
+static_assert(sizeof(u32) == 4, "pipeline atomics require 32-bit u32");
+struct PipelineSlot {
+    alignas(4) u32 state;
+    u32 count, terminal;
+    BlockInfo result;
+    PipelineToken tokens[PIPELINE_TOKENS];
+};
+struct PipelineQueue { PipelineSlot slots[2]; };
+
+struct PipelineProducer {
+    PipelineQueue& queue;
+    u32 index, count;
+
+    __device__ explicit PipelineProducer(PipelineQueue& q)
+        : queue(q), index(0), count(0) {
+        wait_free();
+    }
+
+    __device__ void wait_free() {
+        PipelineAtomic state(queue.slots[index].state);
+        while (state.load(cuda::std::memory_order_acquire) != 0) {}
+    }
+
+    __device__ void publish(u32 terminal, const BlockInfo& result) {
+        PipelineSlot& slot = queue.slots[index];
+        slot.count = count;
+        slot.terminal = terminal;
+        slot.result = result;
+        PipelineAtomic(slot.state).store(1, cuda::std::memory_order_release);
+    }
+
+    __device__ void push(u32 begin, u32 length, u32 code) {
+        queue.slots[index].tokens[count++] = {begin, length, code};
+        if (count == PIPELINE_TOKENS) {
+            const BlockInfo unused = {};
+            publish(0, unused);
+            index ^= 1;
+            count = 0;
+            wait_free();
+        }
+    }
+
+    __device__ void finish(const BlockInfo& result) {
+        // Even an empty final batch terminates the consumer after exact fills.
+        publish(1, result);
+    }
+};
+
+__device__ __noinline__ BlockInfo pipeline_consume(
+    PipelineQueue& queue, u32 prefix, u32* roots) {
+    u32 index = 0;
+    while (true) {
+        PipelineSlot& slot = queue.slots[index];
+        PipelineAtomic state(slot.state);
+        while (state.load(cuda::std::memory_order_acquire) != 1) {}
+        const u32 count = slot.count;
+        for (u32 i = 0; i < count; ++i) {
+            const PipelineToken token = slot.tokens[i];
+            if (token.code & 0x80000000u) roots[token.begin] = token.code;
+            else emit_match_roots(roots, prefix, token.begin, token.code,
+                                  token.length);
+        }
+        const u32 terminal = slot.terminal;
+        const BlockInfo result = slot.result;
+        // No slot storage is accessed again after publishing FREE.
+        state.store(0, cuda::std::memory_order_release);
+        if (terminal) return result;
+        index ^= 1;
+    }
+}
+
+__device__ __noinline__ BlockInfo pipeline_parse_block(const u8* data, u32 bytes,
+                                            u64 start, u32 limit,
+                                            u32 prefix, PipelineProducer& producer,
+                                            DecodeTables& tables,
+                                            u32 window_bytes = 32768) {
+    BitReader r = {data, u64(bytes) * 8, start, 0};
+    BlockInfo result = {start, 0, 0, 0, 0};
+    result.final = r.take(1);
+    u32 type = r.take(2);
+    if (r.error) { result.status = r.error; return result; }
+    if (type == 3) { result.status = 2; return result; }
+    u32 produced = 0;
+    if (type == 0) {
+        r.seek((r.pos + 7) & ~u64(7));
+        u32 n = r.take(16), complement = r.take(16);
+        if (r.error) { result.status = r.error; return result; }
+        if ((n ^ complement) != 65535) {
+            result.status = 4;
+            return result;
+        }
+        if (n > limit) { result.status = 7; return result; }
+        if (r.pos > r.bits || u64(n) * 8 > r.bits - r.pos) {
+            result.status = 1;
+            return result;
+        }
+        for (u32 j = 0; j < n; ++j)
+            producer.push(prefix + j, 1, 0x80000000u | data[(r.pos >> 3) + j]);
+        produced = n;
+        r.seek(r.pos + u64(n) * 8);
+    } else {
+        Huffman<288, 9>& ll = tables.ll;
+        Huffman<32, 6>& dd = tables.dd;
+        u32 err = type == 1 ? fixed_tables(ll, dd) :
+                             dynamic_tables(r, ll, dd, tables.cl);
+        if (err) { result.status = err; return result; }
+        const u16 length_base[29] = {
+            3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,
+            59,67,83,99,115,131,163,195,227,258};
+        const u8 length_extra[29] = {
+            0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0};
+        const u16 distance_base[30] = {
+            1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,
+            513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577};
+        const u8 distance_extra[30] = {
+            0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13};
+        while (!r.error) {
+            int symbol = ll.decode(r);
+            if (r.error) break;
+            if (symbol == 256) break;
+            if (symbol < 256) {
+                if (produced >= limit) { r.error = 7; break; }
+                producer.push(prefix + produced, 1, 0x80000000u | u32(symbol));
+                ++produced;
+                continue;
+            }
+            if (symbol < 257 || symbol > 285) { r.error = 4; break; }
+            u32 index = u32(symbol - 257);
+            u32 length = length_base[index] + r.take(length_extra[index]);
+            if (r.error) break;
+            int distance_symbol = dd.decode(r);
+            if (r.error) break;
+            if (distance_symbol < 0 || distance_symbol > 29) {
+                r.error = 4;
+                break;
+            }
+            u32 distance = distance_base[distance_symbol] +
+                           r.take(distance_extra[distance_symbol]);
+            if (r.error) break;
+            if (length > limit - produced) { r.error = 7; break; }
+            if (!distance || distance > window_bytes) { r.error = 6; break; }
+            // Speculative metadata cannot know preceding-block history.
+            // Emission has the accepted chain's absolute output prefix.
+            {
+                if (distance > prefix + produced) { r.error = 6; break; }
+                if (distance > produced) result.external = 1;
+                producer.push(prefix + produced, length, distance);
             }
             produced += length;
         }
@@ -857,23 +1025,44 @@ extern "C" __global__ void validate_prefixes(const u8* data, u32 input_bytes,
         }
     }
 }
-extern "C" __global__ void describe_candidates(
+template <bool Count = false, int Caller = 0>
+__device__ __forceinline__ void describe_candidates_impl(
     const u8* data, u32 input_bytes, const u64* starts,
     u32 expected_bytes, u64* ends, u32* sizes, u32* finals, u32* status,
-    const u32* count_device, const u32* discovery_status) {
-    __shared__ DecodeTables tables;
+    const u32* count_device, const u32* discovery_status,
+    u32* token_counts, DecodeTables& tables) {
     if (*discovery_status) return;
     if (threadIdx.x) return;
     const u32 count = *count_device;
     for (u64 i = blockIdx.x; i < count; i += gridDim.x) {
-        BlockInfo info = parse_block<false>(data, input_bytes, starts[i],
+        BlockInfo info = parse_block<false, Count, Caller>(data, input_bytes, starts[i],
                                      expected_bytes, 0, (u32*)0, tables,
                                      32768, 65536);
         ends[i] = info.end;
         sizes[i] = info.size;
         finals[i] = info.final;
         status[i] = info.status;
+        if constexpr (Count) token_counts[i] = info.external;
     }
+}
+
+extern "C" __global__ void describe_candidates(
+    const u8* data, u32 input_bytes, const u64* starts,
+    u32 expected_bytes, u64* ends, u32* sizes, u32* finals, u32* status,
+    const u32* count_device, const u32* discovery_status) {
+    __shared__ DecodeTables tables;
+    describe_candidates_impl<>(data, input_bytes, starts, expected_bytes, ends, sizes, finals, status,
+        count_device, discovery_status, nullptr, tables);
+}
+
+extern "C" __global__ void describe_candidates_counted(
+    const u8* data, u32 input_bytes, const u64* starts,
+    u32 expected_bytes, u64* ends, u32* sizes, u32* finals, u32* status,
+    const u32* count_device, const u32* discovery_status,
+    u32* token_counts) {
+    __shared__ DecodeTables tables;
+    describe_candidates_impl<true>(data, input_bytes, starts, expected_bytes, ends, sizes, finals, status,
+        count_device, discovery_status, token_counts, tables);
 }
 
 extern "C" __global__ void fixed_summaries(
@@ -904,7 +1093,25 @@ extern "C" __global__ void fixed_summaries(
     }
 }
 
-extern "C" __global__ void select_chain(
+// Routing uses accepted compressed extents, including block headers.
+// Medium repetitive blocks use cooperative history expansion.
+__device__ __forceinline__ bool use_warp_emission(u32 size, u64 start, u64 end) {
+    if (size > WARP_MIN_OUTPUT_BYTES) return true;
+    if (size <= 65536) return false;
+    const u64 begin = (start & FIXED_SEGMENT) ? (start & FIXED_POSITION) : start;
+    return end > begin && (end - begin + 7) / 8 <= size / 64;
+}
+
+__device__ __forceinline__ bool use_pipeline_emission(u32 size, u64 start, u64 end, u32 tokens) {
+    // Token density selects enough copy work to offset queue costs.
+    // Accepted extents are bounded by input_bytes*8; promote before math.
+    return !(start & FIXED_SEGMENT) && size >= 32768 && end > start &&
+           u64(size) * 8 >= u64(4) * (end - start) &&
+           tokens > 0 && u64(size) >= u64(8) * tokens;
+}
+
+template <bool Count = false, int Caller = 0>
+__device__ __forceinline__ void select_chain_impl(
     const u8* data, u32 input_bytes, const u64* starts, const u64* ends,
     const u32* sizes, const u32* finals, const u32* status, u32 count,
     u32 expected_bytes, u64* block_starts, u64* block_ends,
@@ -913,13 +1120,15 @@ extern "C" __global__ void select_chain(
     const u64* summary_ends, const u32* summary_sizes,
     const u64* summary_first_ends, const u32* summary_first_sizes,
     const u32* summary_flags, const u32* summary_status,
-    const u32* count_device = nullptr, const u32* discovery_status = nullptr,
-    const u32* retry_status = nullptr) {
-    __shared__ DecodeTables tables;
+    const u32* count_device, const u32* discovery_status,
+    const u32* retry_status,
+    const u32* candidate_tokens, u32* block_tokens, DecodeTables& tables) {
     if (blockIdx.x || threadIdx.x) return;
     // A skipped retry must preserve the first chain's count and error. The
     // retry request may alias chain_status, so consume it before clearing.
     if (retry_status && *retry_status != 13) return;
+    // Errors skip serial emission until a complete exact chain succeeds.
+    if constexpr (Count) block_tokens[max_blocks] = 1;
     *block_count = 0;
     *chain_status = discovery_status ? *discovery_status : 0;
     if (*chain_status) return;
@@ -930,6 +1139,7 @@ extern "C" __global__ void select_chain(
     u32 candidate = 0;
     u64 candidate_start = count ? starts[0] : ~u64(0);
     bool fixed_ready = false;
+    bool has_pipeline = false, has_fallback = false;
     for (;;) {
         if (n >= max_blocks) { *chain_status = 9; return; }
         BitReader header = {data, u64(input_bytes) * 8, next, 0};
@@ -992,6 +1202,11 @@ extern "C" __global__ void select_chain(
                 block_ends[n] = info.end;
                 output_prefix[n] = output;
                 block_sizes[n] = info.size;
+                if constexpr (Count) {
+                    block_tokens[n] = 0;
+                    if (!use_warp_emission(info.size, block_starts[n], info.end))
+                        has_fallback = true;
+                }
                 output += info.size;
                 real_blocks += ended;
                 ++n;
@@ -1002,6 +1217,8 @@ extern "C" __global__ void select_chain(
                         *chain_status = 12; return;
                     }
                     *block_count = n;
+                    if constexpr (Count)
+                        block_tokens[max_blocks] = u32(has_pipeline && !has_fallback);
                     return;
                 }
                 if (kind == 1) { next = cursor; break; }
@@ -1033,12 +1250,13 @@ extern "C" __global__ void select_chain(
             info.size = sizes[candidate];
             info.final = finals[candidate];
             info.status = status[candidate];
+            if constexpr (Count) info.external = candidate_tokens[candidate];
         } else {
             // Request fresh summaries only on an undiscovered exact fixed
             // boundary, never because a speculative candidate was expensive.
             if (type == 1) { *chain_status = 13; return; }
             if (type == 2) { *chain_status = 10; return; }
-            info = parse_block<false>(data, input_bytes, next,
+            info = parse_block<false, Count, Caller>(data, input_bytes, next,
                                expected_bytes - output, 0, (u32*)0, tables);
         }
         if (info.status) { *chain_status = info.status; return; }
@@ -1052,6 +1270,14 @@ extern "C" __global__ void select_chain(
         block_ends[n] = info.end;
         output_prefix[n] = output;
         block_sizes[n] = info.size;
+        if constexpr (Count) {
+            block_tokens[n] = info.external;
+            if (type != 0 && !use_warp_emission(info.size, next, info.end)) {
+                if (use_pipeline_emission(info.size, next, info.end, info.external))
+                    has_pipeline = true;
+                else has_fallback = true;
+            }
+        }
         output += info.size;
         ++real_blocks;
         ++n;
@@ -1061,18 +1287,50 @@ extern "C" __global__ void select_chain(
             // Final byte padding is unconstrained; extra payload bytes are not.
             if ((next + 7) / 8 != input_bytes) { *chain_status = 12; return; }
             *block_count = n;
+            if constexpr (Count)
+                block_tokens[max_blocks] = u32(has_pipeline && !has_fallback);
             return;
         }
     }
 }
 
-// Routing uses the accepted block's compressed extent, including any header.
-// Medium highly repetitive blocks benefit from cooperative history expansion.
-__device__ __forceinline__ bool use_warp_emission(u32 size, u64 start, u64 end) {
-    if (size > WARP_MIN_OUTPUT_BYTES) return true;
-    if (size <= 65536) return false;
-    const u64 begin = (start & FIXED_SEGMENT) ? (start & FIXED_POSITION) : start;
-    return end > begin && (end - begin + 7) / 8 <= size / 64;
+extern "C" __global__ void select_chain(
+    const u8* data, u32 input_bytes, const u64* starts, const u64* ends,
+    const u32* sizes, const u32* finals, const u32* status, u32 count,
+    u32 expected_bytes, u64* block_starts, u64* block_ends,
+    u32* output_prefix, u32* block_sizes, u32* block_count,
+    u32 max_blocks, u32* chain_status, u32 tile_bytes,
+    const u64* summary_ends, const u32* summary_sizes,
+    const u64* summary_first_ends, const u32* summary_first_sizes,
+    const u32* summary_flags, const u32* summary_status,
+    const u32* count_device = nullptr, const u32* discovery_status = nullptr,
+    const u32* retry_status = nullptr) {
+    __shared__ DecodeTables tables;
+    select_chain_impl<>(data, input_bytes, starts, ends, sizes, finals, status, count,
+        expected_bytes, block_starts, block_ends, output_prefix, block_sizes,
+        block_count, max_blocks, chain_status, tile_bytes, summary_ends, summary_sizes,
+        summary_first_ends, summary_first_sizes, summary_flags, summary_status,
+        count_device, discovery_status, retry_status, nullptr, nullptr, tables);
+}
+
+extern "C" __global__ void select_chain_counted(
+    const u8* data, u32 input_bytes, const u64* starts, const u64* ends,
+    const u32* sizes, const u32* finals, const u32* status, u32 count,
+    u32 expected_bytes, u64* block_starts, u64* block_ends,
+    u32* output_prefix, u32* block_sizes, u32* block_count,
+    u32 max_blocks, u32* chain_status, u32 tile_bytes,
+    const u64* summary_ends, const u32* summary_sizes,
+    const u64* summary_first_ends, const u32* summary_first_sizes,
+    const u32* summary_flags, const u32* summary_status,
+    const u32* candidate_tokens, u32* block_tokens,
+    const u32* count_device = nullptr, const u32* discovery_status = nullptr,
+    const u32* retry_status = nullptr) {
+    __shared__ DecodeTables tables;
+    select_chain_impl<true>(data, input_bytes, starts, ends, sizes, finals, status, count,
+        expected_bytes, block_starts, block_ends, output_prefix, block_sizes,
+        block_count, max_blocks, chain_status, tile_bytes, summary_ends, summary_sizes,
+        summary_first_ends, summary_first_sizes, summary_flags, summary_status,
+        count_device, discovery_status, retry_status, candidate_tokens, block_tokens, tables);
 }
 
 extern "C" __global__ void emit_blocks(
@@ -1127,6 +1385,79 @@ extern "C" __global__ void emit_blocks(
         // Separate planes preserve every error when another block requires
         // refinement. Local history has already been flattened to literals.
         block_status[count + i] = external;
+    }
+}
+
+extern "C" __global__ void emit_blocks_pipeline(
+    const u8* data, u32 input_bytes, const u64* block_starts,
+    const u64* block_ends, const u32* output_prefix, const u32* block_sizes,
+    u32 expected_bytes, u32* roots, u32* block_status,
+    const u32* window_device, const u32* count_device,
+    const u32* chain_status, const u32* block_tokens, const u32* pipeline_enabled) {
+    __shared__ DecodeTables tables;
+    __shared__ PipelineQueue queue;
+    __shared__ BlockInfo terminal_result;
+    __shared__ u32 mode, error, external;
+    // This gate and every routing decision are uniform across this CTA.
+    if (*chain_status || !*pipeline_enabled) return;
+    const u32 count = *count_device;
+    const u32 window_bytes = *window_device;
+    for (u64 i = blockIdx.x; i < count; i += gridDim.x) {
+        const u32 prefix = output_prefix[i], size = block_sizes[i];
+        if (use_warp_emission(size, block_starts[i], block_ends[i]) ||
+            !use_pipeline_emission(size, block_starts[i], block_ends[i], block_tokens[i])) {
+            // Warp/stored kernels follow; both planes need an initial value.
+            if (!threadIdx.x) {
+                block_status[i] = 0;
+                block_status[count + i] = 0;
+            }
+            continue;
+        }
+        if (!threadIdx.x) {
+            // The preceding iteration's final barrier completed every read.
+            queue.slots[0].state = 0;
+            queue.slots[1].state = 0;
+            mode = error = external = 0;
+            if (!window_bytes || window_bytes > 32768) error = 6;
+            else if (expected_bytes >= 0x80000000u ||
+                     prefix > expected_bytes || size > expected_bytes - prefix)
+                error = 7;
+            else {
+                BitReader reader = {data, u64(input_bytes) * 8,
+                                    block_starts[i], 0};
+                reader.take(1);
+                const u32 type = reader.take(2);
+                error = reader.error;
+                if (!error && type != 0) mode = 1;
+            }
+        }
+        __syncthreads();
+        if (mode) {
+            if (!threadIdx.x) {
+                PipelineProducer producer(queue);
+                const BlockInfo result = pipeline_parse_block(
+                    data, input_bytes, block_starts[i], size, prefix,
+                    producer, tables, window_bytes);
+                // Every parser exit, including a partial batch, reaches finish.
+                producer.finish(result);
+            } else if (threadIdx.x == 32) {
+                terminal_result = pipeline_consume(queue, prefix, roots);
+            }
+        }
+        // All spare lanes also reach this rendezvous; no CTA barrier polls.
+        __syncthreads();
+        if (!threadIdx.x) {
+            if (mode) {
+                error = terminal_result.status;
+                external = terminal_result.external;
+                if (!error && (terminal_result.end != block_ends[i] ||
+                               terminal_result.size != size)) error = 12;
+            }
+            block_status[i] = error;
+            block_status[count + i] = external;
+        }
+        // Queue/table reuse cannot begin before consumer drain and status write.
+        __syncthreads();
     }
 }
 
