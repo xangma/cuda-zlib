@@ -127,9 +127,11 @@ __device__ __noinline__ void DecodeOneFile(
         if (token_distance > produced) { error = 6; break; }
         if (size >= 32) {
           begin = produced;
-          length = size;
+          length = token_distance == 1 ? decoder::extend_repeat_run(
+              reader, tables, size, output_size - produced, window,
+              reader.bits) : size;
           distance = token_distance;
-          produced += size;
+          produced += length;
           action = 1;
           break;
         }
@@ -137,6 +139,11 @@ __device__ __noinline__ void DecodeOneFile(
         if (token_distance == 1) {
           const U8 value = output[first];
           for (U32 j = 0; j < size; ++j) output[produced + j] = value;
+        } else if (size == 3 && token_distance >= 3) {
+          const U8 a = output[first], b = output[first + 1], c = output[first + 2];
+          output[produced] = a;
+          output[produced + 1] = b;
+          output[produced + 2] = c;
         } else {
           U32 source = first;
           for (U32 j = 0; j < size; ++j) {

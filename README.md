@@ -148,22 +148,23 @@ and checksum reductions. DEFLATE bit parsing still follows stream order.
 ## Performance
 
 On an RTX 4090 with an AMD Threadripper PRO 3995WX, warm **64 MiB** host-byte
-compression measured **7.63–16.60×** the throughput of single-threaded CPU
-zlib level 1. Decoding identical stdlib level-6 streams measured **1.12–5.24×**
+compression measured **7.63–16.90×** the throughput of single-threaded CPU
+zlib level 1. Decoding identical stdlib level-6 streams measured **1.13–5.35×**
 CPU throughput. Both comparisons include uploads, downloads, allocations, codec
 validation and conversion to Python `bytes`.
 
 At **64 KiB**, CPU compression and decompression were faster for every workload.
-At **1 MiB**, host-byte compression measured **1.00–5.10×** CPU level-1
+At **1 MiB**, host-byte compression measured **1.04–5.21×** CPU level-1
 throughput. Generated-text compression was near parity. Decompression was faster
-on CUDA only for Gaussian float32 (**1.36×**); CPU won the other four workloads.
+on CUDA for zeros (**1.16×**) and Gaussian float32 (**1.40×**); CPU won the
+other three workloads.
 Compression sizes differ across codecs; CUDA has no zlib-equivalent level.
 
 **CPU was faster for every measured single-file small-input case** (256 B, 4 KiB
 and 64 KiB), including resident CUDA workflows.
 With **128 independent 64 KiB files**, host-byte compression measured
-**2.36–18.30×** CPU level-1 throughput. Host-byte decompression measured
-**9.48×** CPU for zeros, **1.93×** for text and **0.96×** for random bytes.
+**2.68–19.06×** CPU level-1 throughput. Host-byte decompression measured
+**11.00×** CPU for zeros, **2.10×** for text and **0.94×** for random bytes.
 See [small-file results and batch-count plots](BENCHMARKS.md#independent-small-files-on-rtx-4090).
 
 For compiled consumers, [resident checked decode measurements](BENCHMARKS.md#resident-checked-decoding-on-rtx-4090)
