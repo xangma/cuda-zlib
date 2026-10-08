@@ -4,6 +4,7 @@
 // Fresh CUDA codec execution on the stream supplied by XLA. Generated headers
 // contain the unchanged CUDA_SOURCE strings, with no host codec implementation.
 #include <cuda_runtime.h>
+#include <cuda/atomic>
 #include <cuda.h>
 #include <dlfcn.h>
 #if CUDA_VERSION < 12000
@@ -619,6 +620,7 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
 
   const U8* data = input.typed_data() + 2;
   const U32 length = U32(full_size - 6);
+  const bool pipeline_stream = length && U64(expected) >= U64(4) * U64(length);
   // Discovery has at most eight bit starts and one stored-end seed per body
   // byte, including duplicates. The split prefix path has the same bound;
   // its start-zero seed replaces bit zero. The extra slot is conservative.
@@ -683,11 +685,19 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
   CUDA_TRY(workspace.Allocate(&sizes, candidate_capacity));
   CUDA_TRY(workspace.Allocate(&finals, candidate_capacity));
   CUDA_TRY(workspace.Allocate(&status, candidate_capacity));
+  U32 *candidate_tokens = nullptr, *block_tokens = nullptr;
+  if (pipeline_stream) CUDA_TRY(workspace.Allocate(&candidate_tokens, candidate_capacity));
   // Large bodies need enough independent CTAs to balance block parsing.
   const U32 parser_grid = length > (1u << 20) ? 8192u : 512u;
-  decoder::describe_candidates<<<std::min<U32>(parser_grid, candidate_capacity), 1, 0, stream>>>(
-      data, length, starts, expected, ends, sizes, finals, status,
-      candidates, discovery_status);
+  if (pipeline_stream) {
+    decoder::describe_candidates_counted<<<std::min<U32>(parser_grid, candidate_capacity), 1, 0, stream>>>(
+        data, length, starts, expected, ends, sizes, finals, status,
+        candidates, discovery_status, candidate_tokens);
+  } else {
+    decoder::describe_candidates<<<std::min<U32>(parser_grid, candidate_capacity), 1, 0, stream>>>(
+        data, length, starts, expected, ends, sizes, finals, status,
+        candidates, discovery_status);
+  }
   CUDA_TRY(cudaGetLastError());
   U64 *block_starts = nullptr, *block_ends = nullptr;
   U32 *prefix = nullptr, *block_sizes = nullptr;
@@ -695,13 +705,22 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
   CUDA_TRY(workspace.Allocate(&block_ends, block_capacity));
   CUDA_TRY(workspace.Allocate(&prefix, block_capacity));
   CUDA_TRY(workspace.Allocate(&block_sizes, block_capacity));
+  if (pipeline_stream) CUDA_TRY(workspace.Allocate(&block_tokens, std::size_t(block_capacity) + 1));
 
   // Dummy summary columns are untouched unless the exact chain requests tiles.
-  decoder::select_chain<<<1, 1, 0, stream>>>(
-      data, length, starts, ends, sizes, finals, status, 0, expected,
-      block_starts, block_ends, prefix, block_sizes, blocks, block_capacity,
-      chain_status, 0, ends, sizes, ends, sizes, status, status,
-      candidates, discovery_status);
+  if (pipeline_stream) {
+    decoder::select_chain_counted<<<1, 1, 0, stream>>>(
+        data, length, starts, ends, sizes, finals, status, 0, expected,
+        block_starts, block_ends, prefix, block_sizes, blocks, block_capacity,
+        chain_status, 0, ends, sizes, ends, sizes, status, status,
+        candidate_tokens, block_tokens, candidates, discovery_status);
+  } else {
+    decoder::select_chain<<<1, 1, 0, stream>>>(
+        data, length, starts, ends, sizes, finals, status, 0, expected,
+        block_starts, block_ends, prefix, block_sizes, blocks, block_capacity,
+        chain_status, 0, ends, sizes, ends, sizes, status, status,
+        candidates, discovery_status);
+  }
   CUDA_TRY(cudaGetLastError());
   // Eager storage is bounded to 1024 bytes per 2048-byte body tile (<=128MiB).
   // Both launches skip unless the exact first chain requests fixed summaries.
@@ -720,12 +739,21 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
       data, length, kFixedTileBytes, summary_ends, summary_sizes, first_ends,
       first_sizes, summary_flags, summary_status, chain_status);
   CUDA_TRY(cudaGetLastError());
-  decoder::select_chain<<<1, 1, 0, stream>>>(
-      data, length, starts, ends, sizes, finals, status, 0, expected,
-      block_starts, block_ends, prefix, block_sizes, blocks, block_capacity,
-      chain_status, kFixedTileBytes, summary_ends, summary_sizes, first_ends,
-      first_sizes, summary_flags, summary_status, candidates, discovery_status,
-      chain_status);
+  if (pipeline_stream) {
+    decoder::select_chain_counted<<<1, 1, 0, stream>>>(
+        data, length, starts, ends, sizes, finals, status, 0, expected,
+        block_starts, block_ends, prefix, block_sizes, blocks, block_capacity,
+        chain_status, kFixedTileBytes, summary_ends, summary_sizes, first_ends,
+        first_sizes, summary_flags, summary_status, candidate_tokens, block_tokens, candidates, discovery_status,
+        chain_status);
+  } else {
+    decoder::select_chain<<<1, 1, 0, stream>>>(
+        data, length, starts, ends, sizes, finals, status, 0, expected,
+        block_starts, block_ends, prefix, block_sizes, blocks, block_capacity,
+        chain_status, kFixedTileBytes, summary_ends, summary_sizes, first_ends,
+        first_sizes, summary_flags, summary_status, candidates, discovery_status,
+        chain_status);
+  }
   CUDA_TRY(cudaGetLastError());
   U32 *roots = nullptr, *emission = nullptr;
   checksum::DecodeState* decode_state = nullptr;
@@ -738,9 +766,21 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
   const U32 rounds = RefinementRounds(block_capacity);
   if (rounds) CUDA_TRY(workspace.Allocate(&alternate, expected));
   const U32 emission_grid = std::min<U32>(parser_grid, block_capacity);
-  decoder::emit_blocks<<<emission_grid, 1, 0, stream>>>(
-      data, length, block_starts, block_ends, prefix, block_sizes,
-      expected, roots, emission, framing + 1, blocks, &decode_state->status);
+  // Accepted-chain density selects original serial or queued emission on device.
+  if (pipeline_stream) {
+    decoder::emit_blocks<<<emission_grid, 1, 0, stream>>>(
+        data, length, block_starts, block_ends, prefix, block_sizes,
+        expected, roots, emission, framing + 1, blocks, block_tokens + block_capacity);
+    CUDA_TRY(cudaGetLastError());
+    decoder::emit_blocks_pipeline<<<emission_grid, 64, 0, stream>>>(
+        data, length, block_starts, block_ends, prefix, block_sizes,
+        expected, roots, emission, framing + 1, blocks, &decode_state->status,
+        block_tokens, block_tokens + block_capacity);
+  } else {
+    decoder::emit_blocks<<<emission_grid, 1, 0, stream>>>(
+        data, length, block_starts, block_ends, prefix, block_sizes,
+        expected, roots, emission, framing + 1, blocks, &decode_state->status);
+  }
   CUDA_TRY(cudaGetLastError());
   decoder::emit_blocks_warp<<<emission_grid, 32, 0, stream>>>(
       data, length, block_starts, block_ends, prefix, block_sizes,

@@ -148,29 +148,35 @@ and checksum reductions. DEFLATE bit parsing still follows stream order.
 ## Performance
 
 On an RTX 4090 with an AMD Threadripper PRO 3995WX, warm **64 MiB** host-byte
-compression measured **7.54–16.70×** the throughput of single-threaded CPU
-zlib level 1. Decoding identical stdlib level-6 streams measured **1.13–5.29×**
+compression measured **7.53–16.72×** the throughput of single-threaded CPU
+zlib level 1. Decoding identical stdlib level-6 streams measured **1.12–5.32×**
 CPU throughput. Both comparisons include uploads, downloads, allocations, codec
 validation and conversion to Python `bytes`.
 
 At **64 KiB**, CPU compression and decompression were faster for every workload.
-At **1 MiB**, host-byte compression measured **1.04–5.27×** CPU level-1
-throughput. Generated-text compression was near parity (**1.04×** CPU level-1
+At **1 MiB**, host-byte compression measured **1.03–5.24×** CPU level-1
+throughput. Generated-text compression was near parity (**1.03×** CPU level-1
 throughput). Decompression was faster on CUDA for zeros (**1.19×**) and Gaussian
-float32 (**1.17×**); CPU won the other three workloads.
+float32 (**1.50×**); CPU won the other three workloads.
 Compression sizes differ across codecs; CUDA has no zlib-equivalent level.
 
 **CPU was faster for every measured single-file small-input case** (256 B, 4 KiB
 and 64 KiB), including resident CUDA workflows.
 With **128 independent 64 KiB files**, host-byte compression measured
-**2.47–18.91×** CPU level-1 throughput. Host-byte decompression measured
-**10.07×** CPU for zeros, **2.06×** for text and **0.95×** for random bytes.
-Random-byte decompression was near parity.
+**2.68–18.31×** CPU level-1 throughput. Host-byte decompression measured
+**10.08×** CPU for zeros, **2.12×** for text and **0.93×** for random bytes.
 See [small-file results and batch-count plots](BENCHMARKS.md#independent-small-files-on-rtx-4090).
 
 For compiled consumers, [resident checked decode measurements](BENCHMARKS.md#resident-checked-decoding-on-rtx-4090)
 report completed JIT latency without uploads or host status transfers. That
 dataset has a separate timing scope and does not report CPU speedup.
+
+Eligible dense serial blocks parse tokens and emit reference roots concurrently
+on XLA's stream, using a shared FIFO with two 32-token slots. A conservative
+whole-stream cost gate keeps literal-heavy, short and mixed serial workloads on
+the standard emitter. High-expansion streams add
+`4 * (candidate_capacity + block_capacity + 1)` bytes of token-count scratch;
+see [workspace accounting](BENCHMARKS.md#recorded-cuda-results).
 
 ![64 MiB host-byte GPU speedup over same-host CPU](benchmarks/figures/cpu-speedup.png)
 
