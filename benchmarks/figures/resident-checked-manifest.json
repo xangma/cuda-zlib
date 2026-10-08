@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "source_report": "benchmarks/results/resident-checked-rtx4090-20261008.json",
-  "source_report_sha256": "5a33b9b769ff697f3c299b377806875061fdc8b67261590387e811acdefc9558",
+  "source_report_sha256": "6d686aa7cb7fa8e14e8d4da315ac2953d16d23868fd300e14d8d61aa64d5616e",
   "plotter_sha256": "67f6a54c0d09bea050164488fbc98dafa3edf9d86f2b2dab4c57bce19e57609b",
   "renderer": {
     "matplotlib": "3.11.1",
@@ -9,11 +9,11 @@
     "backend": "Agg"
   },
   "measurement_source": {
-    "revision": "7ef5bd6cce1335b4ee7412d78c902524d6c6e403",
+    "revision": "4cd468e09109c366a104891c3cb59531b73bba68",
     "sha256": {
       "__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
       "_codec.py": "0a0a5484f90a55cf53530b3dc837a12b2a293d5bb88c0b9426758d17409af5d2",
-      "_decode_kernels.py": "dc04a97e572a19dabb5d637f25a0a9d59dfc9e79d6d20060ef30ca4ee97a9510",
+      "_decode_kernels.py": "f538174693e47e8d6658ebc5af70ed3e95faf64d4d0ddfe3c30d0163ec707f10",
       "_encode_kernels.py": "514bd9aba9978010f4a1659209ac0a6b9b0e72a043d6605805c4c698f6d87964",
       "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
       "_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
@@ -27,7 +27,7 @@
   },
   "environment": {
     "gpu_before": [
-      "NVIDIA GeForce RTX 4090, 610.57.04, 2926, 24564, 0, 48"
+      "NVIDIA GeForce RTX 4090, 610.57.04, 2926, 24564, 2, 60"
     ],
     "python": "3.12.8",
     "jax": "0.11.2",
@@ -37,7 +37,7 @@
     "cuda_platform": "cuda 13040",
     "zlib_runtime": "1.3.1",
     "gpu_after": [
-      "NVIDIA GeForce RTX 4090, 610.57.04, 4312, 24564, 98, 54"
+      "NVIDIA GeForce RTX 4090, 610.57.04, 4312, 24564, 98, 66"
     ],
     "workspace_pool_after": {
       "retention_bytes": 1073741824,
@@ -47,9 +47,9 @@
     }
   },
   "native_build": {
-    "cache_key": "fcf51d156d36575f0264daa6fc99ab46c1febc613b7b39e4f4e46c5eec7d1591",
-    "library_sha256": "54575ce9c7628fcfcc0e50af7fd8c667600f8e4cbe864db4e198f5f513c4d1df",
-    "build_sha256": "6fbce9089e9051aca8ef3f91ecde6bec95576039c045f2cb1330492ec62830d3",
+    "cache_key": "e9d787d07ac1791deb57b4ff1cd1550dc9ed529870e8c83bbfe75b851181e777",
+    "library_sha256": "c1ee531bc415e0d9a25e605268abf0fc718f8fa224b91b5713795b6f47022e0d",
+    "build_sha256": "9712b7e59b0347abb0f0b458123dd12921cecfd1a24547c69d1f88a141922ef7",
     "identity": {
       "architecture": "sm_89",
       "jaxlib": "0.11.2",
@@ -58,7 +58,7 @@
       "sources": {
         "codec_ffi.cu": "b357d982698f0d3905ee35f0fd47c20c8e3d12ec93df6998764f2335db1f722b",
         "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
-        "decoder.cuh": "2212b2528018268ab6c1b958e58ab557767ae80ea6519011cb8bcc54ef9560a3",
+        "decoder.cuh": "50f5c16de0d1dfd8eea360909b3c0441b351c1f19ad8e52bebc8f6aa8c518c32",
         "postprocess.cuh": "31579be73cd0fd6fc120b0ee6accd9267df5ed66c88f9170208bdd506664a38e",
         "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
         "batch_decode.cuh": "6ce2e87e14aef6ebd26634920cfe7961161bfb74ec5a3bed9f027a34d489cb9b"
@@ -143,8 +143,8 @@
     }
   },
   "exports": {
-    "resident-checked.png": "e889476b79b5e69108d9744a0b842287b1f9a74c7421daa9b4db9b2b5b9433df",
-    "resident-checked.svg": "afd7ea9360818349633eaa8493891bf032a46d9a6bc301afac635a96e7da2f21",
-    "resident-checked.pdf": "37cc86f99c4bc0b354faf34e9c2ef22ea52ffe94b55f2ac7f81716612f9fa91e"
+    "resident-checked.png": "312f6e1fa85e688b2baf58aabde52f297a5a80d4a36e01dab191da7ebb40c7f3",
+    "resident-checked.svg": "2914e862a42368f87a7bc7c9ce37ecc9ce4e5329ded47f896d5620470cbb0474",
+    "resident-checked.pdf": "405aedb9a683eac624ace375b9df9899d48da2e0240afe4553db43d29249af00"
   }
 }
