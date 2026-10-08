@@ -143,12 +143,15 @@ PoolRegistry& Pools() {
   return *registry;
 }
 
-cudaError_t GetPool(CUcontext context, cudaMemPool_t* result) {
+cudaError_t GetPool(CUcontext context, cudaMemPool_t* result,
+                    U64* context_id, int* device_id) {
   Driver& driver = Driver::Get();
   U64 id;
   int device;
   CUDA_TRY(DriverError(driver.context_id(context, &id)));
   CUDA_TRY(DriverError(driver.context_device(&device)));
+  *context_id = id;
+  *device_id = device;
   PoolRegistry& registry = Pools();
   std::lock_guard<std::mutex> lock(registry.mutex);
   for (const Pool& pool : registry.pools) {
@@ -225,12 +228,15 @@ class Workspace {
     error_ = DriverError(driver.stream_context(
         reinterpret_cast<CUstream>(stream), &context));
     if (error_ == cudaSuccess) error_ = context_.Enter(context);
-    if (error_ == cudaSuccess) error_ = GetPool(context, &pool_);
+    if (error_ == cudaSuccess)
+      error_ = GetPool(context, &pool_, &context_id_, &device_);
   }
   Workspace(const Workspace&) = delete;
   Workspace& operator=(const Workspace&) = delete;
   ~Workspace() noexcept { Release(); }
   cudaError_t error() const { return error_; }
+  U64 context_id() const { return context_id_; }
+  int device() const { return device_; }
 
   template <typename T>
   cudaError_t Allocate(T** result, std::size_t elements) {
@@ -257,6 +263,8 @@ class Workspace {
   cudaStream_t stream_;
   ScopedContext context_;
   cudaMemPool_t pool_ = nullptr;
+  U64 context_id_ = 0;
+  int device_ = -1;
   cudaError_t error_ = cudaSuccess;
   std::array<void*, 32> allocations_{};
   std::size_t count_ = 0;
@@ -557,6 +565,54 @@ cudaError_t Compress(cudaStream_t stream, std::int64_t chunk_bytes,
   return cudaGetLastError();
 }
 
+// BEGIN SMALL SHARED CONFIGURATION
+// This library owns SmallSharedDecodeSpecialized's attribute configuration. Workspace has
+// entered the XLA stream context and reuses GetPool's unique context ID/device.
+// Cache entries are per loaded codec module and per context; a recreated context
+// receives a new ID, even when CUDA reuses its address. Only success is cached.
+struct SmallSharedConfiguration {
+  U64 context_id;
+  int device;
+  U32 bytes;
+};
+struct SmallSharedRegistry {
+  std::mutex mutex;
+  std::vector<SmallSharedConfiguration> entries;
+};
+SmallSharedRegistry& SmallSharedConfigurations() {
+  // Process-lifetime registry, matching the native module/pool lifetime. Avoid
+  // CUDA calls at teardown; records own no device/context resources.
+  static SmallSharedRegistry* registry = new SmallSharedRegistry;
+  return *registry;
+}
+cudaError_t SmallSharedLimit(const Workspace& workspace, U32* result) {
+  SmallSharedRegistry& registry = SmallSharedConfigurations();
+  std::lock_guard<std::mutex> lock(registry.mutex);
+  for (const SmallSharedConfiguration& entry : registry.entries) {
+    if (entry.context_id == workspace.context_id() &&
+        entry.device == workspace.device()) {
+      *result = entry.bytes;
+      return cudaSuccess;
+    }
+  }
+  cudaFuncAttributes attributes{};
+  int optin = 0;
+  CUDA_TRY(cudaFuncGetAttributes(&attributes, SmallSharedDecodeSpecialized));
+  CUDA_TRY(cudaDeviceGetAttribute(
+      &optin, cudaDevAttrMaxSharedMemoryPerBlockOptin, workspace.device()));
+  U32 bytes = 0;
+  if (optin > 0 && attributes.sharedSizeBytes < std::size_t(optin))
+    bytes = U32(std::min<std::size_t>(
+        65536, std::size_t(optin) - attributes.sharedSizeBytes));
+  if (int(bytes) > attributes.maxDynamicSharedSizeBytes)
+    CUDA_TRY(cudaFuncSetAttribute(SmallSharedDecodeSpecialized,
+        cudaFuncAttributeMaxDynamicSharedMemorySize, int(bytes)));
+  registry.entries.push_back({workspace.context_id(), workspace.device(), bytes});
+  *result = bytes;
+  return cudaSuccess;
+}
+// END SMALL SHARED CONFIGURATION
+
 cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
                         std::int64_t max_blocks, ffi::Buffer<ffi::U8> input,
                         ffi::ResultBuffer<ffi::U8> output,
@@ -578,9 +634,17 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
   if (full_size < 8) return fail(kTruncatedZlib);
   if (expected <= 65536 && full_size <= 131072 &&
       max_candidates == kMaxCandidates && max_blocks == kMaxBlocks) {
-    SmallDecode<<<1, 32, 0, stream>>>(
-        input.typed_data(), U32(full_size), output->typed_data(), expected,
-        U32(max_blocks), result);
+    U32 shared_limit = 0;
+    CUDA_TRY(SmallSharedLimit(workspace, &shared_limit));
+    if (expected <= shared_limit) {
+      SmallSharedDecodeSpecialized<<<1, 32, expected, stream>>>(
+          input.typed_data(), U32(full_size), output->typed_data(), expected,
+          U32(max_blocks), result);
+    } else {
+      SmallDecode<<<1, 32, 0, stream>>>(
+          input.typed_data(), U32(full_size), output->typed_data(), expected,
+          U32(max_blocks), result);
+    }
     return cudaGetLastError();
   }
   if (expected) CUDA_TRY(cudaMemsetAsync(output->typed_data(), 0, expected, stream));
