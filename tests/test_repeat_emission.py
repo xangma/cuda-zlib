@@ -114,6 +114,26 @@ void protected_seed(u32* external, u32* roots, u32 words, u32 prefix,
         if (roots[i] != expected[i]) std::exit(1);
 }
 
+void protected_read_tail(u32* roots, u32 words, u32 page_words,
+                         u32 length, u32 alignment, bool serial) {
+    std::fill(roots, roots + words, 0x5a5a5a5a);
+    const u32 first = page_words * 2 - length;
+    const u32 begin = page_words * 3 + alignment;
+    const u32 values[] = {0x800000abu, 17, 0x80000000u, 0, 0x800000ffu};
+    for (u32 i = 0; i < length; ++i) roots[first + i] = values[i % 5];
+    std::vector<u32> expected(roots, roots + words);
+    // The independent seed ends immediately before an inaccessible page;
+    // even unused loads past the requested scalar tail must fail.
+    std::copy(expected.begin() + first, expected.begin() + first + length,
+              expected.begin() + begin);
+    u32* guard = roots + page_words * 2;
+    if (mprotect(guard, page_words * sizeof(u32), PROT_NONE)) std::exit(2);
+    emit(serial, roots, 0, begin, begin - first, length);
+    if (mprotect(guard, page_words * sizeof(u32), PROT_READ | PROT_WRITE)) std::exit(2);
+    for (u32 i = 0; i < words; ++i)
+        if (roots[i] != expected[i]) std::exit(1);
+}
+
 int main(int argc, char** argv) {
     const bool serial = argc == 2 && argv[1][0] == 's';
     const long page = sysconf(_SC_PAGESIZE);
@@ -177,6 +197,30 @@ int main(int argc, char** argv) {
             protected_seed(external, roots, words, begin, distance, 3, split, serial);
     for (u32 split = 0; split <= 2; ++split)
         protected_seed(external, roots, words, begin, 2, 258, split, serial);
+    // Every DEFLATE length in the grouped-read range, both sides of the
+    // overlap boundary, all output alignments and all four tail sizes.
+    for (u32 length = 4; length <= 258; ++length) {
+        for (u32 distance : {length - 1, length, length + 1}) {
+            const u32 middle = (distance / 2) & ~3u;
+            const u32 cuts[] = {0,1,2,3,4,middle,middle+1,middle+2,middle+3,
+                                distance-3,distance-2,distance-1,distance};
+            for (u32 split : cuts) {
+                if (split > distance) continue;
+                for (u32 alignment = 0; alignment < 4; ++alignment) {
+                    const u32 tail = (words - length - alignment) & 3u;
+                    const u32 at = words - length - tail;
+                    check_seed(roots, words, at - distance + split, at,
+                               distance, length, serial);
+                }
+                // Prefix-straddled groups put each external seed behind a
+                // protected page, catching loads from the external history.
+                protected_seed(external, roots, words, begin, distance,
+                               length, split, serial);
+            }
+        }
+        for (u32 alignment = 0; alignment < 4; ++alignment)
+            protected_read_tail(roots, words, begin, length, alignment, serial);
+    }
     return munmap(mapping, page * (active + 2)) != 0;
 }
 
@@ -319,6 +363,62 @@ def test_actual_repeat_extension_preserves_next_token_and_checkpoint(repeat_help
         if symbol is not None:
             assert result[4] == symbol
         assert bytes(array) == data
+
+
+def _grouped_match_stream(kind):
+    writer = _Writer()
+    seed = bytes((index * 37 + 11) % 256 for index in range(512))
+    writer.aligned(_stored(seed, final=False))
+    output = bytearray(seed)
+    lengths = (4,5,6,7,8,15,16,17,31,32,33,127,128,129,257,258)
+    for alignment in range(4):
+        prefix = len(output)
+        literals, distances = _match_block_header(writer, kind, final=alignment == 3)
+        local = bytes((index * 73 + alignment * 29) % 256 for index in range(260))
+        _literals(writer, local, literals)
+        output.extend(local)
+        for length in lengths:
+            # The selected source begins on either side of the block prefix.
+            # Every external/local split uses the ordinary byte history oracle.
+            cuts = dict.fromkeys((0,1,2,3,length-3,length-2,length-1,length))
+            for split in cuts:
+                padding = bytes((0x5b,)) * ((alignment - len(output)) % 4)
+                _literals(writer, padding, literals)
+                output.extend(padding)
+                distance = len(output) - prefix + split
+                _match(writer, output, length, distance, literals, distances)
+            # Exercise exact non-overlap and its neighboring overlap boundary
+            # with roots produced by earlier matches, as well as literal roots.
+            for distance in (length - 1, length, length + 1):
+                padding = bytes((0xa6,)) * ((alignment - len(output)) % 4)
+                _literals(writer, padding, literals)
+                output.extend(padding)
+                _match(writer, output, length, distance, literals, distances)
+        writer.put(*literals[256])
+    raw = bytes(output)
+    return _wrap(writer.finish(), raw), raw
+
+
+@pytest.mark.parametrize("kind", ["fixed", "dynamic"])
+def test_grouped_match_fixtures_match_stdlib(kind):
+    payload, raw = _grouped_match_stream(kind)
+    assert len(raw) < 65536
+    assert zlib.decompress(payload) == raw
+
+
+@pytest.mark.parametrize("kind", ["fixed", "dynamic"])
+def test_cuda_grouped_match_seeds_through_queued_root_pipeline(cuda_device, monkeypatch, kind):
+    import jax
+
+    payload, raw = _grouped_match_stream(kind)
+    assert zlib.decompress(payload) == raw
+    device = jax.devices("gpu")[cuda_device]
+    source = jax.device_put(np.frombuffer(payload, np.uint8), device)
+    with _no_cpu_codec(monkeypatch):
+        decode = _limited_checked_decoder(device, len(raw), blocks=64)
+        output, metadata = decode(source)
+        np.testing.assert_array_equal(np.asarray(metadata), [0, 0])
+        _assert_bytes(output, raw, device)
 
 
 def _repeat_stream(kind, bad_history=False, cycles=3):
