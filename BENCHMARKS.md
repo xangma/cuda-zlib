@@ -12,8 +12,10 @@ checks; host-byte measurements include packing, transfers and byte copies.
 | Resident checked decode | 64 KiB–64 MiB; five workloads | One completed checked `jax.jit` call | None; no CPU speedup inferred |
 
 Compression levels are not equivalent across codecs. Read throughput alongside
-encoded size. These synthetic workloads and one shared workstation do not
-establish an exact crossover or measure parallel CPU compression.
+encoded size. These synthetic workloads were measured on a shared workstation;
+other GPU compute was observed during all three runs. The measurements do not
+establish isolated performance or an exact crossover, or measure parallel CPU
+compression.
 
 The compressor divides input into independent **32 KiB chunks** by default,
 which can be encoded concurrently. External DEFLATE streams can contain larger
@@ -33,15 +35,16 @@ reported below.
 
 ## Single-stream results on RTX 4090
 
-For **64 MiB** inputs, warm host-byte compression measured **7.52–16.90×** CPU
+For **64 MiB** inputs, warm host-byte compression measured **6.95–15.52×** CPU
 zlib level-1 throughput. Decompression of identical stdlib level-6 streams
-measured **1.14–5.25×** CPU throughput. Both comparisons include GPU uploads,
+measured **1.10–5.10×** CPU throughput. Both comparisons include GPU uploads,
 downloads, allocations, codec status checks and conversion to Python `bytes`.
 At **64 KiB**, CPU compression and decompression were faster for every workload.
-At **1 MiB**, host-byte compression measured **1.06–5.25×** CPU level-1
-throughput. Generated-text compression measured **1.06×** CPU level-1
-throughput. Decompression was faster on CUDA for zeros (**1.36×**) and Gaussian float32
-(**1.50×**). CPU won the other three workloads.
+At **1 MiB**, host-byte compression measured **0.99–4.88×** CPU level-1
+throughput. CUDA was faster for four workloads; generated-text compression was
+near parity (**0.99×**), with CPU slightly faster.
+Decompression was faster on CUDA for zeros (**1.50×**) and Gaussian float32
+(**1.44×**). CPU won the other three workloads.
 
 ### GPU versus CPU, including transfers
 
@@ -60,11 +63,11 @@ calls `.tobytes()`. CPU speedup uses matching Python `bytes` outputs.
 
 | Workload | Compression vs CPU level 1 | Compression vs CPU level 6 | Decompression vs CPU, level-6 stream |
 | --- | ---: | ---: | ---: |
-| Zero bytes | 12.37× | 28.50× | 4.16× |
-| Generated text | 7.52× | 24.22× | 2.44× |
-| Integer counters | 8.99× | 64.30× | 4.27× |
-| Gaussian float32 | 16.90× | 17.61× | 5.25× |
-| Uniform random bytes | 12.15× | 12.17× | 1.14× |
+| Zero bytes | 12.45× | 28.73× | 4.21× |
+| Generated text | 6.95× | 22.23× | 2.00× |
+| Integer counters | 8.39× | 60.02× | 4.16× |
+| Gaussian float32 | 15.52× | 17.33× | 5.10× |
+| Uniform random bytes | 11.92× | 11.96× | 1.10× |
 
 ### Smaller inputs
 
@@ -73,11 +76,11 @@ decompression uses identical level-6 streams.
 
 | Workload | 64 KiB compression | 1 MiB compression | 64 KiB decompression | 1 MiB decompression |
 | --- | ---: | ---: | ---: | ---: |
-| Zero bytes | 0.08× | 1.57× | 0.23× | 1.36× |
-| Generated text | 0.07× | 1.06× | 0.03× | 0.11× |
-| Integer counters | 0.13× | 1.74× | 0.02× | 0.62× |
-| Gaussian float32 | 0.35× | 4.98× | 0.04× | 1.50× |
-| Uniform random bytes | 0.29× | 5.25× | 0.04× | 0.38× |
+| Zero bytes | 0.08× | 1.46× | 0.21× | 1.50× |
+| Generated text | 0.07× | 0.99× | 0.03× | 0.13× |
+| Integer counters | 0.09× | 1.62× | 0.03× | 0.57× |
+| Gaussian float32 | 0.33× | 4.65× | 0.04× | 1.44× |
+| Uniform random bytes | 0.34× | 4.88× | 0.04× | 0.36× |
 
 Only the three recorded sizes were measured. Lines between points do not
 identify intermediate performance or a crossover size.
@@ -108,11 +111,11 @@ and synchronization are included; startup and warmup compilation are excluded.
 
 | Workload | CUDA resident | CUDA host bytes | CPU level 1 | CPU level 6 |
 | --- | ---: | ---: | ---: | ---: |
-| Zero bytes | 12259.1 | 5522.3 | 446.3 | 193.7 |
-| Generated text | 2148.6 | 1572.8 | 209.1 | 64.9 |
-| Integer counters | 936.3 | 540.0 | 60.1 | 8.4 |
-| Gaussian float32 | 888.2 | 335.7 | 19.9 | 19.1 |
-| Uniform random bytes | 1354.6 | 371.0 | 30.5 | 30.5 |
+| Zero bytes | 10681.0 | 5557.1 | 446.3 | 193.4 |
+| Generated text | 1901.0 | 1458.7 | 209.8 | 65.6 |
+| Integer counters | 832.2 | 503.7 | 60.1 | 8.4 |
+| Gaussian float32 | 773.7 | 330.5 | 21.3 | 19.1 |
+| Uniform random bytes | 1202.1 | 372.6 | 31.3 | 31.2 |
 
 ![Compression throughput across measured sizes on RTX 4090](benchmarks/figures/compression-throughput.png)
 
@@ -127,11 +130,11 @@ have separate timing scopes.
 
 | Workload | CUDA resident, codec stream | CPU, codec stream | CUDA resident, level-6 stream | CUDA host array, level-6 stream | CUDA host bytes, level-6 stream | CPU, level-6 stream |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Zero bytes | 11635.0 | 214.2 | 4505.9 | 3641.5 | 909.9 | 218.5 |
-| Generated text | 6473.4 | 290.2 | 3674.1 | 2844.0 | 847.1 | 346.7 |
-| Integer counters | 4260.8 | 202.9 | 4610.6 | 3255.7 | 868.2 | 203.2 |
-| Gaussian float32 | 3111.8 | 149.8 | 3218.0 | 2166.6 | 764.2 | 145.5 |
-| Uniform random bytes | 6038.3 | 744.3 | 5413.7 | 2905.0 | 835.6 | 730.9 |
+| Zero bytes | 10703.1 | 214.8 | 4174.2 | 3407.5 | 915.1 | 217.4 |
+| Generated text | 5891.8 | 326.3 | 3236.8 | 2660.9 | 819.7 | 410.0 |
+| Integer counters | 3955.7 | 204.1 | 4019.2 | 3015.9 | 849.3 | 203.9 |
+| Gaussian float32 | 2579.8 | 149.8 | 2743.4 | 1989.8 | 741.0 | 145.4 |
+| Uniform random bytes | 5243.0 | 761.6 | 4765.7 | 2747.3 | 835.6 | 758.4 |
 
 ![Decompression of identical stdlib level-6 streams on RTX 4090](benchmarks/figures/decompression-throughput.png)
 
@@ -156,9 +159,9 @@ and CUDA decodes independent level-6 streams. A failed check stops the run.
 **CPU host-byte workflows were faster for every measured single-file small-input
 case** (256 B, 4 KiB and 64 KiB) than the matching CUDA host-byte workflows.
 With **128 independent 64 KiB files**, host-byte compression measured
-**2.48–19.00×** CPU level-1 throughput. Host-byte decompression measured
-**10.98×** CPU for zeros, **2.36×** for text and **1.00×**
-for random bytes (near parity).
+**2.55–17.92×** CPU level-1 throughput. Host-byte decompression measured
+**11.08×** CPU for zeros, **2.23×** for text and **0.98×**
+for random bytes (near parity, with CPU slightly faster).
 
 Packing independent streams shares dispatch costs. Each file has its own
 wrapper, history and checksum; batch decoding assigns one CUDA warp per file.
@@ -177,15 +180,15 @@ Decompression uses identical independent stdlib level-6 streams.
 
 | File size | Workload | CPU compression, level 1 | CUDA batch compression, resident | CUDA batch compression, host bytes | CPU decompression | CUDA batch decompression, resident | CUDA batch decompression, host bytes |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 256 B | Zero bytes | 3.43 | 1.16 | 7.45 | 1.27 | 1.75 | 7.18 |
-| 256 B | Generated text | 8.32 | 2.44 | 7.96 | 3.28 | 1.92 | 7.42 |
-| 256 B | Uniform random bytes | 30.72 | 3.77 | 10.31 | 0.59 | 1.09 | 7.50 |
-| 4 KiB | Zero bytes | 7.88 | 2.06 | 8.78 | 14.64 | 1.64 | 7.55 |
-| 4 KiB | Generated text | 19.90 | 5.46 | 13.48 | 8.80 | 2.94 | 9.19 |
-| 4 KiB | Uniform random bytes | 100.05 | 7.79 | 16.17 | 2.39 | 1.02 | 7.80 |
-| 64 KiB | Zero bytes | 105.39 | 4.76 | 42.51 | 203.36 | 2.76 | 18.52 |
-| 64 KiB | Generated text | 252.00 | 29.06 | 67.53 | 92.75 | 19.94 | 39.35 |
-| 64 KiB | Uniform random bytes | 1730.69 | 47.65 | 91.09 | 34.90 | 3.61 | 34.87 |
+| 256 B | Zero bytes | 3.43 | 1.74 | 7.81 | 1.27 | 2.24 | 7.31 |
+| 256 B | Generated text | 8.23 | 2.73 | 8.20 | 3.24 | 2.58 | 7.81 |
+| 256 B | Uniform random bytes | 30.90 | 5.10 | 10.88 | 0.58 | 1.56 | 8.14 |
+| 4 KiB | Zero bytes | 7.87 | 2.51 | 9.87 | 14.68 | 2.25 | 7.18 |
+| 4 KiB | Generated text | 19.82 | 6.75 | 14.01 | 8.75 | 3.62 | 10.53 |
+| 4 KiB | Uniform random bytes | 99.91 | 9.16 | 17.04 | 2.38 | 1.41 | 7.99 |
+| 64 KiB | Zero bytes | 105.59 | 5.24 | 41.48 | 203.67 | 3.27 | 18.38 |
+| 64 KiB | Generated text | 251.52 | 31.98 | 71.68 | 92.35 | 22.08 | 41.38 |
+| 64 KiB | Uniform random bytes | 1730.90 | 53.13 | 96.57 | 35.18 | 5.03 | 35.86 |
 
 ### Small-file plots
 
@@ -238,36 +241,36 @@ API measurements elsewhere; no CPU speedup is inferred from this dataset.
 
 | Stream size | Workload | Compressed bytes | Completed latency (ms) | Throughput (MiB/s) |
 | --- | --- | ---: | ---: | ---: |
-| 64 KiB | Zero bytes | 84 | 0.314 | 198.8 |
-| 64 KiB | Generated text | 7064 | 2.266 | 27.6 |
-| 64 KiB | Integer counters | 22701 | 9.398 | 6.7 |
-| 64 KiB | Gaussian float32 | 60709 | 11.265 | 5.5 |
-| 64 KiB | Uniform random bytes | 65562 | 0.216 | 289.0 |
-| 128 KiB | Zero bytes | 149 | 0.420 | 297.9 |
-| 128 KiB | Generated text | 13844 | 4.644 | 26.9 |
-| 128 KiB | Integer counters | 45357 | 6.744 | 18.5 |
-| 128 KiB | Gaussian float32 | 121355 | 3.797 | 32.9 |
-| 128 KiB | Uniform random bytes | 131118 | 0.364 | 343.0 |
-| 256 KiB | Zero bytes | 277 | 0.622 | 402.0 |
-| 256 KiB | Generated text | 27438 | 8.998 | 27.8 |
-| 256 KiB | Integer counters | 90669 | 6.735 | 37.1 |
-| 256 KiB | Gaussian float32 | 242724 | 3.799 | 65.8 |
-| 256 KiB | Uniform random bytes | 262230 | 0.399 | 627.2 |
-| 1 MiB | Zero bytes | 1039 | 1.617 | 618.3 |
-| 1 MiB | Generated text | 108353 | 12.400 | 80.6 |
-| 1 MiB | Integer counters | 362577 | 7.016 | 142.5 |
-| 1 MiB | Gaussian float32 | 970987 | 3.995 | 250.3 |
-| 1 MiB | Uniform random bytes | 1048902 | 0.656 | 1523.5 |
-| 8 MiB | Zero bytes | 8163 | 11.805 | 677.7 |
-| 8 MiB | Generated text | 863857 | 12.819 | 624.1 |
-| 8 MiB | Integer counters | 2900368 | 7.162 | 1117.0 |
-| 8 MiB | Gaussian float32 | 7768654 | 5.266 | 1519.2 |
-| 8 MiB | Uniform random bytes | 8391174 | 1.851 | 4322.1 |
-| 64 MiB | Zero bytes | 65238 | 13.314 | 4807.0 |
-| 64 MiB | Generated text | 6907553 | 17.008 | 3762.8 |
-| 64 MiB | Integer counters | 23203543 | 12.971 | 4934.0 |
-| 64 MiB | Gaussian float32 | 62154385 | 18.825 | 3399.8 |
-| 64 MiB | Uniform random bytes | 67129345 | 11.287 | 5670.2 |
+| 64 KiB | Zero bytes | 84 | 0.390 | 160.1 |
+| 64 KiB | Generated text | 7064 | 2.436 | 25.7 |
+| 64 KiB | Integer counters | 22701 | 9.804 | 6.4 |
+| 64 KiB | Gaussian float32 | 60709 | 10.129 | 6.2 |
+| 64 KiB | Uniform random bytes | 65562 | 0.308 | 203.1 |
+| 128 KiB | Zero bytes | 149 | 0.496 | 252.1 |
+| 128 KiB | Generated text | 13844 | 5.071 | 24.7 |
+| 128 KiB | Integer counters | 45357 | 7.247 | 17.2 |
+| 128 KiB | Gaussian float32 | 121355 | 3.984 | 31.4 |
+| 128 KiB | Uniform random bytes | 131118 | 0.399 | 313.2 |
+| 256 KiB | Zero bytes | 277 | 0.675 | 370.2 |
+| 256 KiB | Generated text | 27438 | 9.724 | 25.7 |
+| 256 KiB | Integer counters | 90669 | 7.274 | 34.4 |
+| 256 KiB | Gaussian float32 | 242724 | 3.999 | 62.5 |
+| 256 KiB | Uniform random bytes | 262230 | 0.470 | 532.3 |
+| 1 MiB | Zero bytes | 1039 | 1.689 | 592.1 |
+| 1 MiB | Generated text | 108353 | 13.235 | 75.6 |
+| 1 MiB | Integer counters | 362577 | 7.531 | 132.8 |
+| 1 MiB | Gaussian float32 | 970987 | 4.191 | 238.6 |
+| 1 MiB | Uniform random bytes | 1048902 | 0.682 | 1467.2 |
+| 8 MiB | Zero bytes | 8163 | 12.694 | 630.2 |
+| 8 MiB | Generated text | 863857 | 13.849 | 577.7 |
+| 8 MiB | Integer counters | 2900368 | 7.707 | 1038.1 |
+| 8 MiB | Gaussian float32 | 7768654 | 5.677 | 1409.1 |
+| 8 MiB | Uniform random bytes | 8391174 | 1.890 | 4232.4 |
+| 64 MiB | Zero bytes | 65238 | 14.733 | 4344.1 |
+| 64 MiB | Generated text | 6907553 | 19.120 | 3347.3 |
+| 64 MiB | Integer counters | 23203543 | 14.951 | 4280.5 |
+| 64 MiB | Gaussian float32 | 62154385 | 22.341 | 2864.7 |
+| 64 MiB | Uniform random bytes | 67129345 | 13.078 | 4893.7 |
 
 ![Resident checked decode latency and throughput on RTX 4090](benchmarks/figures/resident-checked.png)
 
@@ -281,17 +284,21 @@ during every timed CUDA call.
 
 Measured 2026-10-08 (Europe/London) on RTX 4090, driver 610.57.04, JAX/JAXlib 0.11.2,
 Python 3.12.8 and nvcc 12.1.105. Package and harness hashes match
-[b534505](https://github.com/xangma/cuda-zlib/tree/b534505cc0877e33e6bfa695bdb5d28310753e3c).
+[3e12569](https://github.com/xangma/cuda-zlib/tree/3e125699eee9c65b11cb190d238beb114655ae71).
 The raw report identifies the loaded native library with its cache key, library
 and build hashes, source/header hashes, compiler, flags and FFI targets.
+The resident report’s `source_revision` was added after collection, verified
+against its recorded package, harness and loaded-native hashes; measurement
+fields were preserved.
 The private workspace pool ended with
 576 MiB retained and zero live scratch, using a 1 GiB release threshold.
 Pool reservation excludes JAX inputs and outputs.
 See the [workspace bounds](README.md#installation).
-The workstation was shared; device snapshots do not establish isolation.
+The workstation was shared, with other GPU compute observed during collection;
+device snapshots do not establish isolation.
 
 ```sh
-git checkout b534505cc0877e33e6bfa695bdb5d28310753e3c
+git checkout 3e125699eee9c65b11cb190d238beb114655ae71
 CUDACXX=/path/to/nvcc CUDA_ZLIB_CACHE_DIR=/path/to/codec-cache \
   XLA_PYTHON_CLIENT_PREALLOCATE=false \
   python benchmarks/profile_resident.py --sizes 65536 131072 262144 1048576 8388608 67108864 \
@@ -329,7 +336,7 @@ JAX reported CUDA platform `cuda 13040`; the native codec compiler was
 version describe different components.
 File dates use Europe/London; `created_utc` timestamps in the raw reports use UTC.
 
-Measured checkout: [b534505](https://github.com/xangma/cuda-zlib/tree/b534505cc0877e33e6bfa695bdb5d28310753e3c).
+Measured checkout: [3e12569](https://github.com/xangma/cuda-zlib/tree/3e125699eee9c65b11cb190d238beb114655ae71).
 Reports record `source_revision`, `harness_sha256` and codec source hashes.
 `environment.native_build` identifies the **actually loaded library** with its
 cache key, library/build SHA-256 hashes, build identity, FFI targets, compiler,
@@ -343,8 +350,8 @@ a cold build. Startup and final private-pool accounting:
 
 | Run | Imports and CUDA init (s) | Native load and registration (s) | Reserved workspace after run (MiB) | Live scratch after run (bytes) |
 | --- | ---: | ---: | ---: | ---: |
-| Single streams | 1.176 | 0.008 | 576 | 0 |
-| Small-file batches | 1.183 | 0.008 | 64 | 0 |
+| Single streams | 1.164 | 0.006 | 576 | 0 |
+| Small-file batches | 1.171 | 0.006 | 64 | 0 |
 
 The release threshold was **1 GiB**. Reserved pages permit reuse and remain
 allocated after scratch is freed; this is a retention policy, not a memory cap.
@@ -353,7 +360,8 @@ high-expansion route, additional token-count scratch is
 `4 * (candidate_capacity + block_capacity + 1)` bytes; it is separate from the
 fixed shared FIFO and included in private-pool accounting. The general and
 small-file runs used `XLA_PYTHON_CLIENT_PREALLOCATE=false`. The workstation
-was shared; before/after snapshots do not establish isolation.
+was shared, with other GPU compute observed during collection; device snapshots
+do not establish isolation.
 
 Separate [Apple M4 Max CPU reference measurements](benchmarks/CPU_BASELINES.md)
 retain their recorded date and environment; they are not GPU speedup baselines.
@@ -367,7 +375,7 @@ The recorded Python and NumPy versions were 3.12.8 and 2.2.6; JAX/JAXlib were
 ```sh
 git clone https://github.com/xangma/cuda-zlib.git
 cd cuda-zlib
-git checkout b534505cc0877e33e6bfa695bdb5d28310753e3c
+git checkout 3e125699eee9c65b11cb190d238beb114655ae71
 python -m pip install . matplotlib
 export CUDA_ZLIB_CACHE_DIR=/path/to/codec-cache
 CUDACXX=/path/to/nvcc XLA_PYTHON_CLIENT_PREALLOCATE=false \
