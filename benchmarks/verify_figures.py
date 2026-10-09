@@ -8,6 +8,7 @@ the plotters; this check detects stale artifacts.
 """
 
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import re
@@ -22,6 +23,7 @@ MANIFESTS = (
     ("resident-checked-manifest.json", "resident", "benchmarks/plot_resident.py", 3),
     ("nsight/rtx4090-manifest.json", "nsight", "benchmarks/plot_nsight.py", 6),
     ("timeline/rtx4090-manifest.json", "timeline", "benchmarks/plot_timeline.py", 6),
+    ("workflow/rtx4090-manifest.json", "workflow", "benchmarks/plot_workflow.py", 12),
 )
 
 
@@ -75,6 +77,7 @@ def check_sources(report, kind):
                   else report["source_sha256"])
         recorded = {"src/cuda_zlib/" + name: value for name, value in hashes.items()}
         harness = ("benchmarks/benchmark.py" if kind == "general" else
+                   "benchmarks/profile_workflow.py" if kind == "workflow" else
                    "benchmarks/profile_timeline.py" if kind == "timeline" else
                    "benchmarks/profile_resident.py")
         required = package | {harness}
@@ -88,9 +91,161 @@ def check_sources(report, kind):
         check_hash(repo_path(name), expected)
 
 
+def verify_exports(path, exports, count):
+    name = path.relative_to(FIGURES)
+    require(len(exports) == count, f"{name}: expected {count} exports, found {len(exports)}")
+    paths, families = set(), {}
+    for filename, expected in exports:
+        require(isinstance(filename, str) and Path(filename).name == filename,
+                f"{name}: export must be a filename: {filename}")
+        export = repo_path(str(path.parent.relative_to(ROOT) / filename))
+        require(export.suffix in EXTENSIONS, f"unexpected export format: {filename}")
+        require(export not in paths, f"duplicate export: {filename}")
+        check_hash(export, expected)
+        paths.add(export)
+        families.setdefault(export.stem, set()).add(export.suffix)
+    require(all(formats == EXTENSIONS for formats in families.values()),
+            f"{name}: every figure must have PNG, SVG and PDF exports")
+    return paths
+
+
+def verify_workflow_artifacts(report, operation):
+    artifacts, hashes = report["artifacts"], report["artifact_sha256"]
+    required = {"nsys_report", "telemetry", "command", "log", "export_log",
+                "worker_log", "worker_result", "capture_receipt", "sqlite"}
+    require(required <= set(artifacts), "missing workflow capture evidence")
+    published = {item["path"]: item["sha256"] for key, item in artifacts.items() if key != "sqlite"}
+    require(len(published) == len(artifacts) - 1 and hashes == published,
+            "workflow artifact inventory differs from report records")
+    capture_root = ROOT / "benchmarks/results/workflow/captures" / operation
+    for filename, expected in hashes.items():
+        artifact = repo_path(filename)
+        require(artifact.is_relative_to(capture_root),
+                f"workflow artifact outside {operation} capture directory: {filename}")
+        check_hash(artifact, expected)
+    require(artifacts["nsys_report"]["path"].endswith(".nsys-rep"), "missing raw workflow Nsight report")
+    sqlite = artifacts["sqlite"]
+    require(sqlite.get("private") is True and "path" not in sqlite and "published_path" not in sqlite,
+            "workflow SQLite must remain private")
+    require(isinstance(sqlite["sha256"], str) and re.fullmatch(r"[0-9a-f]{64}", sqlite["sha256"]),
+            "invalid private workflow SQLite identity")
+    receipt = read_json(repo_path(artifacts["capture_receipt"]["path"]))
+    require(receipt["source_revision"] == report["source_revision"] and
+            receipt["runner_sha256"] == report["runner_sha256"], "workflow receipt source differs")
+    require(all(receipt[field] == report[field] for field in ("capture_started_utc", "toolchain")),
+            "workflow capture metadata differs from receipt")
+    command = json.loads(repo_path(artifacts["command"]["path"]).read_bytes())
+    require(command == report["command"], "workflow capture command differs from report")
+    require(set(receipt["artifacts"]) == set(artifacts) - {"capture_receipt"},
+            "workflow receipt artifact inventory differs")
+    for key, item in receipt["artifacts"].items():
+        recorded = artifacts[key]
+        relative = Path(item["path"])
+        require(not relative.is_absolute() and ".." not in relative.parts and "\\" not in item["path"],
+                "workflow receipt artifact path escapes capture directory")
+        require(item["sha256"] == recorded["sha256"], f"workflow receipt {key} hash differs")
+        if key == "sqlite":
+            require(item.get("private") is True and "published_path" not in item and
+                    item["path"] == recorded["filename"], "workflow private SQLite identity differs")
+        else:
+            require(item["published_path"] == recorded["path"] and
+                    relative.name == Path(recorded["path"]).name,
+                    f"workflow receipt {key} path differs")
+    telemetry = read_json(repo_path(artifacts["telemetry"]["path"]))
+    worker = read_json(repo_path(artifacts["worker_result"]["path"]))
+    require(telemetry["complete"] is True and worker["complete"] is True and
+            telemetry["worker"]["exit_code"] == 0 and telemetry["worker"]["result"] == worker,
+            "workflow worker artifact differs from successful collector result")
+    require(telemetry["worker"]["pid"] == worker["pid"] == report["worker"]["pid"] and
+            report["worker"]["exit_code"] == 0, "workflow worker identity differs from report")
+    require(telemetry["operation"] == telemetry["arguments"]["operation"] == worker["operation"] == operation,
+            "workflow raw capture operation differs")
+    require(telemetry["metadata_layout"] == report["metadata_layout"],
+            "workflow raw capture metadata_layout differs from report")
+    for field in ("source_revision", "harness_sha256", "source_sha256", "dependencies_sha256",
+                  "native_build", "fixture", "environment"):
+        require(telemetry[field] == worker[field] == report[field],
+                f"workflow raw capture {field} differs from report")
+    require(telemetry["worker"]["result_sha256"] == artifacts["worker_result"]["sha256"] and
+            telemetry["worker"]["log_sha256"] == artifacts["worker_log"]["sha256"],
+            "workflow collector worker hashes differ")
+
+
+def verify_workflow_manifest(path, manifest, plotter, count):
+    operations = {"compress", "decompress"}
+    require(type(manifest["schema"]) is int and manifest["schema"] == 1 and manifest["kind"] == "workflow",
+            "expected workflow schema-1 manifest")
+    require(isinstance(manifest["operations"], list) and len(manifest["operations"]) == 2 and
+            set(manifest["operations"]) == operations, "workflow requires both operations exactly once")
+    for field in ("source_reports", "measurement_sources", "report_evidence", "warnings", "time_origins", "phase_semantics"):
+        require(set(manifest[field]) == operations, f"workflow {field} requires both operations")
+    check_hash(repo_path(plotter), manifest["plotter_sha256"])
+    helpers = manifest["style_helpers_sha256"]
+    require(set(helpers) == {"benchmarks/plot_results.py", "benchmarks/plot_nsight.py", "benchmarks/plot_timeline.py"},
+            "missing workflow style helper identities")
+    for filename, expected in helpers.items():
+        check_hash(repo_path(filename), expected)
+    reports = {}
+    for operation in sorted(operations):
+        item = manifest["source_reports"][operation]
+        report_path = repo_path(item["path"])
+        require(report_path.is_relative_to(ROOT / "benchmarks/results/workflow"),
+                "workflow report must live under benchmarks/results/workflow")
+        check_hash(report_path, item["sha256"])
+        report = reports[operation] = read_json(report_path)
+        require(report.get("complete") is True and type(report.get("schema_version")) is int and
+                report["schema_version"] == 1 and report["operation"] == operation and
+                report["kind"] == "workflow_timeline" and report["profiled"] is True,
+                "expected complete profiled schema-1 workflow for " + operation)
+        check_sources(report, "workflow")
+        measured = {"revision": report["source_revision"], "harness_sha256": report["harness_sha256"],
+                    "sha256": report["source_sha256"]}
+        require(manifest["measurement_sources"][operation] == measured, "workflow measured source differs")
+        for field, required in (("dependencies_sha256", {"benchmarks/profile_timeline.py", "benchmarks/profile_resident.py", "benchmarks/benchmark.py"}),
+                                ("extractor_dependencies_sha256", {"benchmarks/extract_timeline.py", "benchmarks/extract_nsight.py"})):
+            require(set(report[field]) == required, f"workflow {field} inventory differs")
+            for filename, expected in report[field].items():
+                check_hash(repo_path(filename), expected)
+        check_hash(repo_path("benchmarks/extract_workflow.py"), report["extractor_sha256"])
+        check_hash(repo_path("benchmarks/run_workflow.py"), report["runner_sha256"])
+        require(report["benchmark_sha256"] == report["dependencies_sha256"]["benchmarks/benchmark.py"],
+                "workflow benchmark identity differs")
+        # Reuse the source proof without importing JAX, NumPy or Matplotlib.
+        spec = importlib.util.spec_from_file_location("workflow_figure_source_proof", repo_path("benchmarks/extract_workflow.py"))
+        extractor = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(extractor)
+        extractor.source_binding(report, ROOT)
+        evidence = {field: report[field] for field in ("native_build", "extractor_sha256", "artifact_sha256",
+                                                       "dependencies_sha256", "extractor_dependencies_sha256")}
+        require(manifest["report_evidence"][operation] == evidence, "workflow report evidence differs")
+        for manifest_field, report_field in (("warnings", "warnings"), ("time_origins", "time_origin"),
+                                              ("phase_semantics", "phase_semantics")):
+            require(manifest[manifest_field][operation] == report[report_field], f"workflow {report_field} differs")
+        require(report["fixture_oracle_verified"] is True, "workflow fixture oracle was skipped")
+        require(report["metadata_layout"] == (["encoded_length", "status"] if operation == "compress" else ["status", "reserved_zero"]),
+                "workflow metadata layout differs from operation")
+        require(set(report["views"]) == {"whole_process", "measured_loop"}, "workflow requires both views")
+        verify_workflow_artifacts(report, operation)
+    require(manifest["measurement_sources"]["compress"] == manifest["measurement_sources"]["decompress"],
+            "workflow operations have different measured sources")
+    expected_figures = {f"{operation}-{suffix}": (operation, view) for operation in operations
+                        for suffix, view in (("whole-process", "whole_process"), ("warmed-loop", "measured_loop"))}
+    require(set(manifest["figures"]) == set(expected_figures), "workflow figure matrix is incomplete or duplicated")
+    exports = {}
+    for name, (operation, view) in expected_figures.items():
+        figure = manifest["figures"][name]
+        require((figure["operation"], figure["view"]) == (operation, view), "workflow figure identity differs")
+        require(set(figure["exports"]) == {name + extension for extension in EXTENSIONS}, "workflow figure exports differ")
+        exports.update(figure["exports"])
+    require(exports == manifest["exports"], "workflow flat exports differ from figure records")
+    return verify_exports(path, list(exports.items()), count)
+
+
 def verify_manifest(name, kind, plotter, count):
     path = FIGURES / name
     manifest = read_json(path)
+    if kind == "workflow":
+        return verify_workflow_manifest(path, manifest, plotter, count)
     if kind == "general":
         report_name = manifest["source"]
         raw_hash, plotter_hash = manifest["source_sha256"], manifest["script_sha256"]
@@ -184,20 +339,7 @@ def verify_manifest(name, kind, plotter, count):
                                else report["source_sha256"])}
     require(manifest["measurement_source"] == measured,
             f"{name}: measured source metadata differs from the raw report")
-    require(len(exports) == count, f"{name}: expected {count} exports, found {len(exports)}")
-    paths, families = set(), {}
-    for filename, expected in exports:
-        require(isinstance(filename, str) and Path(filename).name == filename,
-                f"{name}: export must be a filename: {filename}")
-        export = repo_path(str(path.parent.relative_to(ROOT) / filename))
-        require(export.suffix in EXTENSIONS, f"unexpected export format: {filename}")
-        require(export not in paths, f"duplicate export: {filename}")
-        check_hash(export, expected)
-        paths.add(export)
-        families.setdefault(export.stem, set()).add(export.suffix)
-    require(all(formats == EXTENSIONS for formats in families.values()),
-            f"{name}: every figure must have PNG, SVG and PDF exports")
-    return paths
+    return verify_exports(path, exports, count)
 
 
 def main():

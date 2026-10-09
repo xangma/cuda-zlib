@@ -1,0 +1,802 @@
+{
+  "artifact_sha256": {
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx-osrt/capture.json": "9ce938c67c94a12194f4dfff3416e7775c9fb16d24b2bfd7a05255416f074319",
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx-osrt/capture.log": "adf9ee64b6f50fb16b7d1a165d308bf8f7fa3bfd06ec5855c95b8e959b799ca8",
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx-osrt/capture.nsys-rep": "a5fc026604ed4a4b42cec86399fa44babbbb054b30d409c17cff9847ec409735",
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx-osrt/command.json": "2fd913332320ab3703376e22dc2d1d03b016b57cc9fd49ef8e85e62b0622ccd1",
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx-osrt/export.log": "62fbe7e967f7c73d21d788c3d4ea0f16e131f8faf0ca0ab676ec8165b42b7ed9",
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx-osrt/telemetry-worker.json": "613e05898652b9987802fc23b30333920a0fb0fa598fa19a5617dba40f2639ae",
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx-osrt/telemetry-worker.log": "ac84230164728c68a6864905cfd255dabebded54ea4ea7f4e44277a046be140a",
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx-osrt/telemetry.json": "736833e0c7cd8c8edb2be9aecaf7b2694ce9458fb7f16c6dfa4e07fd8076960c",
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx/capture.json": "c1cb87e1d67dfd2bc750b6bf3360fdccfe2f34c3d4d3a8fbdb403f192dedb427",
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx/capture.log": "0d5ada1084a0451b6fba54f434b3d4342aff5e226c24f9bd0e3d1ea0dc98293b",
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx/capture.nsys-rep": "e35c96e634c5a85a0524446aee765362946171a7661d2781fdec2f1a8a4ebd45",
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx/command.json": "6465e1e9b72be7abda67c61a59fb276ccd623da1b8295c160889ee684a39b7c8",
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx/export.log": "7fa4f7f54ea700cebbc07a778b3dcb7116a0924174d8d33b1551d2f6288f3c1b",
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx/telemetry-worker.json": "5f27b9a44b77e3ea3f641a933f849522dd895aa730b0179d865141e96e1c6c21",
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx/telemetry-worker.log": "8e4e1dcde628cf820587e4b4647b7f01b083ce5d31c9f13d055b14ea38a7ca93",
+    "benchmarks/results/workflow/captures/compress/cuda-nvtx/telemetry.json": "5d68500ee0f865fd9206e16f180274ebc95c59794197c65aad0b2a53fad01f3b",
+    "benchmarks/results/workflow/captures/compress/plain-repeat/capture.log": "9fb69a9d025c0e03eed1e866a6c3a606ddfa3c972ca3c0d04fdf6ef4210a3b02",
+    "benchmarks/results/workflow/captures/compress/plain-repeat/command.json": "b87297b6a04d075a05bf9b8bbe818bfa23d9e59431453fe69becbe05d1fcca36",
+    "benchmarks/results/workflow/captures/compress/plain-repeat/telemetry-worker.json": "1ef780c326b6ba8505054424c7b987d723e70bd9dd85fd8ed8ee04e9c5d49a63",
+    "benchmarks/results/workflow/captures/compress/plain-repeat/telemetry-worker.log": "207b91fb06da0993eb0cf75b203bb96ca95f79c3ecabc9a7d332670fed9df3fd",
+    "benchmarks/results/workflow/captures/compress/plain-repeat/telemetry.json": "d1150ade4628fb46d511b38b6e97e5e37c38f21759f880311806b14b6bfeec3e",
+    "benchmarks/results/workflow/captures/compress/plain/capture.log": "9fb69a9d025c0e03eed1e866a6c3a606ddfa3c972ca3c0d04fdf6ef4210a3b02",
+    "benchmarks/results/workflow/captures/compress/plain/command.json": "468682c6a73524b7ea2576b9a55a7d774b2330c42a4cb997578c6a67a85a8ef8",
+    "benchmarks/results/workflow/captures/compress/plain/telemetry-worker.json": "22ae30dac5c79c8833350f802245ae12a5ed57a3574229244bd249675bcb4f7f",
+    "benchmarks/results/workflow/captures/compress/plain/telemetry-worker.log": "6d4da9e52e890d93d1a5e1344a7ea125293d74ab7e152648be43d173a92eb864",
+    "benchmarks/results/workflow/captures/compress/plain/telemetry.json": "1007739fce004ace9668affc94f8710144e27573bb35372db812eba6f5d8b38e",
+    "benchmarks/results/workflow/captures/compress/telemetry/capture.log": "9fb69a9d025c0e03eed1e866a6c3a606ddfa3c972ca3c0d04fdf6ef4210a3b02",
+    "benchmarks/results/workflow/captures/compress/telemetry/command.json": "ecd226a38b25a1908599d693ca9efe8c483fe6f097e587671598a93f1a0de2eb",
+    "benchmarks/results/workflow/captures/compress/telemetry/telemetry-worker.json": "a1175c9f12218685e46b7e98d361766ad17462d627eb2a8e6b1804ed617d8330",
+    "benchmarks/results/workflow/captures/compress/telemetry/telemetry-worker.log": "36572af1a14867e3f722358dcba72a656bba04196d69c78d5c37b979b7c43606",
+    "benchmarks/results/workflow/captures/compress/telemetry/telemetry.json": "764f1de6a4a23cd9d0601db5a6da16ff99a30d8e6859fec579c8a016f794ed9f",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx-osrt/capture.json": "88c17d7ab67d05feaff19289b4d2027bc06cfc7ed0185a304c6a7880afaf027a",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx-osrt/capture.log": "e72a7b1331d8c7043058f8996b3311bd20482da3a650596287236ec9aab33124",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx-osrt/capture.nsys-rep": "b3ded324dec80269e995921db138d7faa51efd831e48adaa2f1cbf40fe5e05fe",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx-osrt/command.json": "c0e1f8069cbaca781ca63e16f8058ba3f6d60514b48eb6e4d882716680886999",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx-osrt/export.log": "7030de64b13cbc19ab0c847a446ca064f699113ea3f13d5048b320bb5686c5e2",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx-osrt/telemetry-worker.json": "3c27eb55601edc31de8f686af5e92916d863faa6487f4d8923a7750e60db61c2",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx-osrt/telemetry-worker.log": "6b895ce0c9fd2ec40bbab8b8eacca9272193845fea13aba36d580030f3366909",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx-osrt/telemetry.json": "db9f6e4a8d93c63468980f9556fc5dc1b204a0a816ddeda13405d85af68bb13c",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx/capture.json": "1c691bd8f67fcba5f024713ada9f3fe119fb418e92a2a070d4a3dfb647db36e9",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx/capture.log": "e725c2c36d4c7485f773e0ae7cad7409dd9edc22f0e0785013747d9c080d303c",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx/capture.nsys-rep": "fc6716cc3c7a3787c4cdaaac26cffccd66341f9a47d14215e5a6c2c530359ccb",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx/command.json": "47015795e06825be69cac17856bb6884c565cfa456723bdb3e2e9e9fea394e8b",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx/export.log": "410361bf15780642a2f4e5983e8f7073e36447730ec65104634d8751abb403da",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx/telemetry-worker.json": "31af3cb2fd71e845d7c1254acfcfb9908757bb61b21461970aaced263b9819f9",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx/telemetry-worker.log": "696fc8f3440ce100c490f50ac670d6b2fdb263a0d837ab487a6d78e5ce4ad146",
+    "benchmarks/results/workflow/captures/decompress/cuda-nvtx/telemetry.json": "86c8e1bbe0edb224b4d3d41897036960a6626a8462728fa323bf1c8466cdbac0",
+    "benchmarks/results/workflow/captures/decompress/plain-repeat/capture.log": "9fb69a9d025c0e03eed1e866a6c3a606ddfa3c972ca3c0d04fdf6ef4210a3b02",
+    "benchmarks/results/workflow/captures/decompress/plain-repeat/command.json": "ea0430e1adfdadb3ff7777b9f8f39affb41d46cd23f92628ff80e0964cc1d15c",
+    "benchmarks/results/workflow/captures/decompress/plain-repeat/telemetry-worker.json": "ca8cbe874627ecdc657f1e08473538fdad57890c0bfbbb226d349d24c6770fae",
+    "benchmarks/results/workflow/captures/decompress/plain-repeat/telemetry-worker.log": "76d6d7d672ccd83fb8d756c3fed9e20c50d23b8d19811fb96cc65641c25e56a5",
+    "benchmarks/results/workflow/captures/decompress/plain-repeat/telemetry.json": "4de0fc8b62908f9c9cf23315d00e5fe94798bfc6315e04bd26d75c08e370a1d4",
+    "benchmarks/results/workflow/captures/decompress/plain/capture.log": "9fb69a9d025c0e03eed1e866a6c3a606ddfa3c972ca3c0d04fdf6ef4210a3b02",
+    "benchmarks/results/workflow/captures/decompress/plain/command.json": "6ad1e54f9c96251e7db475a8adc198799f913aa0c13560fff97a18d8ebea7e2f",
+    "benchmarks/results/workflow/captures/decompress/plain/telemetry-worker.json": "3423abd04c5a8ed7d1b56a5e9940dcd1a718cb0fb0e03a37dd78ff5aa7435321",
+    "benchmarks/results/workflow/captures/decompress/plain/telemetry-worker.log": "70dd0bad98eb0d46f422425e030d2648fa5e34ef86da6b2f0b8f50981361fe25",
+    "benchmarks/results/workflow/captures/decompress/plain/telemetry.json": "b614560e30adf9d42c8813b050558d63056bc519e7c9515c009384efc23f814a",
+    "benchmarks/results/workflow/captures/decompress/telemetry/capture.log": "9fb69a9d025c0e03eed1e866a6c3a606ddfa3c972ca3c0d04fdf6ef4210a3b02",
+    "benchmarks/results/workflow/captures/decompress/telemetry/command.json": "27be7f9dac51f060c9a5ea16cc30a3332f4bb49f20d83f3dc8b820e8108d1981",
+    "benchmarks/results/workflow/captures/decompress/telemetry/telemetry-worker.json": "ce96abd950594a7f918b50cc1837811d24fe975d3f93055299a22d20609a0719",
+    "benchmarks/results/workflow/captures/decompress/telemetry/telemetry-worker.log": "fbd898155a21e7923416bf8da45f4ad3ba93504feec7b1d67a963c7225a2d167",
+    "benchmarks/results/workflow/captures/decompress/telemetry/telemetry.json": "a729c1a4c6efa2872fbc7ceb191903ad51544a9bb82bf73f3e65a1fd54384622"
+  },
+  "complete": true,
+  "kind": "workflow_instrumentation_controls",
+  "methodology": "Separate processes in recorded order; fresh GPU results, same fixture/native build, 2 warmups and 20 measured checked workflows. Host statistics exclude warmups; nested phases are not additive. Shared workstation, no isolated or causal observer-overhead claim.",
+  "runs": [
+    {
+      "capture_started_utc": "2026-10-09T10:59:47.655979+00:00",
+      "harness_sha256": "64aef6db9083c6f55e3c35f0b1c2747fb5428c66fffe38f91b076c300fa67631",
+      "host_statistics": {
+        "measured_loop_ms": 13635.745481,
+        "phases": {
+          "codec": {
+            "count": 20,
+            "maximum_ms": 82.540467,
+            "median_ms": 81.6197675,
+            "minimum_ms": 80.843482,
+            "sum_ms": 1632.466359
+          },
+          "download_check": {
+            "count": 20,
+            "maximum_ms": 582.608894,
+            "median_ms": 575.6247625000001,
+            "minimum_ms": 563.523239,
+            "sum_ms": 11486.092496
+          },
+          "host_bytes": {
+            "count": 20,
+            "maximum_ms": 56.316873,
+            "median_ms": 49.835896,
+            "minimum_ms": 47.985943,
+            "sum_ms": 1015.440249
+          },
+          "metadata_download": {
+            "count": 20,
+            "maximum_ms": 1.365999,
+            "median_ms": 0.3890745,
+            "minimum_ms": 0.329102,
+            "sum_ms": 8.758065
+          },
+          "output_download": {
+            "count": 20,
+            "maximum_ms": 59.646911,
+            "median_ms": 54.2286555,
+            "minimum_ms": 53.175732,
+            "sum_ms": 1092.194311
+          },
+          "status_check": {
+            "count": 20,
+            "maximum_ms": 0.042981,
+            "median_ms": 0.0330625,
+            "minimum_ms": 0.030848,
+            "sum_ms": 0.6948799999999999
+          },
+          "upload": {
+            "count": 20,
+            "maximum_ms": 10.949404,
+            "median_ms": 9.960541500000001,
+            "minimum_ms": 8.539674,
+            "sum_ms": 194.580838
+          },
+          "validate": {
+            "count": 20,
+            "maximum_ms": 473.406567,
+            "median_ms": 467.7444165,
+            "minimum_ms": 460.703302,
+            "sum_ms": 9362.567498
+          }
+        }
+      },
+      "operation": "compress",
+      "runner_sha256": "9d860bc8e688b4b598e999eb219900e8a766556a20acbed4b2b15083fc797d3b",
+      "source_revision": "7d083ff804e08586aa5c0333f6173a4530de5dd5",
+      "telemetry": "none",
+      "telemetry_path": "benchmarks/results/workflow/captures/compress/plain/telemetry.json",
+      "telemetry_sha256": "1007739fce004ace9668affc94f8710144e27573bb35372db812eba6f5d8b38e",
+      "trace": null,
+      "variant": "plain"
+    },
+    {
+      "capture_started_utc": "2026-10-09T11:00:05.512414+00:00",
+      "harness_sha256": "64aef6db9083c6f55e3c35f0b1c2747fb5428c66fffe38f91b076c300fa67631",
+      "host_statistics": {
+        "measured_loop_ms": 13423.183004,
+        "phases": {
+          "codec": {
+            "count": 20,
+            "maximum_ms": 81.924383,
+            "median_ms": 81.132623,
+            "minimum_ms": 80.404453,
+            "sum_ms": 1623.721343
+          },
+          "download_check": {
+            "count": 20,
+            "maximum_ms": 572.775296,
+            "median_ms": 563.755165,
+            "minimum_ms": 562.477602,
+            "sum_ms": 11302.992971
+          },
+          "host_bytes": {
+            "count": 20,
+            "maximum_ms": 55.916496,
+            "median_ms": 48.505639,
+            "minimum_ms": 47.715211,
+            "sum_ms": 986.496709
+          },
+          "metadata_download": {
+            "count": 20,
+            "maximum_ms": 1.394784,
+            "median_ms": 0.41157200000000005,
+            "minimum_ms": 0.31243,
+            "sum_ms": 9.172354
+          },
+          "output_download": {
+            "count": 20,
+            "maximum_ms": 58.031871,
+            "median_ms": 52.0451475,
+            "minimum_ms": 51.371475,
+            "sum_ms": 1050.957933
+          },
+          "status_check": {
+            "count": 20,
+            "maximum_ms": 0.041338,
+            "median_ms": 0.032226000000000005,
+            "minimum_ms": 0.028714,
+            "sum_ms": 0.663913
+          },
+          "upload": {
+            "count": 20,
+            "maximum_ms": 9.637446,
+            "median_ms": 8.8337195,
+            "minimum_ms": 7.96018,
+            "sum_ms": 177.261992
+          },
+          "validate": {
+            "count": 20,
+            "maximum_ms": 465.837886,
+            "median_ms": 461.839437,
+            "minimum_ms": 461.403143,
+            "sum_ms": 9249.523915
+          }
+        }
+      },
+      "operation": "compress",
+      "runner_sha256": "9d860bc8e688b4b598e999eb219900e8a766556a20acbed4b2b15083fc797d3b",
+      "source_revision": "7d083ff804e08586aa5c0333f6173a4530de5dd5",
+      "telemetry": "process-tree",
+      "telemetry_path": "benchmarks/results/workflow/captures/compress/telemetry/telemetry.json",
+      "telemetry_sha256": "764f1de6a4a23cd9d0601db5a6da16ff99a30d8e6859fec579c8a016f794ed9f",
+      "trace": null,
+      "variant": "telemetry"
+    },
+    {
+      "capture_started_utc": "2026-10-09T11:00:23.182582+00:00",
+      "harness_sha256": "64aef6db9083c6f55e3c35f0b1c2747fb5428c66fffe38f91b076c300fa67631",
+      "host_statistics": {
+        "measured_loop_ms": 13370.784404,
+        "phases": {
+          "codec": {
+            "count": 20,
+            "maximum_ms": 81.324049,
+            "median_ms": 80.94440750000001,
+            "minimum_ms": 80.630029,
+            "sum_ms": 1619.083675
+          },
+          "download_check": {
+            "count": 20,
+            "maximum_ms": 565.042835,
+            "median_ms": 563.1227,
+            "minimum_ms": 560.488566,
+            "sum_ms": 11264.254863
+          },
+          "host_bytes": {
+            "count": 20,
+            "maximum_ms": 49.494801,
+            "median_ms": 48.6561835,
+            "minimum_ms": 47.722085,
+            "sum_ms": 972.269158
+          },
+          "metadata_download": {
+            "count": 20,
+            "maximum_ms": 0.459458,
+            "median_ms": 0.37090500000000004,
+            "minimum_ms": 0.340733,
+            "sum_ms": 7.542401
+          },
+          "output_download": {
+            "count": 20,
+            "maximum_ms": 52.844807,
+            "median_ms": 52.012626,
+            "minimum_ms": 51.858134,
+            "sum_ms": 1042.792271
+          },
+          "status_check": {
+            "count": 20,
+            "maximum_ms": 0.039034,
+            "median_ms": 0.0371955,
+            "minimum_ms": 0.034285,
+            "sum_ms": 0.743134
+          },
+          "upload": {
+            "count": 20,
+            "maximum_ms": 8.97223,
+            "median_ms": 8.7102355,
+            "minimum_ms": 7.988363,
+            "sum_ms": 170.521381
+          },
+          "validate": {
+            "count": 20,
+            "maximum_ms": 463.18735,
+            "median_ms": 461.652723,
+            "minimum_ms": 459.392486,
+            "sum_ms": 9234.917535999999
+          }
+        }
+      },
+      "operation": "compress",
+      "runner_sha256": "9d860bc8e688b4b598e999eb219900e8a766556a20acbed4b2b15083fc797d3b",
+      "source_revision": "7d083ff804e08586aa5c0333f6173a4530de5dd5",
+      "telemetry": "process-tree",
+      "telemetry_path": "benchmarks/results/workflow/captures/compress/cuda-nvtx/telemetry.json",
+      "telemetry_sha256": "5d68500ee0f865fd9206e16f180274ebc95c59794197c65aad0b2a53fad01f3b",
+      "trace": "cuda,nvtx",
+      "variant": "cuda-nvtx"
+    },
+    {
+      "capture_started_utc": "2026-10-09T11:00:46.081849+00:00",
+      "harness_sha256": "64aef6db9083c6f55e3c35f0b1c2747fb5428c66fffe38f91b076c300fa67631",
+      "host_statistics": {
+        "measured_loop_ms": 13354.396332,
+        "phases": {
+          "codec": {
+            "count": 20,
+            "maximum_ms": 84.135998,
+            "median_ms": 81.3147515,
+            "minimum_ms": 78.344934,
+            "sum_ms": 1623.186991
+          },
+          "download_check": {
+            "count": 20,
+            "maximum_ms": 566.352567,
+            "median_ms": 562.210601,
+            "minimum_ms": 559.810414,
+            "sum_ms": 11243.738715
+          },
+          "host_bytes": {
+            "count": 20,
+            "maximum_ms": 52.2852,
+            "median_ms": 47.582100499999996,
+            "minimum_ms": 46.721695,
+            "sum_ms": 958.233311
+          },
+          "metadata_download": {
+            "count": 20,
+            "maximum_ms": 0.466531,
+            "median_ms": 0.400807,
+            "minimum_ms": 0.35477,
+            "sum_ms": 8.03846
+          },
+          "output_download": {
+            "count": 20,
+            "maximum_ms": 54.502477,
+            "median_ms": 53.436304,
+            "minimum_ms": 51.969294,
+            "sum_ms": 1066.399944
+          },
+          "status_check": {
+            "count": 20,
+            "maximum_ms": 0.05288,
+            "median_ms": 0.039394,
+            "minimum_ms": 0.038112,
+            "sum_ms": 0.817362
+          },
+          "upload": {
+            "count": 20,
+            "maximum_ms": 10.261485,
+            "median_ms": 8.8686805,
+            "minimum_ms": 7.88074,
+            "sum_ms": 179.493957
+          },
+          "validate": {
+            "count": 20,
+            "maximum_ms": 464.256137,
+            "median_ms": 460.097556,
+            "minimum_ms": 458.191307,
+            "sum_ms": 9203.770848
+          }
+        }
+      },
+      "operation": "compress",
+      "runner_sha256": "9d860bc8e688b4b598e999eb219900e8a766556a20acbed4b2b15083fc797d3b",
+      "source_revision": "7d083ff804e08586aa5c0333f6173a4530de5dd5",
+      "telemetry": "process-tree",
+      "telemetry_path": "benchmarks/results/workflow/captures/compress/cuda-nvtx-osrt/telemetry.json",
+      "telemetry_sha256": "736833e0c7cd8c8edb2be9aecaf7b2694ce9458fb7f16c6dfa4e07fd8076960c",
+      "trace": "cuda,nvtx,osrt",
+      "variant": "cuda-nvtx-osrt"
+    },
+    {
+      "capture_started_utc": "2026-10-09T11:01:39.618275+00:00",
+      "harness_sha256": "64aef6db9083c6f55e3c35f0b1c2747fb5428c66fffe38f91b076c300fa67631",
+      "host_statistics": {
+        "measured_loop_ms": 13427.418054,
+        "phases": {
+          "codec": {
+            "count": 20,
+            "maximum_ms": 82.212005,
+            "median_ms": 80.894352,
+            "minimum_ms": 80.421956,
+            "sum_ms": 1620.120552
+          },
+          "download_check": {
+            "count": 20,
+            "maximum_ms": 571.360009,
+            "median_ms": 564.3274255,
+            "minimum_ms": 563.05539,
+            "sum_ms": 11303.800148
+          },
+          "host_bytes": {
+            "count": 20,
+            "maximum_ms": 50.55344,
+            "median_ms": 48.638129,
+            "minimum_ms": 48.144272,
+            "sum_ms": 976.923959
+          },
+          "metadata_download": {
+            "count": 20,
+            "maximum_ms": 1.388502,
+            "median_ms": 0.37514349999999996,
+            "minimum_ms": 0.353387,
+            "sum_ms": 8.705748
+          },
+          "output_download": {
+            "count": 20,
+            "maximum_ms": 54.990218,
+            "median_ms": 52.987320499999996,
+            "minimum_ms": 52.426117,
+            "sum_ms": 1063.161374
+          },
+          "status_check": {
+            "count": 20,
+            "maximum_ms": 0.046899,
+            "median_ms": 0.031845,
+            "minimum_ms": 0.029135,
+            "sum_ms": 0.6473990000000001
+          },
+          "upload": {
+            "count": 20,
+            "maximum_ms": 10.240616,
+            "median_ms": 9.1059375,
+            "minimum_ms": 8.231742,
+            "sum_ms": 184.705623
+          },
+          "validate": {
+            "count": 20,
+            "maximum_ms": 467.015284,
+            "median_ms": 462.13610700000004,
+            "minimum_ms": 460.48219,
+            "sum_ms": 9248.515554
+          }
+        }
+      },
+      "operation": "compress",
+      "runner_sha256": "9d860bc8e688b4b598e999eb219900e8a766556a20acbed4b2b15083fc797d3b",
+      "source_revision": "7d083ff804e08586aa5c0333f6173a4530de5dd5",
+      "telemetry": "none",
+      "telemetry_path": "benchmarks/results/workflow/captures/compress/plain-repeat/telemetry.json",
+      "telemetry_sha256": "d1150ade4628fb46d511b38b6e97e5e37c38f21759f880311806b14b6bfeec3e",
+      "trace": null,
+      "variant": "plain-repeat"
+    },
+    {
+      "capture_started_utc": "2026-10-09T11:01:57.267039+00:00",
+      "harness_sha256": "64aef6db9083c6f55e3c35f0b1c2747fb5428c66fffe38f91b076c300fa67631",
+      "host_statistics": {
+        "measured_loop_ms": 3140.757253,
+        "phases": {
+          "codec": {
+            "count": 20,
+            "maximum_ms": 27.19127,
+            "median_ms": 26.411758,
+            "minimum_ms": 25.952771,
+            "sum_ms": 529.769058
+          },
+          "download_check": {
+            "count": 20,
+            "maximum_ms": 116.567512,
+            "median_ms": 112.44835900000001,
+            "minimum_ms": 110.323913,
+            "sum_ms": 2256.4031370000002
+          },
+          "host_bytes": {
+            "count": 20,
+            "maximum_ms": 58.185781,
+            "median_ms": 52.662842999999995,
+            "minimum_ms": 51.862462,
+            "sum_ms": 1059.290085
+          },
+          "metadata_download": {
+            "count": 20,
+            "maximum_ms": 1.190478,
+            "median_ms": 0.356999,
+            "minimum_ms": 0.31228,
+            "sum_ms": 8.032027
+          },
+          "output_download": {
+            "count": 20,
+            "maximum_ms": 56.796889,
+            "median_ms": 53.5222555,
+            "minimum_ms": 51.781719,
+            "sum_ms": 1074.732526
+          },
+          "status_check": {
+            "count": 20,
+            "maximum_ms": 0.032682,
+            "median_ms": 0.031625,
+            "minimum_ms": 0.030398,
+            "sum_ms": 0.631834
+          },
+          "upload": {
+            "count": 20,
+            "maximum_ms": 10.502931,
+            "median_ms": 9.1498955,
+            "minimum_ms": 8.110092,
+            "sum_ms": 185.7636
+          },
+          "validate": {
+            "count": 20,
+            "maximum_ms": 5.501317,
+            "median_ms": 5.4139875,
+            "minimum_ms": 5.357736,
+            "sum_ms": 108.443744
+          }
+        }
+      },
+      "operation": "decompress",
+      "runner_sha256": "9d860bc8e688b4b598e999eb219900e8a766556a20acbed4b2b15083fc797d3b",
+      "source_revision": "7d083ff804e08586aa5c0333f6173a4530de5dd5",
+      "telemetry": "none",
+      "telemetry_path": "benchmarks/results/workflow/captures/decompress/plain/telemetry.json",
+      "telemetry_sha256": "b614560e30adf9d42c8813b050558d63056bc519e7c9515c009384efc23f814a",
+      "trace": null,
+      "variant": "plain"
+    },
+    {
+      "capture_started_utc": "2026-10-09T11:02:07.302779+00:00",
+      "harness_sha256": "64aef6db9083c6f55e3c35f0b1c2747fb5428c66fffe38f91b076c300fa67631",
+      "host_statistics": {
+        "measured_loop_ms": 3069.231481,
+        "phases": {
+          "codec": {
+            "count": 20,
+            "maximum_ms": 26.518179,
+            "median_ms": 26.1105745,
+            "minimum_ms": 25.851901,
+            "sum_ms": 522.7415120000001
+          },
+          "download_check": {
+            "count": 20,
+            "maximum_ms": 111.703859,
+            "median_ms": 110.595135,
+            "minimum_ms": 109.926412,
+            "sum_ms": 2214.306433
+          },
+          "host_bytes": {
+            "count": 20,
+            "maximum_ms": 53.154061,
+            "median_ms": 52.20567,
+            "minimum_ms": 51.677102,
+            "sum_ms": 1044.132592
+          },
+          "metadata_download": {
+            "count": 20,
+            "maximum_ms": 1.33959,
+            "median_ms": 0.3585575,
+            "minimum_ms": 0.311979,
+            "sum_ms": 8.082349
+          },
+          "output_download": {
+            "count": 20,
+            "maximum_ms": 53.121469,
+            "median_ms": 52.247444,
+            "minimum_ms": 51.982739,
+            "sum_ms": 1047.431501
+          },
+          "status_check": {
+            "count": 20,
+            "maximum_ms": 0.043332,
+            "median_ms": 0.032602000000000006,
+            "minimum_ms": 0.031459,
+            "sum_ms": 0.667793
+          },
+          "upload": {
+            "count": 20,
+            "maximum_ms": 9.811876,
+            "median_ms": 8.184819000000001,
+            "minimum_ms": 8.09296,
+            "sum_ms": 165.955761
+          },
+          "validate": {
+            "count": 20,
+            "maximum_ms": 5.48192,
+            "median_ms": 5.443212,
+            "minimum_ms": 5.386741,
+            "sum_ms": 108.771012
+          }
+        }
+      },
+      "operation": "decompress",
+      "runner_sha256": "9d860bc8e688b4b598e999eb219900e8a766556a20acbed4b2b15083fc797d3b",
+      "source_revision": "7d083ff804e08586aa5c0333f6173a4530de5dd5",
+      "telemetry": "process-tree",
+      "telemetry_path": "benchmarks/results/workflow/captures/decompress/telemetry/telemetry.json",
+      "telemetry_sha256": "a729c1a4c6efa2872fbc7ceb191903ad51544a9bb82bf73f3e65a1fd54384622",
+      "trace": null,
+      "variant": "telemetry"
+    },
+    {
+      "capture_started_utc": "2026-10-09T11:02:17.296132+00:00",
+      "harness_sha256": "64aef6db9083c6f55e3c35f0b1c2747fb5428c66fffe38f91b076c300fa67631",
+      "host_statistics": {
+        "measured_loop_ms": 3053.420586,
+        "phases": {
+          "codec": {
+            "count": 20,
+            "maximum_ms": 26.951938,
+            "median_ms": 26.702597500000003,
+            "minimum_ms": 26.360892,
+            "sum_ms": 533.652141
+          },
+          "download_check": {
+            "count": 20,
+            "maximum_ms": 110.586549,
+            "median_ms": 109.738112,
+            "minimum_ms": 108.75994,
+            "sum_ms": 2192.652938
+          },
+          "host_bytes": {
+            "count": 20,
+            "maximum_ms": 52.066998,
+            "median_ms": 51.521313,
+            "minimum_ms": 50.318115,
+            "sum_ms": 1025.7609439999999
+          },
+          "metadata_download": {
+            "count": 20,
+            "maximum_ms": 0.502548,
+            "median_ms": 0.38713549999999997,
+            "minimum_ms": 0.327569,
+            "sum_ms": 7.88144
+          },
+          "output_download": {
+            "count": 20,
+            "maximum_ms": 53.396618,
+            "median_ms": 52.0842005,
+            "minimum_ms": 51.807959,
+            "sum_ms": 1044.53413
+          },
+          "status_check": {
+            "count": 20,
+            "maximum_ms": 0.046217,
+            "median_ms": 0.0362385,
+            "minimum_ms": 0.035176,
+            "sum_ms": 0.737573
+          },
+          "upload": {
+            "count": 20,
+            "maximum_ms": 8.530146,
+            "median_ms": 8.2206665,
+            "minimum_ms": 8.167731,
+            "sum_ms": 165.145471
+          },
+          "validate": {
+            "count": 20,
+            "maximum_ms": 5.502289,
+            "median_ms": 5.439921,
+            "minimum_ms": 5.369659,
+            "sum_ms": 108.85219599999999
+          }
+        }
+      },
+      "operation": "decompress",
+      "runner_sha256": "9d860bc8e688b4b598e999eb219900e8a766556a20acbed4b2b15083fc797d3b",
+      "source_revision": "7d083ff804e08586aa5c0333f6173a4530de5dd5",
+      "telemetry": "process-tree",
+      "telemetry_path": "benchmarks/results/workflow/captures/decompress/cuda-nvtx/telemetry.json",
+      "telemetry_sha256": "86c8e1bbe0edb224b4d3d41897036960a6626a8462728fa323bf1c8466cdbac0",
+      "trace": "cuda,nvtx",
+      "variant": "cuda-nvtx"
+    },
+    {
+      "capture_started_utc": "2026-10-09T11:02:36.770669+00:00",
+      "harness_sha256": "64aef6db9083c6f55e3c35f0b1c2747fb5428c66fffe38f91b076c300fa67631",
+      "host_statistics": {
+        "measured_loop_ms": 3116.129844,
+        "phases": {
+          "codec": {
+            "count": 20,
+            "maximum_ms": 27.216518,
+            "median_ms": 26.3313065,
+            "minimum_ms": 25.781408,
+            "sum_ms": 528.928691
+          },
+          "download_check": {
+            "count": 20,
+            "maximum_ms": 122.494963,
+            "median_ms": 110.989379,
+            "minimum_ms": 107.653401,
+            "sum_ms": 2258.696522
+          },
+          "host_bytes": {
+            "count": 20,
+            "maximum_ms": 57.926642,
+            "median_ms": 51.093495000000004,
+            "minimum_ms": 50.31519,
+            "sum_ms": 1040.531601
+          },
+          "metadata_download": {
+            "count": 20,
+            "maximum_ms": 0.611354,
+            "median_ms": 0.4743505,
+            "minimum_ms": 0.404244,
+            "sum_ms": 9.674396
+          },
+          "output_download": {
+            "count": 20,
+            "maximum_ms": 60.163656,
+            "median_ms": 52.9766805,
+            "minimum_ms": 51.090444,
+            "sum_ms": 1092.02241
+          },
+          "status_check": {
+            "count": 20,
+            "maximum_ms": 0.075873,
+            "median_ms": 0.0515225,
+            "minimum_ms": 0.037661,
+            "sum_ms": 1.015659
+          },
+          "upload": {
+            "count": 20,
+            "maximum_ms": 9.648608,
+            "median_ms": 8.5209085,
+            "minimum_ms": 7.714526,
+            "sum_ms": 172.24275
+          },
+          "validate": {
+            "count": 20,
+            "maximum_ms": 5.618258,
+            "median_ms": 5.4212815,
+            "minimum_ms": 5.314845,
+            "sum_ms": 108.582548
+          }
+        }
+      },
+      "operation": "decompress",
+      "runner_sha256": "9d860bc8e688b4b598e999eb219900e8a766556a20acbed4b2b15083fc797d3b",
+      "source_revision": "7d083ff804e08586aa5c0333f6173a4530de5dd5",
+      "telemetry": "process-tree",
+      "telemetry_path": "benchmarks/results/workflow/captures/decompress/cuda-nvtx-osrt/telemetry.json",
+      "telemetry_sha256": "db9f6e4a8d93c63468980f9556fc5dc1b204a0a816ddeda13405d85af68bb13c",
+      "trace": "cuda,nvtx,osrt",
+      "variant": "cuda-nvtx-osrt"
+    },
+    {
+      "capture_started_utc": "2026-10-09T11:03:18.807785+00:00",
+      "harness_sha256": "64aef6db9083c6f55e3c35f0b1c2747fb5428c66fffe38f91b076c300fa67631",
+      "host_statistics": {
+        "measured_loop_ms": 3085.931086,
+        "phases": {
+          "codec": {
+            "count": 20,
+            "maximum_ms": 27.040505,
+            "median_ms": 25.9465295,
+            "minimum_ms": 25.764697,
+            "sum_ms": 521.094399
+          },
+          "download_check": {
+            "count": 20,
+            "maximum_ms": 117.911499,
+            "median_ms": 110.99998350000001,
+            "minimum_ms": 109.63396,
+            "sum_ms": 2228.280907
+          },
+          "host_bytes": {
+            "count": 20,
+            "maximum_ms": 53.717985,
+            "median_ms": 52.2035405,
+            "minimum_ms": 51.552616,
+            "sum_ms": 1046.832736
+          },
+          "metadata_download": {
+            "count": 20,
+            "maximum_ms": 1.182823,
+            "median_ms": 0.36195849999999996,
+            "minimum_ms": 0.309855,
+            "sum_ms": 8.008138
+          },
+          "output_download": {
+            "count": 20,
+            "maximum_ms": 59.246664,
+            "median_ms": 52.5821055,
+            "minimum_ms": 51.927534,
+            "sum_ms": 1058.986273
+          },
+          "status_check": {
+            "count": 20,
+            "maximum_ms": 0.069261,
+            "median_ms": 0.030728,
+            "minimum_ms": 0.029776,
+            "sum_ms": 0.673641
+          },
+          "upload": {
+            "count": 20,
+            "maximum_ms": 9.833096,
+            "median_ms": 8.4019885,
+            "minimum_ms": 8.209771,
+            "sum_ms": 171.966398
+          },
+          "validate": {
+            "count": 20,
+            "maximum_ms": 5.475639,
+            "median_ms": 5.4197880000000005,
+            "minimum_ms": 5.381581,
+            "sum_ms": 108.450497
+          }
+        }
+      },
+      "operation": "decompress",
+      "runner_sha256": "9d860bc8e688b4b598e999eb219900e8a766556a20acbed4b2b15083fc797d3b",
+      "source_revision": "7d083ff804e08586aa5c0333f6173a4530de5dd5",
+      "telemetry": "none",
+      "telemetry_path": "benchmarks/results/workflow/captures/decompress/plain-repeat/telemetry.json",
+      "telemetry_sha256": "4de0fc8b62908f9c9cf23315d00e5fe94798bfc6315e04bd26d75c08e370a1d4",
+      "trace": null,
+      "variant": "plain-repeat"
+    }
+  ],
+  "schema_version": 1
+}

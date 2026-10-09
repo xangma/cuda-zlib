@@ -177,9 +177,9 @@ For compiled consumers, [resident checked decode measurements](BENCHMARKS.md#res
 report completed JIT latency without uploads or host status transfers. That
 dataset has a separate timing scope and does not report CPU speedup.
 
-[Nsight profiles](PROFILING.md) show recorded GPU kernel time and synchronized
-application, transfer, CPU and memory timelines, with raw captures and source
-identities. These instrumented diagnostics have a separate scope from the
+[Nsight profiles](PROFILING.md) show compression and decompression kernel stages
+and synchronized application, transfer, CPU and memory timelines, with raw
+captures and source identities. These instrumented diagnostics have a separate scope from the
 benchmark timings.
 
 Eligible dense serial blocks parse tokens and emit reference roots concurrently

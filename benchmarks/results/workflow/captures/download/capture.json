@@ -1,0 +1,21 @@
+{
+  "artifacts": {
+    "command": {
+      "path": "benchmarks/results/workflow/captures/download/command.json",
+      "sha256": "ef343aa7757ff95cb5e8f2dc16dac0ee349d8008dd8dd32da8d81b8c1309f50f"
+    },
+    "log": {
+      "path": "benchmarks/results/workflow/captures/download/capture.log",
+      "sha256": "9fb69a9d025c0e03eed1e866a6c3a606ddfa3c972ca3c0d04fdf6ef4210a3b02"
+    },
+    "report": {
+      "path": "benchmarks/results/workflow/rtx4090-download-float32.json",
+      "sha256": "c5424ee53cb705725af321669d6c862ed6a43559e483b32892a60698997b3624"
+    }
+  },
+  "checked_outputs": 86,
+  "complete": true,
+  "harness_sha256": "a40c4d281bd3e611863d7ea1f349b56bf0e3fccb45fef0582204f106bf9854f6",
+  "schema_version": 1,
+  "source_revision": "7d083ff804e08586aa5c0333f6173a4530de5dd5"
+}
