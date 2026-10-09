@@ -1,8 +1,8 @@
 {
   "exports": {
-    "host-output-latency.pdf": "ef812191a51cc2a109df00fe5c3a3da07c711837ac949be191a95ecb0e88291e",
-    "host-output-latency.png": "cd0d12003457365f920f2bea3245e88acf93dd101e9e3e392b50a1a10750750c",
-    "host-output-latency.svg": "2a2ca003b3e9ac9bf144f245e20ff5efdf2d6402b94d562551112872cd60fe2a"
+    "host-output-latency.pdf": "693579e7c6f00f48d92cd3c46b443ee5050ac2a5fe7d516d5491ec183bec0ab8",
+    "host-output-latency.png": "14eed42652a449d7f215c568bfa16b235fbf449a6c152972d6eb3f173c086d01",
+    "host-output-latency.svg": "0a42f31e74bfe3ea85e3cecef1a9090f3c8dc4b7af9fc16d31ebf8984eb855dd"
   },
   "figures": {
     "host-output-latency": {
@@ -12,49 +12,49 @@
           "series": [
             {
               "backing_storage": "fresh stdlib zlib bytes",
-              "max_wall_ns": 485156,
-              "median_wall_ns": 457218.5,
-              "min_wall_ns": 370249,
+              "max_wall_ns": 484301,
+              "median_wall_ns": 466457.5,
+              "min_wall_ns": 459004,
               "name": "cpu_ndarray",
               "samples": 12
             },
             {
               "backing_storage": "fresh JAX-owned pinned host storage",
-              "max_wall_ns": 8411450,
-              "median_wall_ns": 8213285.0,
-              "min_wall_ns": 8025590,
+              "max_wall_ns": 9464266,
+              "median_wall_ns": 9025917.0,
+              "min_wall_ns": 8698499,
               "name": "cuda_ndarray",
               "samples": 12
             },
             {
               "backing_storage": "fresh stdlib zlib bytes",
-              "max_wall_ns": 477853,
-              "median_wall_ns": 414368.0,
-              "min_wall_ns": 370379,
+              "max_wall_ns": 479692,
+              "median_wall_ns": 464709.0,
+              "min_wall_ns": 451860,
               "name": "cpu_memoryview",
               "samples": 12
             },
             {
               "backing_storage": "fresh JAX-owned pinned host storage",
-              "max_wall_ns": 8366755,
-              "median_wall_ns": 8192530.5,
-              "min_wall_ns": 8028015,
+              "max_wall_ns": 9517627,
+              "median_wall_ns": 9243611.0,
+              "min_wall_ns": 8565496,
               "name": "cuda_memoryview",
               "samples": 12
             },
             {
               "backing_storage": "fresh stdlib zlib bytes",
-              "max_wall_ns": 486670,
-              "median_wall_ns": 429691.5,
-              "min_wall_ns": 370771,
+              "max_wall_ns": 502125,
+              "median_wall_ns": 467184.0,
+              "min_wall_ns": 456859,
               "name": "cpu_bytes",
               "samples": 12
             },
             {
               "backing_storage": "fresh Python bytes copied from JAX-owned pinned host storage",
-              "max_wall_ns": 8466593,
-              "median_wall_ns": 8224015.5,
-              "min_wall_ns": 8025591,
+              "max_wall_ns": 9477812,
+              "median_wall_ns": 8979713.5,
+              "min_wall_ns": 8595913,
               "name": "cuda_bytes",
               "samples": 12
             }
@@ -65,49 +65,49 @@
           "series": [
             {
               "backing_storage": "fresh stdlib zlib bytes",
-              "max_wall_ns": 6017227,
-              "median_wall_ns": 5961050.5,
-              "min_wall_ns": 5922298,
+              "max_wall_ns": 7417342,
+              "median_wall_ns": 6304559.5,
+              "min_wall_ns": 5878995,
               "name": "cpu_ndarray",
               "samples": 12
             },
             {
               "backing_storage": "fresh JAX-owned pinned host storage",
-              "max_wall_ns": 4949961,
-              "median_wall_ns": 4809089.0,
-              "min_wall_ns": 4755042,
+              "max_wall_ns": 6527078,
+              "median_wall_ns": 5179849.5,
+              "min_wall_ns": 4900062,
               "name": "cuda_ndarray",
               "samples": 12
             },
             {
               "backing_storage": "fresh stdlib zlib bytes",
-              "max_wall_ns": 6012397,
-              "median_wall_ns": 5942906.0,
-              "min_wall_ns": 5901187,
+              "max_wall_ns": 7364601,
+              "median_wall_ns": 5975077.0,
+              "min_wall_ns": 5879456,
               "name": "cpu_memoryview",
               "samples": 12
             },
             {
               "backing_storage": "fresh JAX-owned pinned host storage",
-              "max_wall_ns": 4948257,
-              "median_wall_ns": 4835143.5,
-              "min_wall_ns": 4740244,
+              "max_wall_ns": 6604324,
+              "median_wall_ns": 5266244.5,
+              "min_wall_ns": 5113639,
               "name": "cuda_memoryview",
               "samples": 12
             },
             {
               "backing_storage": "fresh stdlib zlib bytes",
-              "max_wall_ns": 5995976,
-              "median_wall_ns": 5918645.0,
-              "min_wall_ns": 5901478,
+              "max_wall_ns": 7113233,
+              "median_wall_ns": 5898712.5,
+              "min_wall_ns": 5882381,
               "name": "cpu_bytes",
               "samples": 12
             },
             {
               "backing_storage": "fresh Python bytes copied from JAX-owned pinned host storage",
-              "max_wall_ns": 5172190,
-              "median_wall_ns": 5008802.0,
-              "min_wall_ns": 4830705,
+              "max_wall_ns": 6543960,
+              "median_wall_ns": 5391457.0,
+              "min_wall_ns": 5093179,
               "name": "cuda_bytes",
               "samples": 12
             }
@@ -118,49 +118,49 @@
           "series": [
             {
               "backing_storage": "fresh stdlib zlib bytes",
-              "max_wall_ns": 470241568,
-              "median_wall_ns": 469123331.0,
-              "min_wall_ns": 467748820,
+              "max_wall_ns": 471681125,
+              "median_wall_ns": 466839298.5,
+              "min_wall_ns": 464896606,
               "name": "cpu_ndarray",
               "samples": 12
             },
             {
               "backing_storage": "fresh JAX-owned pinned host storage",
-              "max_wall_ns": 31138420,
-              "median_wall_ns": 30745388.0,
-              "min_wall_ns": 30600824,
+              "max_wall_ns": 36983792,
+              "median_wall_ns": 34894729.0,
+              "min_wall_ns": 33882450,
               "name": "cuda_ndarray",
               "samples": 12
             },
             {
               "backing_storage": "fresh stdlib zlib bytes",
-              "max_wall_ns": 472433140,
-              "median_wall_ns": 469354748.5,
-              "min_wall_ns": 468393758,
+              "max_wall_ns": 470227009,
+              "median_wall_ns": 466715987.0,
+              "min_wall_ns": 465888992,
               "name": "cpu_memoryview",
               "samples": 12
             },
             {
               "backing_storage": "fresh JAX-owned pinned host storage",
-              "max_wall_ns": 31511605,
-              "median_wall_ns": 31052953.5,
-              "min_wall_ns": 30664946,
+              "max_wall_ns": 36984073,
+              "median_wall_ns": 35712191.0,
+              "min_wall_ns": 33959688,
               "name": "cuda_memoryview",
               "samples": 12
             },
             {
               "backing_storage": "fresh stdlib zlib bytes",
-              "max_wall_ns": 472100891,
-              "median_wall_ns": 468587122.5,
-              "min_wall_ns": 467912729,
+              "max_wall_ns": 473000740,
+              "median_wall_ns": 466342904.0,
+              "min_wall_ns": 465196011,
               "name": "cpu_bytes",
               "samples": 12
             },
             {
               "backing_storage": "fresh Python bytes copied from JAX-owned pinned host storage",
-              "max_wall_ns": 90718165,
-              "median_wall_ns": 84512523.0,
-              "min_wall_ns": 84008691,
+              "max_wall_ns": 93388037,
+              "median_wall_ns": 87383804.0,
+              "min_wall_ns": 86565413,
               "name": "cuda_bytes",
               "samples": 12
             }
@@ -168,9 +168,9 @@
         }
       ],
       "exports": {
-        "host-output-latency.pdf": "ef812191a51cc2a109df00fe5c3a3da07c711837ac949be191a95ecb0e88291e",
-        "host-output-latency.png": "cd0d12003457365f920f2bea3245e88acf93dd101e9e3e392b50a1a10750750c",
-        "host-output-latency.svg": "2a2ca003b3e9ac9bf144f245e20ff5efdf2d6402b94d562551112872cd60fe2a"
+        "host-output-latency.pdf": "693579e7c6f00f48d92cd3c46b443ee5050ac2a5fe7d516d5491ec183bec0ab8",
+        "host-output-latency.png": "14eed42652a449d7f215c568bfa16b235fbf449a6c152972d6eb3f173c086d01",
+        "host-output-latency.svg": "0a42f31e74bfe3ea85e3cecef1a9090f3c8dc4b7af9fc16d31ebf8984eb855dd"
       },
       "series_order": [
         "cpu_ndarray",
@@ -198,7 +198,7 @@
   ],
   "measurement_source": {
     "harness_sha256": "9216d53c64dea3c2676a7acb5a62e20b05e7fd3bf4cdc0d8cf8f21a2d389833f",
-    "revision": "5ceaedd45cd3126827aa571d962bbf3e1d079a7c",
+    "revision": "bb00aea62bae71542cbb896b339da4842c976499",
     "sha256": {
       "__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
       "_codec.py": "0a0a5484f90a55cf53530b3dc837a12b2a293d5bb88c0b9426758d17409af5d2",
@@ -206,11 +206,11 @@
       "_encode_kernels.py": "514bd9aba9978010f4a1659209ac0a6b9b0e72a043d6605805c4c698f6d87964",
       "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
       "_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
-      "_postprocess.py": "bfbc7664b4c6255890388716f4e16999676ebe2b37c900c5e41eafad387ea307",
+      "_postprocess.py": "c1ac2370317f08360c857a225bc3be6e96d93d97bc75fe49f9b434954cda8632",
       "jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
       "native/batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
       "native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
-      "native/codec_ffi.cu": "892c568342627f59eff0f60dc4785749cee4bac2a8d8efe196e3280dedc1c7e2"
+      "native/codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0"
     }
   },
   "plotter_sha256": "0a03441d6c66293418775cee5bcfc534246a32953b1304f69264f13ca21b0507",
@@ -223,7 +223,7 @@
     "arguments": {
       "device": 0,
       "order_seed": 20261009,
-      "output": "/dev/shm/cuda-zlib-host-outputs-20261009-01a10cd3/host-v1.json",
+      "output": "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/run-v1/results/host-outputs.json",
       "samples": 12,
       "seed": 20261008,
       "sizes": [
@@ -231,7 +231,7 @@
         1048576,
         67108864
       ],
-      "source_revision": "5ceaedd45cd3126827aa571d962bbf3e1d079a7c",
+      "source_revision": "bb00aea62bae71542cbb896b339da4842c976499",
       "warmups": 2,
       "workload": "float32"
     },
@@ -255,7 +255,7 @@
       "numpy": "2.2.6",
       "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.39",
       "python": "3.12.8 | packaged by conda-forge | (main, Dec  5 2024, 14:24:40) [GCC 13.3.0]",
-      "runtime_package": "/dev/shm/cuda-zlib-host-outputs-20261009-01a10cd3/source/src/cuda_zlib",
+      "runtime_package": "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/source/src/cuda_zlib",
       "zlib_runtime": "1.3.1"
     },
     "gpu_snapshot_after": {
@@ -280,20 +280,38 @@
         },
         {
           "gpu_uuid": "GPU-2e198102-8223-da7b-4944-2df0e9400916",
+          "owned_pid": false,
+          "pid": "478132",
+          "used_memory": "590"
+        },
+        {
+          "gpu_uuid": "GPU-2e198102-8223-da7b-4944-2df0e9400916",
+          "owned_pid": false,
+          "pid": "755051",
+          "used_memory": "588"
+        },
+        {
+          "gpu_uuid": "GPU-2e198102-8223-da7b-4944-2df0e9400916",
+          "owned_pid": false,
+          "pid": "775657",
+          "used_memory": "552"
+        },
+        {
+          "gpu_uuid": "GPU-2e198102-8223-da7b-4944-2df0e9400916",
           "owned_pid": true,
-          "pid": "186161",
+          "pid": "818188",
           "used_memory": "1398"
         }
       ],
-      "end_ns": 3342613811292135,
+      "end_ns": 3353365631465580,
       "errors": [],
       "gpus": [
         {
           "driver_version": "610.57.04",
           "memory.total": "24564",
-          "memory.used": "3835",
+          "memory.used": "5646",
           "name": "NVIDIA GeForce RTX 4090",
-          "utilization.gpu": "0",
+          "utilization.gpu": "40",
           "uuid": "GPU-2e198102-8223-da7b-4944-2df0e9400916"
         }
       ],
@@ -304,11 +322,11 @@
             "--query-gpu=uuid,name,driver_version,memory.used,memory.total,utilization.gpu",
             "--format=csv,noheader,nounits"
           ],
-          "end_ns": 3342613777846407,
+          "end_ns": 3353365597787079,
           "exit_code": 0,
-          "start_ns": 3342613744916393,
+          "start_ns": 3353365564152552,
           "stderr": "",
-          "stdout": "GPU-2e198102-8223-da7b-4944-2df0e9400916, NVIDIA GeForce RTX 4090, 610.57.04, 3835, 24564, 0\n"
+          "stdout": "GPU-2e198102-8223-da7b-4944-2df0e9400916, NVIDIA GeForce RTX 4090, 610.57.04, 5646, 24564, 40\n"
         },
         {
           "command": [
@@ -316,14 +334,14 @@
             "--query-compute-apps=pid,gpu_uuid,used_memory",
             "--format=csv,noheader,nounits"
           ],
-          "end_ns": 3342613811289340,
+          "end_ns": 3353365631462795,
           "exit_code": 0,
-          "start_ns": 3342613777850284,
+          "start_ns": 3353365597791107,
           "stderr": "",
-          "stdout": "1787087, GPU-2e198102-8223-da7b-4944-2df0e9400916, 436\n1787088, GPU-2e198102-8223-da7b-4944-2df0e9400916, 434\n1787205, GPU-2e198102-8223-da7b-4944-2df0e9400916, 386\n186161, GPU-2e198102-8223-da7b-4944-2df0e9400916, 1398\n"
+          "stdout": "1787087, GPU-2e198102-8223-da7b-4944-2df0e9400916, 436\n1787088, GPU-2e198102-8223-da7b-4944-2df0e9400916, 434\n1787205, GPU-2e198102-8223-da7b-4944-2df0e9400916, 386\n478132, GPU-2e198102-8223-da7b-4944-2df0e9400916, 590\n755051, GPU-2e198102-8223-da7b-4944-2df0e9400916, 588\n775657, GPU-2e198102-8223-da7b-4944-2df0e9400916, 552\n818188, GPU-2e198102-8223-da7b-4944-2df0e9400916, 1398\n"
         }
       ],
-      "start_ns": 3342613744900062
+      "start_ns": 3353365564147272
     },
     "gpu_snapshot_before": {
       "compute_processes": [
@@ -347,20 +365,38 @@
         },
         {
           "gpu_uuid": "GPU-2e198102-8223-da7b-4944-2df0e9400916",
+          "owned_pid": false,
+          "pid": "478132",
+          "used_memory": "590"
+        },
+        {
+          "gpu_uuid": "GPU-2e198102-8223-da7b-4944-2df0e9400916",
+          "owned_pid": false,
+          "pid": "755051",
+          "used_memory": "588"
+        },
+        {
+          "gpu_uuid": "GPU-2e198102-8223-da7b-4944-2df0e9400916",
+          "owned_pid": false,
+          "pid": "775657",
+          "used_memory": "552"
+        },
+        {
+          "gpu_uuid": "GPU-2e198102-8223-da7b-4944-2df0e9400916",
           "owned_pid": true,
-          "pid": "186161",
+          "pid": "818188",
           "used_memory": "388"
         }
       ],
-      "end_ns": 3342584699246317,
+      "end_ns": 3353336409600775,
       "errors": [],
       "gpus": [
         {
           "driver_version": "610.57.04",
           "memory.total": "24564",
-          "memory.used": "2888",
+          "memory.used": "4636",
           "name": "NVIDIA GeForce RTX 4090",
-          "utilization.gpu": "1",
+          "utilization.gpu": "11",
           "uuid": "GPU-2e198102-8223-da7b-4944-2df0e9400916"
         }
       ],
@@ -371,11 +407,11 @@
             "--query-gpu=uuid,name,driver_version,memory.used,memory.total,utilization.gpu",
             "--format=csv,noheader,nounits"
           ],
-          "end_ns": 3342584666222475,
+          "end_ns": 3353336376829858,
           "exit_code": 0,
-          "start_ns": 3342584632622916,
+          "start_ns": 3353336343618964,
           "stderr": "",
-          "stdout": "GPU-2e198102-8223-da7b-4944-2df0e9400916, NVIDIA GeForce RTX 4090, 610.57.04, 2888, 24564, 1\n"
+          "stdout": "GPU-2e198102-8223-da7b-4944-2df0e9400916, NVIDIA GeForce RTX 4090, 610.57.04, 4636, 24564, 11\n"
         },
         {
           "command": [
@@ -383,14 +419,14 @@
             "--query-compute-apps=pid,gpu_uuid,used_memory",
             "--format=csv,noheader,nounits"
           ],
-          "end_ns": 3342584699245045,
+          "end_ns": 3353336409599302,
           "exit_code": 0,
-          "start_ns": 3342584666227304,
+          "start_ns": 3353336376834447,
           "stderr": "",
-          "stdout": "1787087, GPU-2e198102-8223-da7b-4944-2df0e9400916, 436\n1787088, GPU-2e198102-8223-da7b-4944-2df0e9400916, 434\n1787205, GPU-2e198102-8223-da7b-4944-2df0e9400916, 386\n186161, GPU-2e198102-8223-da7b-4944-2df0e9400916, 388\n"
+          "stdout": "1787087, GPU-2e198102-8223-da7b-4944-2df0e9400916, 436\n1787088, GPU-2e198102-8223-da7b-4944-2df0e9400916, 434\n1787205, GPU-2e198102-8223-da7b-4944-2df0e9400916, 386\n478132, GPU-2e198102-8223-da7b-4944-2df0e9400916, 590\n755051, GPU-2e198102-8223-da7b-4944-2df0e9400916, 588\n775657, GPU-2e198102-8223-da7b-4944-2df0e9400916, 552\n818188, GPU-2e198102-8223-da7b-4944-2df0e9400916, 388\n"
         }
       ],
-      "start_ns": 3342584632619640
+      "start_ns": 3353336343615818
     },
     "methodology": {
       "cpu_api": "fresh stdlib zlib.decompress each call; ndarray np.frombuffer and memoryview reuse that fresh bytes storage",
@@ -406,9 +442,9 @@
       "validation": "every warmup/sample byte-exact after timer; ndarray/memoryview checks do not call tobytes"
     },
     "native_build": {
-      "build": "/dev/shm/cuda-zlib-lookahead-final-publication-20261009-01a10cd3/cache-candidate/0abf47003c6c53187c1d779287f91ed0c092779f7ceff40d27182a663cbcc6aa/build.json",
-      "build_sha256": "062ac00311ec2fa460d75b8dfe6f2cc0790117036f7888443587bd467e02a044",
-      "cache_key": "0abf47003c6c53187c1d779287f91ed0c092779f7ceff40d27182a663cbcc6aa",
+      "build": "/dev/shm/cuda-zlib-stored-fast-20261009-v1-01a10cd3/cache-candidate/a68e102103d4912f8d19d732dba9f560fa2062499ffcb469f2f83d592ae90d9e/build.json",
+      "build_sha256": "f4b6e0b689ad80cb57a82424670ba9dfccc8c8a50067b7f27c48326ec5802d29",
+      "cache_key": "a68e102103d4912f8d19d732dba9f560fa2062499ffcb469f2f83d592ae90d9e",
       "ffi_targets": [
         "cuda_zlib_compress_sm_89",
         "cuda_zlib_decompress_sm_89",
@@ -440,21 +476,21 @@
         "sources": {
           "batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
           "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
-          "codec_ffi.cu": "892c568342627f59eff0f60dc4785749cee4bac2a8d8efe196e3280dedc1c7e2",
+          "codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0",
           "decoder.cuh": "199aae623c576a7e2c7e6b17dbf93ddd9a84748999bc107fef049bdb7bc39107",
           "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
-          "postprocess.cuh": "31579be73cd0fd6fc120b0ee6accd9267df5ed66c88f9170208bdd506664a38e"
+          "postprocess.cuh": "ca5125639b5691ce3edcc37c4f0c00f88d8470c5073235e5802c375203e7ae81"
         }
       },
-      "library": "/dev/shm/cuda-zlib-lookahead-final-publication-20261009-01a10cd3/cache-candidate/0abf47003c6c53187c1d779287f91ed0c092779f7ceff40d27182a663cbcc6aa/codec_ffi.so",
-      "library_sha256": "b494e40936b99fc322b961c09a92a0fadd371fe371da6cb2b360c6497d806a73"
+      "library": "/dev/shm/cuda-zlib-stored-fast-20261009-v1-01a10cd3/cache-candidate/a68e102103d4912f8d19d732dba9f560fa2062499ffcb469f2f83d592ae90d9e/codec_ffi.so",
+      "library_sha256": "dc462bacda2e7cc17022a0b41d401e5c94491a4015528dc64d3756e8f092f681"
     },
     "profile_resident_sha256": "a50f5b0ca028dcddb50a6eb0a7fdb402d2dae2ed1ab337ecc2e045ba8a8cc7c0"
   },
   "schema": 1,
   "scope": "host compressed bytes through completed consumer output, including transfers/status checks/conversion; byte oracle and file I/O excluded",
   "source_report": "benchmarks/results/host-outputs/rtx4090-float32.json",
-  "source_report_sha256": "c64840173b815f281756509c653ef5a60239537da1f18843d50a25a8fbf63a95",
+  "source_report_sha256": "fd57c05c7127b134df63dfda7aff6bdbc173435b07ed4aa6f6f7b988c344d301",
   "style_helpers_sha256": {
     "benchmarks/plot_results.py": "55963990b310b16d281f60eeaff6ddf09d00e340b0218ef5e14d6c7ecb639f21"
   }

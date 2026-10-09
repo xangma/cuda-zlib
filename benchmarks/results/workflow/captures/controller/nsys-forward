@@ -1,0 +1,10 @@
+#!/tmp/pycbc-jax-conventional-gpu-20261004/venv/bin/python
+import json,os,sys,time
+args=sys.argv[1:]
+if args and args[0]=="profile":
+ for flag in ("--cuda-flush-interval=0","--wait=all"):
+  if flag not in args: args.insert(1,flag)
+command=['/usr/local/bin/nsys']+args
+with open('/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/run-v1/nsys-effective-argv.jsonl',"a") as f:
+ f.write(json.dumps({"pid":os.getpid(),"time_ns":time.time_ns(),"command":command})+"\n")
+os.execvp(command[0],command)

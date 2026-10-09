@@ -1,12 +1,12 @@
 [
   "/tmp/pycbc-jax-conventional-gpu-20261004/venv/bin/python",
-  "/dev/shm/cuda-zlib-workflow-20261009-01a10cd3/source/benchmarks/profile_workflow.py",
+  "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/source/benchmarks/profile_workflow.py",
   "--operation",
   "compress",
   "--output",
-  "/dev/shm/cuda-zlib-workflow-20261009-01a10cd3/matrix-v1/compress/plain-repeat/telemetry.json",
+  "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/run-v1/workflows/compress/plain-repeat/telemetry.json",
   "--source-revision",
-  "7d083ff804e08586aa5c0333f6173a4530de5dd5",
+  "bb00aea62bae71542cbb896b339da4842c976499",
   "--gpu-uuid",
   "GPU-2e198102-8223-da7b-4944-2df0e9400916",
   "--telemetry",
@@ -26,7 +26,7 @@
   "--device",
   "0",
   "--sample-ms",
-  "10",
+  "10.0",
   "--timeout",
   "600.0"
 ]

@@ -1,0 +1,24 @@
+Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:
+
+  Traceback (most recent call last):
+    File "<frozen site>", line 206, in addpackage
+    File "<string>", line 1, in <module>
+    File "<frozen importlib._bootstrap>", line 810, in module_from_spec
+  AttributeError: 'NoneType' object has no attribute 'loader'
+
+Remainder of file ignored
+Traceback (most recent call last):
+  File "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/source/benchmarks/profile_timeline.py", line 487, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/source/benchmarks/profile_timeline.py", line 483, in main
+    return worker(args) if args.worker else supervisor(args)
+                                            ^^^^^^^^^^^^^^^^
+  File "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/source/benchmarks/profile_timeline.py", line 323, in supervisor
+    import pynvml
+ModuleNotFoundError: No module named 'pynvml'
+Collecting data...
+Generating '/tmp/nsys-report-63c9.qdstrm'
+[1/1] [0%                          ] live.nsys-rep[1/1] [0%                          ] live.nsys-rep[1/1] [=======39%                  ] live.nsys-rep[1/1] [=================74%        ] live.nsys-rep[1/1] [====================85%     ] live.nsys-rep[1/1] [=======================96%  ] live.nsys-rep[1/1] [========================100%] live.nsys-rep[1/1] [========================100%] live.nsys-rep
+Generated:
+	/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/run-v1/timeline/live.nsys-rep

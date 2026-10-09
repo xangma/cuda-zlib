@@ -1,19 +1,20 @@
 {
-  "source_revision": "011afd67bfa2d2402706067271dd014e44003260",
-  "capture_started_utc": "2026-10-09T06:38:38.690607+00:00",
+  "capture_started_utc": "2026-10-09T14:42:52.438512+00:00",
   "command": [
     "/usr/local/bin/nsys",
     "profile",
     "--trace=cuda",
     "--cuda-graph-trace=node",
     "--cuda-event-trace=false",
+    "--cuda-flush-interval=0",
+    "--wait=all",
     "--sample=none",
     "--cpuctxsw=none",
+    "--discard-environment=true",
     "--capture-range=cudaProfilerApi",
     "--capture-range-end=stop",
-    "--discard-environment=true",
     "--output",
-    "/dev/shm/cuda-zlib-nsight-stages-20261009-01a10cd3/captures/float32-65536",
+    "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/run-v1/stages/float32-65536",
     "/tmp/pycbc-jax-conventional-gpu-20261004/venv/bin/python",
     "benchmarks/profile_resident.py",
     "--sizes",
@@ -26,7 +27,7 @@
     "20261008",
     "--cuda-profiler-range",
     "--output",
-    "/dev/shm/cuda-zlib-nsight-stages-20261009-01a10cd3/captures/float32-65536-profile.json"
+    "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/run-v1/stages/float32-65536-profile.json"
   ],
   "export_command": [
     "/usr/local/bin/nsys",
@@ -34,14 +35,15 @@
     "--type",
     "sqlite",
     "--output",
-    "/dev/shm/cuda-zlib-nsight-stages-20261009-01a10cd3/captures/float32-65536.sqlite",
-    "/dev/shm/cuda-zlib-nsight-stages-20261009-01a10cd3/captures/float32-65536.nsys-rep"
+    "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/run-v1/stages/float32-65536.sqlite",
+    "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/run-v1/stages/float32-65536.nsys-rep"
   ],
   "kernel_activities": 1,
+  "profile_sha256": "0c6e443411bae09ef50e7eeb17b6e7fcc192eb8a2070ff32e65113ead4b14482",
   "sha256": {
-    "float32-65536.sqlite": "14a7dbaad71bf4b3aab9fcb64cba59e1f339f39b5be810946a4d5c40f24b2eac",
-    "float32-65536.nsys-rep": "421b7af727a5a927ff7f5583064efa1d7567d2900c98062469f07878f0dec765",
-    "float32-65536.log": "47bc2cc7179a0b82fa8b276f7991b6b2c4ca76329e2ca499bdcd8a6d494bb22e"
+    "float32-65536.log": "c39db7abb0202cfed9bb60e7a5798c2067f2a744238334453115765df5be08fe",
+    "float32-65536.nsys-rep": "cc3e81fcc6b3bce072f3e10558482b95570b4f1bda5b4b4e82526453704217f6",
+    "float32-65536.sqlite": "f0f7066ff65feb90a6773149a998e026d5f31974bf64cd090d690b5c38c21858"
   },
-  "profile_sha256": "d160b18f0e997aa54c1419da2b98213a1d87a4d3af5bc8c1c55881dc6a03630e"
+  "source_revision": "bb00aea62bae71542cbb896b339da4842c976499"
 }
