@@ -148,17 +148,17 @@ and checksum reductions. DEFLATE bit parsing still follows stream order.
 ## Performance
 
 On an RTX 4090 with an AMD Threadripper PRO 3995WX, warm **64 MiB** host-byte
-compression measured **6.95–15.52×** the throughput of single-threaded CPU
+compression measured **6.90–14.97×** the throughput of single-threaded CPU
 zlib level 1. Decompression of identical stdlib level-6 streams measured
-**1.10–5.10×** CPU throughput. Both comparisons include uploads, downloads,
+**1.13–5.01×** CPU throughput. Both comparisons include uploads, downloads,
 allocations, codec validation and conversion to Python `bytes`.
 
 At **64 KiB**, CPU compression and decompression were faster for every workload.
-At **1 MiB**, host-byte compression measured **0.99–4.88×** CPU level-1
-throughput. CUDA was faster for four workloads; generated-text compression was
-near parity (**0.99×**), with CPU slightly faster.
-Decompression was faster on CUDA for zeros (**1.50×**) and Gaussian float32
-(**1.44×**). CPU won the other three workloads.
+At **1 MiB**, host-byte compression measured **0.95–4.78×** CPU level-1
+throughput. CUDA was faster for four workloads; CPU was faster for generated
+text (**0.95×**). Decompression was faster on CUDA for zeros
+(**1.28×**) and Gaussian float32 (**1.17×**). CPU won the other three
+workloads.
 Compression sizes differ across codecs; CUDA has no zlib-equivalent level.
 
 These synthetic workloads were measured on a shared workstation; other GPU
@@ -168,9 +168,9 @@ performance or an exact crossover.
 **CPU host-byte workflows were faster for every measured single-file small-input
 case** (256 B, 4 KiB and 64 KiB) than the matching CUDA host-byte workflows.
 With **128 independent 64 KiB files**, host-byte compression measured
-**2.55–17.92×** CPU level-1 throughput. Host-byte decompression measured
-**11.08×** CPU for zeros, **2.23×** for text and **0.98×**
-for random bytes (near parity, with CPU slightly faster).
+**2.54–17.75×** CPU level-1 throughput. Host-byte decompression measured
+**10.30×** CPU for zeros and **2.16×** for text. CPU was faster for
+random bytes (**0.94×**).
 See [small-file results and batch-count plots](BENCHMARKS.md#independent-small-files-on-rtx-4090).
 
 For compiled consumers, [resident checked decode measurements](BENCHMARKS.md#resident-checked-decoding-on-rtx-4090)
