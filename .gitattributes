@@ -1,0 +1,2 @@
+# Preserve raw profiler output, including terminal progress whitespace.
+benchmarks/results/nsight/captures/*.log -whitespace

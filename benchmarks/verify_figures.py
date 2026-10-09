@@ -20,6 +20,7 @@ MANIFESTS = (
     ("manifest.json", "general", "benchmarks/plot_results.py", 15),
     ("small-batch/rtx4090-manifest.json", "batch", "benchmarks/plot_small_batch.py", 18),
     ("resident-checked-manifest.json", "resident", "benchmarks/plot_resident.py", 3),
+    ("nsight/rtx4090-manifest.json", "nsight", "benchmarks/plot_nsight.py", 6),
 )
 
 
@@ -108,6 +109,33 @@ def verify_manifest(name, kind, plotter, count):
             and report["schema_version"] == 1,
             f"{report_name}: expected a complete schema-1 benchmark report")
     check_sources(report, kind)
+    if kind == "nsight":
+        check_hash(repo_path("benchmarks/plot_results.py"), manifest["style_helper_sha256"])
+        require(manifest["warnings"] == {case["name"]: case["warnings"]
+                                        for case in report["cases"] if case["warnings"]},
+                "Nsight diagnostic warnings differ from the normalized report")
+        check_hash(repo_path("benchmarks/benchmark.py"), report["benchmark_sha256"])
+        check_hash(repo_path("benchmarks/extract_nsight.py"), report["extractor_sha256"])
+        artifacts = report["artifact_sha256"]
+        require(isinstance(artifacts, dict) and bool(artifacts),
+                "missing Nsight trace artifacts")
+        for filename, expected in artifacts.items():
+            artifact = repo_path(filename)
+            require(artifact.is_relative_to(ROOT / "benchmarks/results/nsight/captures"),
+                    f"Nsight artifact outside capture directory: {filename}")
+            check_hash(artifact, expected)
+        workloads = {"zeros", "text", "uint32", "float32", "random"}
+        expected_cases = {(workload, size) for workload in workloads
+                          for size in (65536, 1048576, 67108864)} | {("uint32", 131072)}
+        cases = report["cases"]
+        require(len(cases) == 16 and
+                {(case["workload"], case["output_bytes"]) for case in cases} == expected_cases,
+                "Nsight capture matrix is incomplete or duplicated")
+        for case in cases:
+            prefix = f"benchmarks/results/nsight/captures/{case['workload']}-{case['output_bytes']}"
+            required = {prefix + suffix for suffix in
+                        (".nsys-rep", ".log", "-profile.json", "-command.json", "-capture.json", "-export.log")}
+            require(required <= set(artifacts), f"missing raw Nsight artifacts: {prefix}")
     if kind == "batch":
         measured = report["source"]
         require(manifest["source_revision"] == report["source_revision"] and
@@ -151,7 +179,7 @@ def main():
     except (OSError, KeyError, TypeError, ValueError, AttributeError) as error:
         print(f"Benchmark figure verification failed: {error}", file=sys.stderr)
         return 1
-    print(f"Verified 3 manifests, measured source identities and {len(expected)} figure exports.")
+    print(f"Verified {len(MANIFESTS)} manifests, measured source identities and {len(expected)} figure exports.")
     return 0
 
 

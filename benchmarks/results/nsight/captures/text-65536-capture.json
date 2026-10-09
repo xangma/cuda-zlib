@@ -1,0 +1,47 @@
+{
+  "source_revision": "011afd67bfa2d2402706067271dd014e44003260",
+  "capture_started_utc": "2026-10-09T06:38:21.996571+00:00",
+  "command": [
+    "/usr/local/bin/nsys",
+    "profile",
+    "--trace=cuda",
+    "--cuda-graph-trace=node",
+    "--cuda-event-trace=false",
+    "--sample=none",
+    "--cpuctxsw=none",
+    "--capture-range=cudaProfilerApi",
+    "--capture-range-end=stop",
+    "--discard-environment=true",
+    "--output",
+    "/dev/shm/cuda-zlib-nsight-stages-20261009-01a10cd3/captures/text-65536",
+    "/tmp/pycbc-jax-conventional-gpu-20261004/venv/bin/python",
+    "benchmarks/profile_resident.py",
+    "--sizes",
+    "65536",
+    "--workloads",
+    "text",
+    "--samples",
+    "1",
+    "--seed",
+    "20261008",
+    "--cuda-profiler-range",
+    "--output",
+    "/dev/shm/cuda-zlib-nsight-stages-20261009-01a10cd3/captures/text-65536-profile.json"
+  ],
+  "export_command": [
+    "/usr/local/bin/nsys",
+    "export",
+    "--type",
+    "sqlite",
+    "--output",
+    "/dev/shm/cuda-zlib-nsight-stages-20261009-01a10cd3/captures/text-65536.sqlite",
+    "/dev/shm/cuda-zlib-nsight-stages-20261009-01a10cd3/captures/text-65536.nsys-rep"
+  ],
+  "kernel_activities": 1,
+  "sha256": {
+    "text-65536.sqlite": "79f6f2a514ea8cf3017f567815d0a7a117cf4b160d3c8576bf6e7d0b5376a669",
+    "text-65536.nsys-rep": "3ae01148b405c511bb3654fcbba6f5a578ae0ece277ec4c30c6653ed5b7db0e7",
+    "text-65536.log": "05e8234082a1ce9a4afc4315b4a94c21935eb1dfed4629e04c939f59bb89401b"
+  },
+  "profile_sha256": "47561dd92e0ee056998c043239dac0e0d6670cf54dab8960cd8a976e3a47a04f"
+}

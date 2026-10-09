@@ -177,6 +177,10 @@ For compiled consumers, [resident checked decode measurements](BENCHMARKS.md#res
 report completed JIT latency without uploads or host status transfers. That
 dataset has a separate timing scope and does not report CPU speedup.
 
+[Nsight stage profiles](PROFILING.md) show recorded GPU kernel time and execution
+timelines, with raw captures and source identities. These instrumented
+diagnostics have a separate scope from the benchmark timings.
+
 Eligible dense serial blocks parse tokens and emit reference roots concurrently
 on XLA's stream, using a shared FIFO with two 32-token slots. A conservative
 whole-stream cost gate keeps literal-heavy, short and mixed serial workloads on

@@ -11,6 +11,9 @@ checks; host-byte measurements include packing, transfers and byte copies.
 | Independent small files | 256 B, 4 KiB, 64 KiB; 1, 8, 32, 128 files | Compiled resident calls and synchronous host-byte calls | Same-host CPU processing the same files |
 | Resident checked decode | 64 KiB–64 MiB; five workloads | One completed checked `jax.jit` call | None; no CPU speedup inferred |
 
+[Nsight stage profiles](PROFILING.md) provide a separate, instrumented view of
+decoding kernels and their execution timeline. They are not benchmark samples.
+
 Compression levels are not equivalent across codecs. Read throughput alongside
 encoded size. These synthetic workloads were measured on a shared workstation;
 other GPU compute was observed during all three runs. The measurements do not
