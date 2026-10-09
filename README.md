@@ -166,28 +166,28 @@ and checksum reductions. DEFLATE bit parsing still follows stream order.
 ## Performance
 
 On an RTX 4090 with an AMD Threadripper PRO 3995WX, warm **64 MiB** host-byte
-compression measured **6.90–14.97×** the throughput of single-threaded CPU
+compression measured **5.78–15.10×** the throughput of single-threaded CPU
 zlib level 1. Decompression of identical stdlib level-6 streams measured
-**1.13–5.01×** CPU throughput. Both comparisons include uploads, downloads,
+**1.28–4.96×** CPU throughput. Both comparisons include uploads, downloads,
 allocations, codec validation and conversion to Python `bytes`.
 
 At **64 KiB**, CPU compression and decompression were faster for every workload.
-At **1 MiB**, host-byte compression measured **0.95–4.78×** CPU level-1
+At **1 MiB**, host-byte compression measured **0.91–4.55×** CPU level-1
 throughput. CUDA was faster for four workloads; CPU was faster for generated
-text (**0.95×**). Decompression was faster on CUDA for zeros
-(**1.28×**) and Gaussian float32 (**1.17×**). CPU won the other three
+text (**0.91×**). Decompression was faster on CUDA for zeros
+(**1.47×**) and Gaussian float32 (**1.23×**). CPU won the other three
 workloads.
 Compression sizes differ across codecs; CUDA has no zlib-equivalent level.
 
-These synthetic workloads were measured on a shared workstation; other GPU
-compute was observed during collection. The results do not establish isolated
-performance or an exact crossover.
+These synthetic workloads were measured on a shared workstation. Device
+snapshots do not establish isolation, and the results do not identify an exact
+crossover.
 
 **CPU host-byte workflows were faster for every measured single-file small-input
 case** (256 B, 4 KiB and 64 KiB) than the matching CUDA host-byte workflows.
 With **128 independent 64 KiB files**, host-byte compression measured
-**2.54–17.75×** CPU level-1 throughput. Host-byte decompression measured
-**10.30×** CPU for zeros and **2.16×** for text. CPU was faster for
+**2.49–18.69×** CPU level-1 throughput. Host-byte decompression measured
+**9.67×** CPU for zeros and **1.97×** for text. CPU was faster for
 random bytes (**0.94×**).
 See [small-file results and batch-count plots](BENCHMARKS.md#independent-small-files-on-rtx-4090).
 

@@ -138,6 +138,8 @@ def test_extra_host_launch_without_activity_is_rejected(trace):
     ("describe_candidates_counted", "description"),
     ("emit_blocks_pipeline", "emission"),
     ("fixed_summaries", "description"),
+    ("<unnamed>::ProbeStoredBlocks(unsigned char *)", "chain_selection"),
+    ("<unnamed>::CopyStoredBlocks(unsigned char *)", "emission"),
 ])
 def test_stage_mapping_uses_exact_outer_symbol(name, stage):
     assert extractor.kernel_stage(name) == stage

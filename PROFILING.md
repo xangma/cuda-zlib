@@ -7,6 +7,10 @@ recorded kernels across input types and sizes. Use [benchmarks](BENCHMARKS.md)
 for throughput, latency and CPU comparisons; these instrumented diagnostics
 have different timing scopes.
 
+The captures use source
+[`bb00aea`](https://github.com/xangma/cuda-zlib/tree/bb00aea62bae71542cbb896b339da4842c976499),
+with runtime, harness and loaded-native identities recorded in each report.
+
 ## Synchronized workflow timelines
 
 Both operations use the same seeded 64 MiB Gaussian float32 payload, two complete
@@ -59,26 +63,26 @@ validation and time between annotations:
 
 | Condition, in recorded order | Compression (ms/file) | Decompression (ms/file) |
 | --- | ---: | ---: |
-| Plain, no telemetry or NVTX | 681.8 | 157.0 |
-| Process-tree telemetry | 671.2 | 153.5 |
-| Telemetry + CUDA/NVTX | 668.5 | 152.7 |
-| Telemetry + CUDA/NVTX/OSRT | 667.7 | 155.8 |
-| Plain repeat | 671.4 | 154.3 |
+| Plain, no telemetry or NVTX | 683.5 | 158.5 |
+| Process-tree telemetry | 675.5 | 164.2 |
+| Telemetry + CUDA/NVTX | 677.4 | 158.1 |
+| Telemetry + CUDA/NVTX/OSRT | 677.9 | 162.8 |
+| Plain repeat | 685.3 | 158.1 |
 
 The large host costs persist in both plain controls. These sequential shared-host
-runs do not isolate small observer effects, but do not support Nsight as the
-main cause of the long download/check interval.
+runs do not separate instrumentation effects from system variation, and do not
+support Nsight as the main cause of the long download/check interval.
 
 Median phase times in the CUDA/NVTX capture separate the costs:
 
 | Phase | Compression (ms) | Decompression (ms) |
 | --- | ---: | ---: |
-| Completed codec call | 80.94 | 26.70 |
-| Metadata materialization | 0.37 | 0.39 |
-| Output materialization | 52.01 | 52.08 |
-| Recorded output D2H activity within that phase | 3.33 | 3.55 |
-| Host array → Python bytes | 48.66 | 51.52 |
-| Output validation | 461.65 | 5.44 |
+| Completed codec call | 93.58 | 30.04 |
+| Metadata materialization | 0.38 | 0.40 |
+| Output materialization | 51.20 | 52.29 |
+| Recorded output D2H activity within that phase | 3.44 | 3.39 |
+| Host array → Python bytes | 47.21 | 52.15 |
+| Output validation | 458.26 | 5.52 |
 
 The D2H row is contained in output materialization. Phase medians need not add;
 container annotations and gaps have separate scopes. Compression's large
@@ -105,15 +109,15 @@ remain inside. The native build and payload match the workflow captures.
 
 | Host route | Compression batch wall time (ms/file) | Decompression batch wall time (ms/file) |
 | --- | ---: | ---: |
-| Ordinary `np.asarray` | 657.5 | 149.5 |
-| Pinned host transfer, serial | 602.9 | 90.8 |
-| Pinned host transfer, depth-two queue | 602.4 | 89.6 |
+| Ordinary `np.asarray` | 685.6 | 151.4 |
+| Pinned host transfer, serial | 626.2 | 95.9 |
+| Pinned host transfer, depth-two queue | 616.1 | 95.2 |
 
-For decompression, ordinary output materialization has medians of **52.9 ms wall
-time**, **44.8 ms calling-thread CPU time**, and **16,385 process minor faults**.
-Pinned output materialization takes **3.4 ms wall time**, **0.29 ms thread CPU**,
+For decompression, ordinary output materialization has medians of **52.7 ms wall
+time**, **44.9 ms calling-thread CPU time**, and **16,385 process minor faults**.
+Serial pinned output materialization takes **3.7 ms wall time**, **0.29 ms thread CPU**,
 and **zero process minor faults** after warmup. Compression shows the same pattern
-(52.2 ms versus 3.4 ms materialization). High thread CPU and minor faults support
+(52.0 ms versus 3.7 ms materialization). High thread CPU and minor faults support
 host allocation/first-touch as a substantial cost; process fault counters can
 also include concurrent JAX activity and do not identify an allocator function.
 Major-fault medians are zero.
@@ -126,8 +130,8 @@ these diagnostic modes.
 
 For a complete public-API comparison with fresh host inputs and matching CPU
 output types, see [consumer output formats](BENCHMARKS.md#consumer-output-formats-on-rtx-4090).
-The 64 MiB float32 measurements are 30.7 ms for a CUDA array, 31.1 ms for a
-memoryview and 84.5 ms for Python bytes, with validation outside timing.
+The 64 MiB float32 measurements are 34.9 ms for CUDA output as a host array,
+35.7 ms for a memoryview and 87.4 ms for Python bytes, with validation outside timing.
 The [file example](examples/decompress_file.py) writes the shared memoryview
 without constructing a full-size Python bytes output. These consumer timings
 have a separate scope from the resident-input diagnostic above.
@@ -138,7 +142,9 @@ retains at most two results. Its batch totals are close to serial pinned results
 this run does not establish a useful overlap gain. Per-case queue latency has a
 different scope from batch time per file, and actual GPU overlap is unproven
 without a matching trace. The fixed mode order and shared workstation also
-leave allocation/cache/device-state effects possible.
+leave allocation/cache/device-state effects possible. Queued decompression output
+materialization has a 26.9 ms median, including scheduling and completion waits;
+this phase is not an isolated D2H copy measurement.
 
 A separate cache probe takes about 52 ms for a fresh ordinary host conversion,
 then about 0.07 ms for a second conversion of the same result. That second call
@@ -180,6 +186,13 @@ bracket's host/CUDA alignment uncertainty. Resource sampling has its own wider
 query windows. Missing observations remain gaps. NVML utilization has a native
 reporting window that polling cannot improve.
 
+The detailed compression/decompression captures recorded 437/260 resource
+samples, with median intervals of 41.7/41.6 ms and origin half-brackets of
+57.895/46.563 µs. The coarse decode capture recorded 233 samples at a median
+46.5 ms interval, with a 40.181 µs origin half-bracket. These are achieved
+query cadences and host/CUDA alignment bounds, rather than 10 ms resource
+resolution. Other GPU processes held allocations during these captures.
+
 Every expected host range is checked against the trace and clock brackets.
 Collection warnings retain process scope in reports and manifests. Scheduling
 information is absent, so intervals without recorded GPU activity are not
@@ -203,7 +216,7 @@ is spent.
 
 The captures use an RTX 4090 on a shared workstation, stdlib zlib level-6 input
 streams, and source revision
-[`011afd67bfa2d2402706067271dd014e44003260`](https://github.com/xangma/cuda-zlib/tree/011afd67bfa2d2402706067271dd014e44003260).
+[`bb00aea62bae71542cbb896b339da4842c976499`](https://github.com/xangma/cuda-zlib/tree/bb00aea62bae71542cbb896b339da4842c976499).
 The matrix covers five synthetic workloads at 64 KiB, 1 MiB and 64 MiB,
 plus a 128 KiB integer stream. Inputs are already on the GPU. Native build,
 compilation, payload generation, upload, host status reads and output byte
@@ -231,19 +244,19 @@ equal bar lengths do not imply equal decoding time. Guarded launches count
 even when a kernel takes an early exit.
 
 At 64 MiB, emission has the largest recorded share for zeros, text and integer
-counters; discovery has the largest share for float32 and random bytes.
-The 128 KiB integer timeline below spends **98.3%** of recorded kernel time in
-token description and emission combined. This variation makes workload-specific
+counters; discovery leads for float32, and stored-block chain validation leads
+for random bytes. The 128 KiB integer timeline below spends **98.6%** of recorded
+kernel time in token description and emission combined. This variation makes workload-specific
 profiles useful when choosing what to optimize.
 
 | Stage | Work represented by the recorded kernels |
 | --- | --- |
-| Fused decode | Small-stream decoding and its internal checks in one kernel; internal stages cannot be timed separately here |
-| Framing | Validate stream framing and initialize the general decoder |
+| Fused decode | Combined stream parsing, output emission and internal checks; work within each kernel cannot be timed separately here |
+| Framing | Validate stream framing and initialize or clear decoder output |
 | Discovery | Find and validate possible block starts; finalize candidate storage |
 | Sorting | CUB radix sort of candidate positions |
 | Token description | Parse candidate blocks and optional fixed-block summaries; record extents and output sizes |
-| Chain selection | Select the valid block chain |
+| Chain selection | Select the valid block chain, including validation of stored-only block chains |
 | Emission | Emit literal or reference roots and stored bytes using the selected emitters |
 | Refinement | Resolve reference roots |
 | Checksum | Write output bytes and compute/reduce Adler-32 |
@@ -311,7 +324,7 @@ file with the command above. Then run:
 python benchmarks/extract_nsight.py --capture-dir /tmp/cuda-zlib-captures \
   --stage-receipt benchmarks/results/nsight/captures/STAGE.json \
   --native-receipt benchmarks/results/nsight/captures/native.json \
-  --source-revision 011afd67bfa2d2402706067271dd014e44003260 \
+  --source-revision bb00aea62bae71542cbb896b339da4842c976499 \
   --reexported-sqlite --output /tmp/rtx4090-decode.json
 ```
 

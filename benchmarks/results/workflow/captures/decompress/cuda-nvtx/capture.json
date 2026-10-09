@@ -3,47 +3,47 @@
     "command": {
       "path": "command.json",
       "published_path": "benchmarks/results/workflow/captures/decompress/cuda-nvtx/command.json",
-      "sha256": "47015795e06825be69cac17856bb6884c565cfa456723bdb3e2e9e9fea394e8b"
+      "sha256": "a7e6014dbc08f3e1ac5af75b7b3d2d1f8dcd921e3c63f0c297f4b6aa686b2822"
     },
     "export_log": {
       "path": "export.log",
       "published_path": "benchmarks/results/workflow/captures/decompress/cuda-nvtx/export.log",
-      "sha256": "410361bf15780642a2f4e5983e8f7073e36447730ec65104634d8751abb403da"
+      "sha256": "d243bb6d6e16e6a21c74934a237019a7af65310253aa512bfd0311ebc294ad9e"
     },
     "log": {
       "path": "capture.log",
       "published_path": "benchmarks/results/workflow/captures/decompress/cuda-nvtx/capture.log",
-      "sha256": "e725c2c36d4c7485f773e0ae7cad7409dd9edc22f0e0785013747d9c080d303c"
+      "sha256": "e26dd272b7ff1ffd3f8c61bdf24ab6a32ecb43efc5e677fd14a7dd1b7749dbda"
     },
     "nsys_report": {
       "path": "capture.nsys-rep",
       "published_path": "benchmarks/results/workflow/captures/decompress/cuda-nvtx/capture.nsys-rep",
-      "sha256": "fc6716cc3c7a3787c4cdaaac26cffccd66341f9a47d14215e5a6c2c530359ccb"
+      "sha256": "d6f865377108baf76b31f3381c26f70943648495c6d38ebc3b1bd92d3e0e9836"
     },
     "sqlite": {
       "path": "capture.sqlite",
       "private": true,
-      "sha256": "a10d21850e6548548b3c0cb864b419d5675eda84b5346c8202c58774f10b1f77"
+      "sha256": "4d5a3dd423738c38ea8eda319895b3e0c4710bedf1a0140d4d727712102d665d"
     },
     "telemetry": {
       "path": "telemetry.json",
       "published_path": "benchmarks/results/workflow/captures/decompress/cuda-nvtx/telemetry.json",
-      "sha256": "86c8e1bbe0edb224b4d3d41897036960a6626a8462728fa323bf1c8466cdbac0"
+      "sha256": "3ec01a139161c751f17bbe9156a291b2680333ecb9e9909ce902c2c67e6d23de"
     },
     "worker_log": {
       "path": "telemetry-worker.log",
       "published_path": "benchmarks/results/workflow/captures/decompress/cuda-nvtx/telemetry-worker.log",
-      "sha256": "696fc8f3440ce100c490f50ac670d6b2fdb263a0d837ab487a6d78e5ce4ad146"
+      "sha256": "747421433e041ec3c29ff73e9204ca63d2f93a4912442f51d7426f955de2e00a"
     },
     "worker_result": {
       "path": "telemetry-worker.json",
       "published_path": "benchmarks/results/workflow/captures/decompress/cuda-nvtx/telemetry-worker.json",
-      "sha256": "31af3cb2fd71e845d7c1254acfcfb9908757bb61b21461970aaced263b9819f9"
+      "sha256": "35d26f2995a219cd8a17513521b94c492eadbdb44c4c22c5ce0977ced31fcc8b"
     }
   },
-  "capture_started_utc": "2026-10-09T11:02:17.296132+00:00",
+  "capture_started_utc": "2026-10-09T14:56:10.666629+00:00",
   "runner_sha256": "9d860bc8e688b4b598e999eb219900e8a766556a20acbed4b2b15083fc797d3b",
-  "source_revision": "7d083ff804e08586aa5c0333f6173a4530de5dd5",
+  "source_revision": "bb00aea62bae71542cbb896b339da4842c976499",
   "toolchain": {
     "driver": "610.57.04",
     "nsys": "NVIDIA Nsight Systems version 2026.1.3.425-261338342291v0"

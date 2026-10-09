@@ -82,7 +82,9 @@ extern "C" __global__ void write_adler_parts(
 }
 extern "C" __global__ void adler_parts(
     const unsigned char* data, unsigned int size,
-    unsigned long long* partial_a, unsigned long long* partial_b) {
+    unsigned long long* partial_a, unsigned long long* partial_b,
+    const unsigned int* parser_status = nullptr) {
+  if (parser_status && *parser_status) return;
   __shared__ unsigned long long a[256], b[256];
   unsigned int i = blockIdx.x * 4096u + threadIdx.x;
   unsigned long long sa = 0, sb = 0;
@@ -109,9 +111,11 @@ extern "C" __global__ void adler_parts(
 extern "C" __global__ void adler_finish(
     const unsigned long long* partial_a,
     const unsigned long long* partial_b, unsigned int parts,
-    unsigned int size, unsigned int* checksum, const DecodeState* state = nullptr) {
+    unsigned int size, unsigned int* checksum, const DecodeState* state = nullptr,
+    const unsigned int* parser_status = nullptr) {
   // Compression has no decode state. Failed decoding leaves partials unwritten.
   if (state && (state->status || state->active)) return;
+  if (parser_status && *parser_status) return;
   __shared__ unsigned long long a[256], b[256];
   unsigned long long sa = 0, sb = 0;
   for (unsigned int i = threadIdx.x; i < parts; i += 256u) {

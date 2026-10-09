@@ -1,0 +1,90 @@
+{
+  "complete": true,
+  "controller_pid": 1133420,
+  "dependencies": {
+    "driver": "610.57.04",
+    "gpu_uuid": "GPU-2e198102-8223-da7b-4944-2df0e9400916",
+    "nvidia_ml_py": "13.615.71",
+    "nvtx_library": "/usr/local/cuda-12.1/targets/x86_64-linux/lib/libnvToolsExt.so.1.0.0",
+    "nvtx_sha256": "847d78f275c8cc97442a278073204bdc1a0009ffc2559bf7248c70d92105dfdc",
+    "psutil": "6.1.1",
+    "psutil_origin": "/home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/psutil/__init__.py",
+    "pynvml_origin": "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/deps/pynvml.py",
+    "pynvml_sha256": "2828e66b483bec218f461314f6da96c1e56330ed4b297a20b3444b4c43cdd14e",
+    "python": "3.12.8 | packaged by conda-forge | (main, Dec  5 2024, 14:24:40) [GCC 13.3.0]"
+  },
+  "dependencies_sha256": "bab5499ea920abd6ab47202f78a616f490c38bb3d6533e221e7ed510b229e0cb",
+  "deps_path": "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/deps",
+  "deps_sha256": {
+    "example.py": "67e5318ed260f263e1f476e2f23147a8000e66e4dd5b75ec0e30f030bcd142d6",
+    "nvidia_ml_py-13.615.71.dist-info/INSTALLER": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508",
+    "nvidia_ml_py-13.615.71.dist-info/METADATA": "df52f2f04ac78c5259e776be3194ae3bfee274cadc0623576be6a699621ef6a8",
+    "nvidia_ml_py-13.615.71.dist-info/RECORD": "9f21004f1f196007067979c193df1a97f341f3b992303e845b2b1d4217b13426",
+    "nvidia_ml_py-13.615.71.dist-info/REQUESTED": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "nvidia_ml_py-13.615.71.dist-info/WHEEL": "61532836a2b3111b7ec23519c09df7c41180c27165fb872a6d8913b566b88ad1",
+    "nvidia_ml_py-13.615.71.dist-info/top_level.txt": "c0b20d480d562a786c1a02ac6ff9ee8f9d59090ad768de6a862a132f9ea0f7c0",
+    "pynvml.py": "2828e66b483bec218f461314f6da96c1e56330ed4b297a20b3444b4c43cdd14e"
+  },
+  "elapsed_seconds": 307.10383565630764,
+  "ended_utc": "2026-10-09T14:58:03.206775+00:00",
+  "failed_timeline_archive": "timeline-failed-missing-pynvml",
+  "failed_timeline_sha256": {
+    "timeline-failed-missing-pynvml/live-command.json": "eed563bb61ba2052975346d05561c5c75507698dadf260c29bf36848fcfec5c6",
+    "timeline-failed-missing-pynvml/live.launch.json": "436f23cf7e70bb384a4d044c8dcc4dd0c7a04121c9e8a882baaf2e66010ecac6",
+    "timeline-failed-missing-pynvml/live.log": "70b1836ee26f0df06df199ff08e4328371b6fbd6188d8b17ec24d97085040e32",
+    "timeline-failed-missing-pynvml/live.nsys-rep": "04f16ec3113787726798afbfa658d531c666bffecd7ccf833ce379f995994bb1"
+  },
+  "original_driver_sha256": {
+    "common.py": "ec8305ced807d0734a5608379b4f2737f881ecdc711b73dee8c257f751de54e7",
+    "refresh_controller.py": "aa17e73a84e9f9ed71cab3aa81c1a1eef2c9c5669202f7909c1c63072599c32c"
+  },
+  "previous_controller_pid": 671844,
+  "previous_failure_sha256": "851114c402bcbd7650c5281f3475cedaa642863617673ff388855f95caacb4da",
+  "pythonpath": "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/source/src:/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/deps:",
+  "resumed_driver_sha256": {
+    "common.py": "fb2e24208ababd677fe6f57786c90f3696366d5b408e20feb39076b2aca886ac",
+    "ingest.py": "aedd300521ba7f0f16d41f300044eeb471ad7a86905a159c4b064fd4a4e62e6e",
+    "refresh_controller.py": "aa17e73a84e9f9ed71cab3aa81c1a1eef2c9c5669202f7909c1c63072599c32c",
+    "resume.py": "c1f8ce21ccdbeb3db412b4c27b6453ae87cf67db252ad70363ada4000a3fd953"
+  },
+  "schema_version": 1,
+  "source_revision": "bb00aea62bae71542cbb896b339da4842c976499",
+  "started_utc": "2026-10-09T14:52:56.103723+00:00",
+  "validation": {
+    "host_outputs_checked": 252,
+    "reused_report_sha256": {
+      "results/host-outputs.json": "fd57c05c7127b134df63dfda7aff6bdbc173435b07ed4aa6f6f7b988c344d301",
+      "results/nsight.json": "dc8289762ffc0d0dc7f1cc6916a1dc0981fc442ad7a41166aebb60075c7860d8",
+      "results/resident-checked-rtx4090-20261009.json": "404d60f265ebb8e881ef16e355dd1cf53c7d9cb39397de8c17319a779bc2d426",
+      "results/rtx4090-20261009.json": "c742fc712616244d97ef63f61a86ef5b110167ea93bddb49e3af87080459156c",
+      "results/small-batch-rtx4090-20261009.json": "23aabdaff06e416d24c924c905638795e2eaa521f6b008b995c67e17ba181aad"
+    },
+    "stage_cases": 16,
+    "standard": [
+      {
+        "cases": 15,
+        "kind": "general",
+        "published_sha256": "c742fc712616244d97ef63f61a86ef5b110167ea93bddb49e3af87080459156c",
+        "raw_sha256": "c742fc712616244d97ef63f61a86ef5b110167ea93bddb49e3af87080459156c",
+        "resident_revision_annotation": false,
+        "samples": 1875
+      },
+      {
+        "cases": 36,
+        "kind": "batch",
+        "published_sha256": "23aabdaff06e416d24c924c905638795e2eaa521f6b008b995c67e17ba181aad",
+        "raw_sha256": "23aabdaff06e416d24c924c905638795e2eaa521f6b008b995c67e17ba181aad",
+        "resident_revision_annotation": false,
+        "samples": 2772
+      },
+      {
+        "cases": 30,
+        "kind": "resident",
+        "published_sha256": "87628a6c43564e0aa15d666252704eb779b9b4d258938cbc4c2aa807a4d78a99",
+        "raw_sha256": "404d60f265ebb8e881ef16e355dd1cf53c7d9cb39397de8c17319a779bc2d426",
+        "resident_revision_annotation": true,
+        "samples": 930
+      }
+    ]
+  }
+}

@@ -1,17 +1,17 @@
 {
   "exports": {
-    "compress-warmed-loop.pdf": "963357e2889ff881321fd9a9660d4031fa54a911aa1430e7c76ed4399de2f4e7",
-    "compress-warmed-loop.png": "ca0d59354141087e4d8fa2457e99fb2c4a7f19ef5f1f2b9e856ab2bd9048f0d3",
-    "compress-warmed-loop.svg": "b2a1b241e4082cd914ce0645391651660be747ce1748b35b40d28d0b7d99b1f1",
-    "compress-whole-process.pdf": "86e016672e7c2a332afcad98302e701e0c6478e26c2b5fc942536e466fb0df17",
-    "compress-whole-process.png": "1fa0db621c3783a66d7586da31377bb1c7888b5a74e052ab605ef53e77034987",
-    "compress-whole-process.svg": "17ba7c1d0db5c49dd0d06c2bf96277bad041913b19150d2d4cb6e0c2d27528e6",
-    "decompress-warmed-loop.pdf": "1623f5a9f1d554dd2e58cd9b1e533ac1962430e33cbb64c0c84932397ba68b76",
-    "decompress-warmed-loop.png": "153aa73cfc4bd15c3eae4f74c7310ecc48a528aa9e6f1d9bce75b203481aefa9",
-    "decompress-warmed-loop.svg": "5445ffc2ef388450f952031984105952d111f6f5acd8e614a388cec552c5684e",
-    "decompress-whole-process.pdf": "b41e90c4939e9c4c435b23ecacb2714ebc77c315a9f57494598aa836610e46ab",
-    "decompress-whole-process.png": "431c0bab52974561a888e38c78ebdc361e160fc074cffa70e2b3d2466e38c142",
-    "decompress-whole-process.svg": "63c0606d16db28781153a4833b41c54c8a37cece5bea2818d81042012d0d9e2a"
+    "compress-warmed-loop.pdf": "9ef2f78b9d116fc4a5b1fbab02648b96b86205aa180fe51d1a6a3e4b8d8ebdac",
+    "compress-warmed-loop.png": "38eb08eb8550d32939026ce7d3878ebddb2739724161f850cb36e3ee4b40a493",
+    "compress-warmed-loop.svg": "1c2fde8ced4409d3cc063b520eac546e6d6adb19bfcb8ccd1f179e5171b8e34b",
+    "compress-whole-process.pdf": "7484ce56b1225db110497792c5d5eda13d22eb05ae3b8457a84f8767e9770f3b",
+    "compress-whole-process.png": "209e8b71a96360ebe7f06eb85a33a4c98487c20806cfaa8938cf8189dc0f2b6f",
+    "compress-whole-process.svg": "e2f019016d9a6b20644d986f9cf21bbfbd2525ca42f33f2dc9ed455bbf0529ae",
+    "decompress-warmed-loop.pdf": "c4e5c45235b95022f396a78b4a1295686adc0c6d767d7998ce814b1e70e8ac23",
+    "decompress-warmed-loop.png": "bcc9dbcbf2d4a7add3692ab387baf4e31077fd74f09a11120dbdab0fe0feec48",
+    "decompress-warmed-loop.svg": "feefbb1983ffe487abe3c7e93c6b6e01a3a08ff5e213245809c43d9c221730fa",
+    "decompress-whole-process.pdf": "9613887794cc400a449893a69b68efd4140fb74f6e800584a04efeb1df56bc83",
+    "decompress-whole-process.png": "ed0cd2f2838dc38387d67a71cc34d9fecf49cb356c453eb99530ca287ae03456",
+    "decompress-whole-process.svg": "79c08e2baa72b94d7f90c1d8922d2556c2402ce43ca27946fe5ac085d8172304"
   },
   "figures": {
     "compress-warmed-loop": {
@@ -22,15 +22,15 @@
         "other": 0
       },
       "display_bounds_ns": {
-        "end_ns": 17689808713,
-        "start_ns": 4239024309
+        "end_ns": 17835798171,
+        "start_ns": 4206854685
       },
       "exports": {
-        "compress-warmed-loop.pdf": "963357e2889ff881321fd9a9660d4031fa54a911aa1430e7c76ed4399de2f4e7",
-        "compress-warmed-loop.png": "ca0d59354141087e4d8fa2457e99fb2c4a7f19ef5f1f2b9e856ab2bd9048f0d3",
-        "compress-warmed-loop.svg": "b2a1b241e4082cd914ce0645391651660be747ce1748b35b40d28d0b7d99b1f1"
+        "compress-warmed-loop.pdf": "9ef2f78b9d116fc4a5b1fbab02648b96b86205aa180fe51d1a6a3e4b8d8ebdac",
+        "compress-warmed-loop.png": "38eb08eb8550d32939026ce7d3878ebddb2739724161f850cb36e3ee4b40a493",
+        "compress-warmed-loop.svg": "1c2fde8ced4409d3cc063b520eac546e6d6adb19bfcb8ccd1f179e5171b8e34b"
       },
-      "kernel_union_ns": 1467776298,
+      "kernel_union_ns": 1764291877,
       "operation": "compress",
       "view": "measured_loop"
     },
@@ -42,15 +42,15 @@
         "other": 0
       },
       "display_bounds_ns": {
-        "end_ns": 18260071669,
-        "start_ns": 1841608
+        "end_ns": 18386899518,
+        "start_ns": 1229122
       },
       "exports": {
-        "compress-whole-process.pdf": "86e016672e7c2a332afcad98302e701e0c6478e26c2b5fc942536e466fb0df17",
-        "compress-whole-process.png": "1fa0db621c3783a66d7586da31377bb1c7888b5a74e052ab605ef53e77034987",
-        "compress-whole-process.svg": "17ba7c1d0db5c49dd0d06c2bf96277bad041913b19150d2d4cb6e0c2d27528e6"
+        "compress-whole-process.pdf": "7484ce56b1225db110497792c5d5eda13d22eb05ae3b8457a84f8767e9770f3b",
+        "compress-whole-process.png": "209e8b71a96360ebe7f06eb85a33a4c98487c20806cfaa8938cf8189dc0f2b6f",
+        "compress-whole-process.svg": "e2f019016d9a6b20644d986f9cf21bbfbd2525ca42f33f2dc9ed455bbf0529ae"
       },
-      "kernel_union_ns": 1615117700,
+      "kernel_union_ns": 1937442785,
       "operation": "compress",
       "view": "whole_process"
     },
@@ -62,15 +62,15 @@
         "other": 0
       },
       "display_bounds_ns": {
-        "end_ns": 10179462845,
-        "start_ns": 7046042259
+        "end_ns": 10274705580,
+        "start_ns": 7032954107
       },
       "exports": {
-        "decompress-warmed-loop.pdf": "1623f5a9f1d554dd2e58cd9b1e533ac1962430e33cbb64c0c84932397ba68b76",
-        "decompress-warmed-loop.png": "153aa73cfc4bd15c3eae4f74c7310ecc48a528aa9e6f1d9bce75b203481aefa9",
-        "decompress-warmed-loop.svg": "5445ffc2ef388450f952031984105952d111f6f5acd8e614a388cec552c5684e"
+        "decompress-warmed-loop.pdf": "c4e5c45235b95022f396a78b4a1295686adc0c6d767d7998ce814b1e70e8ac23",
+        "decompress-warmed-loop.png": "bcc9dbcbf2d4a7add3692ab387baf4e31077fd74f09a11120dbdab0fe0feec48",
+        "decompress-warmed-loop.svg": "feefbb1983ffe487abe3c7e93c6b6e01a3a08ff5e213245809c43d9c221730fa"
       },
-      "kernel_union_ns": 385342631,
+      "kernel_union_ns": 460874745,
       "operation": "decompress",
       "view": "measured_loop"
     },
@@ -82,15 +82,15 @@
         "other": 0
       },
       "display_bounds_ns": {
-        "end_ns": 10730353638,
-        "start_ns": 1937438
+        "end_ns": 10809075497,
+        "start_ns": 1047066
       },
       "exports": {
-        "decompress-whole-process.pdf": "b41e90c4939e9c4c435b23ecacb2714ebc77c315a9f57494598aa836610e46ab",
-        "decompress-whole-process.png": "431c0bab52974561a888e38c78ebdc361e160fc074cffa70e2b3d2466e38c142",
-        "decompress-whole-process.svg": "63c0606d16db28781153a4833b41c54c8a37cece5bea2818d81042012d0d9e2a"
+        "decompress-whole-process.pdf": "9613887794cc400a449893a69b68efd4140fb74f6e800584a04efeb1df56bc83",
+        "decompress-whole-process.png": "ed0cd2f2838dc38387d67a71cc34d9fecf49cb356c453eb99530ca287ae03456",
+        "decompress-whole-process.svg": "79c08e2baa72b94d7f90c1d8922d2556c2402ce43ca27946fe5ac085d8172304"
       },
-      "kernel_union_ns": 424025948,
+      "kernel_union_ns": 509455182,
       "operation": "decompress",
       "view": "whole_process"
     }
@@ -108,7 +108,7 @@
   "measurement_sources": {
     "compress": {
       "harness_sha256": "64aef6db9083c6f55e3c35f0b1c2747fb5428c66fffe38f91b076c300fa67631",
-      "revision": "7d083ff804e08586aa5c0333f6173a4530de5dd5",
+      "revision": "bb00aea62bae71542cbb896b339da4842c976499",
       "sha256": {
         "__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
         "_codec.py": "0a0a5484f90a55cf53530b3dc837a12b2a293d5bb88c0b9426758d17409af5d2",
@@ -116,16 +116,16 @@
         "_encode_kernels.py": "514bd9aba9978010f4a1659209ac0a6b9b0e72a043d6605805c4c698f6d87964",
         "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
         "_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
-        "_postprocess.py": "bfbc7664b4c6255890388716f4e16999676ebe2b37c900c5e41eafad387ea307",
+        "_postprocess.py": "c1ac2370317f08360c857a225bc3be6e96d93d97bc75fe49f9b434954cda8632",
         "jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
         "native/batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
         "native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
-        "native/codec_ffi.cu": "892c568342627f59eff0f60dc4785749cee4bac2a8d8efe196e3280dedc1c7e2"
+        "native/codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0"
       }
     },
     "decompress": {
       "harness_sha256": "64aef6db9083c6f55e3c35f0b1c2747fb5428c66fffe38f91b076c300fa67631",
-      "revision": "7d083ff804e08586aa5c0333f6173a4530de5dd5",
+      "revision": "bb00aea62bae71542cbb896b339da4842c976499",
       "sha256": {
         "__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
         "_codec.py": "0a0a5484f90a55cf53530b3dc837a12b2a293d5bb88c0b9426758d17409af5d2",
@@ -133,11 +133,11 @@
         "_encode_kernels.py": "514bd9aba9978010f4a1659209ac0a6b9b0e72a043d6605805c4c698f6d87964",
         "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
         "_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
-        "_postprocess.py": "bfbc7664b4c6255890388716f4e16999676ebe2b37c900c5e41eafad387ea307",
+        "_postprocess.py": "c1ac2370317f08360c857a225bc3be6e96d93d97bc75fe49f9b434954cda8632",
         "jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
         "native/batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
         "native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
-        "native/codec_ffi.cu": "892c568342627f59eff0f60dc4785749cee4bac2a8d8efe196e3280dedc1c7e2"
+        "native/codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0"
       }
     }
   },
@@ -256,14 +256,14 @@
   "report_evidence": {
     "compress": {
       "artifact_sha256": {
-        "benchmarks/results/workflow/captures/compress/cuda-nvtx/capture.json": "c1cb87e1d67dfd2bc750b6bf3360fdccfe2f34c3d4d3a8fbdb403f192dedb427",
-        "benchmarks/results/workflow/captures/compress/cuda-nvtx/capture.log": "0d5ada1084a0451b6fba54f434b3d4342aff5e226c24f9bd0e3d1ea0dc98293b",
-        "benchmarks/results/workflow/captures/compress/cuda-nvtx/capture.nsys-rep": "e35c96e634c5a85a0524446aee765362946171a7661d2781fdec2f1a8a4ebd45",
-        "benchmarks/results/workflow/captures/compress/cuda-nvtx/command.json": "6465e1e9b72be7abda67c61a59fb276ccd623da1b8295c160889ee684a39b7c8",
-        "benchmarks/results/workflow/captures/compress/cuda-nvtx/export.log": "7fa4f7f54ea700cebbc07a778b3dcb7116a0924174d8d33b1551d2f6288f3c1b",
-        "benchmarks/results/workflow/captures/compress/cuda-nvtx/telemetry-worker.json": "5f27b9a44b77e3ea3f641a933f849522dd895aa730b0179d865141e96e1c6c21",
-        "benchmarks/results/workflow/captures/compress/cuda-nvtx/telemetry-worker.log": "8e4e1dcde628cf820587e4b4647b7f01b083ce5d31c9f13d055b14ea38a7ca93",
-        "benchmarks/results/workflow/captures/compress/cuda-nvtx/telemetry.json": "5d68500ee0f865fd9206e16f180274ebc95c59794197c65aad0b2a53fad01f3b"
+        "benchmarks/results/workflow/captures/compress/cuda-nvtx/capture.json": "69f94dad8464afa7f7cf47dc7c4b88802af06a3dca82ba10c6711742faca7cff",
+        "benchmarks/results/workflow/captures/compress/cuda-nvtx/capture.log": "77988a6bdee978b683f88a08d6e56da5c581c1392f838348e56cba44ad03308a",
+        "benchmarks/results/workflow/captures/compress/cuda-nvtx/capture.nsys-rep": "974d46d613c6ca41ecaef759d840c1b5e23ae23ea4a857d7b4fd9f8d8853bca0",
+        "benchmarks/results/workflow/captures/compress/cuda-nvtx/command.json": "28c78f5c5c684aef0bc64e13a732f577dcc266ae30dc2105fa42f8241fccc149",
+        "benchmarks/results/workflow/captures/compress/cuda-nvtx/export.log": "1df2b924c943c0041d60a4fae0d65e623de8c56d67a22a504582e4e535aad9ec",
+        "benchmarks/results/workflow/captures/compress/cuda-nvtx/telemetry-worker.json": "ccd5cf8de6b62cab16f140deeba9a35c40b4913434bb2c918ab0cdf0f9b0bb5b",
+        "benchmarks/results/workflow/captures/compress/cuda-nvtx/telemetry-worker.log": "02a168a9370d26a2520cb2bf95038d03a96ce03b5534e33703c293a29045ecda",
+        "benchmarks/results/workflow/captures/compress/cuda-nvtx/telemetry.json": "bb49627b9f4d94ffffbc0e8451f15830f0fd97809ac8014b78c4615e63a59a8a"
       },
       "dependencies_sha256": {
         "benchmarks/benchmark.py": "a542c79b14b3380a81fea08e33db9d3f566599c0349f5c1ca1add8d558022f7e",
@@ -271,13 +271,13 @@
         "benchmarks/profile_timeline.py": "785e28fd554721c1b4dac55601dd7c5a8f62bfb4137ddf83d6818b1706fcb5b4"
       },
       "extractor_dependencies_sha256": {
-        "benchmarks/extract_nsight.py": "11056c5e53833ee2aededd221d8f98af0193eb8c29840a58245c979acad457cd",
+        "benchmarks/extract_nsight.py": "94855879e20a2140cba010caa532fbe607c5dacc26ef98367100e4a403b73c78",
         "benchmarks/extract_timeline.py": "1cd4f8aa5b1e8ae2e552bf336b2f711c45d6a392d023c7917ae6319fae5697ca"
       },
       "extractor_sha256": "62aa8c46cd72c1c967686a64cf29486e96de60a016c7af9c3e4abc6633ad88f9",
       "native_build": {
-        "build_sha256": "062ac00311ec2fa460d75b8dfe6f2cc0790117036f7888443587bd467e02a044",
-        "cache_key": "0abf47003c6c53187c1d779287f91ed0c092779f7ceff40d27182a663cbcc6aa",
+        "build_sha256": "f4b6e0b689ad80cb57a82424670ba9dfccc8c8a50067b7f27c48326ec5802d29",
+        "cache_key": "a68e102103d4912f8d19d732dba9f560fa2062499ffcb469f2f83d592ae90d9e",
         "ffi_targets": [
           "cuda_zlib_compress_sm_89",
           "cuda_zlib_decompress_sm_89",
@@ -309,25 +309,25 @@
           "sources": {
             "batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
             "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
-            "codec_ffi.cu": "892c568342627f59eff0f60dc4785749cee4bac2a8d8efe196e3280dedc1c7e2",
+            "codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0",
             "decoder.cuh": "199aae623c576a7e2c7e6b17dbf93ddd9a84748999bc107fef049bdb7bc39107",
             "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
-            "postprocess.cuh": "31579be73cd0fd6fc120b0ee6accd9267df5ed66c88f9170208bdd506664a38e"
+            "postprocess.cuh": "ca5125639b5691ce3edcc37c4f0c00f88d8470c5073235e5802c375203e7ae81"
           }
         },
-        "library_sha256": "b494e40936b99fc322b961c09a92a0fadd371fe371da6cb2b360c6497d806a73"
+        "library_sha256": "dc462bacda2e7cc17022a0b41d401e5c94491a4015528dc64d3756e8f092f681"
       }
     },
     "decompress": {
       "artifact_sha256": {
-        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/capture.json": "1c691bd8f67fcba5f024713ada9f3fe119fb418e92a2a070d4a3dfb647db36e9",
-        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/capture.log": "e725c2c36d4c7485f773e0ae7cad7409dd9edc22f0e0785013747d9c080d303c",
-        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/capture.nsys-rep": "fc6716cc3c7a3787c4cdaaac26cffccd66341f9a47d14215e5a6c2c530359ccb",
-        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/command.json": "47015795e06825be69cac17856bb6884c565cfa456723bdb3e2e9e9fea394e8b",
-        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/export.log": "410361bf15780642a2f4e5983e8f7073e36447730ec65104634d8751abb403da",
-        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/telemetry-worker.json": "31af3cb2fd71e845d7c1254acfcfb9908757bb61b21461970aaced263b9819f9",
-        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/telemetry-worker.log": "696fc8f3440ce100c490f50ac670d6b2fdb263a0d837ab487a6d78e5ce4ad146",
-        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/telemetry.json": "86c8e1bbe0edb224b4d3d41897036960a6626a8462728fa323bf1c8466cdbac0"
+        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/capture.json": "d98337c522af46253a8f328cd90461ebe98df6b9e0445fbeb43ef9ffee3017c2",
+        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/capture.log": "e26dd272b7ff1ffd3f8c61bdf24ab6a32ecb43efc5e677fd14a7dd1b7749dbda",
+        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/capture.nsys-rep": "d6f865377108baf76b31f3381c26f70943648495c6d38ebc3b1bd92d3e0e9836",
+        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/command.json": "a7e6014dbc08f3e1ac5af75b7b3d2d1f8dcd921e3c63f0c297f4b6aa686b2822",
+        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/export.log": "d243bb6d6e16e6a21c74934a237019a7af65310253aa512bfd0311ebc294ad9e",
+        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/telemetry-worker.json": "35d26f2995a219cd8a17513521b94c492eadbdb44c4c22c5ce0977ced31fcc8b",
+        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/telemetry-worker.log": "747421433e041ec3c29ff73e9204ca63d2f93a4912442f51d7426f955de2e00a",
+        "benchmarks/results/workflow/captures/decompress/cuda-nvtx/telemetry.json": "3ec01a139161c751f17bbe9156a291b2680333ecb9e9909ce902c2c67e6d23de"
       },
       "dependencies_sha256": {
         "benchmarks/benchmark.py": "a542c79b14b3380a81fea08e33db9d3f566599c0349f5c1ca1add8d558022f7e",
@@ -335,13 +335,13 @@
         "benchmarks/profile_timeline.py": "785e28fd554721c1b4dac55601dd7c5a8f62bfb4137ddf83d6818b1706fcb5b4"
       },
       "extractor_dependencies_sha256": {
-        "benchmarks/extract_nsight.py": "11056c5e53833ee2aededd221d8f98af0193eb8c29840a58245c979acad457cd",
+        "benchmarks/extract_nsight.py": "94855879e20a2140cba010caa532fbe607c5dacc26ef98367100e4a403b73c78",
         "benchmarks/extract_timeline.py": "1cd4f8aa5b1e8ae2e552bf336b2f711c45d6a392d023c7917ae6319fae5697ca"
       },
       "extractor_sha256": "62aa8c46cd72c1c967686a64cf29486e96de60a016c7af9c3e4abc6633ad88f9",
       "native_build": {
-        "build_sha256": "062ac00311ec2fa460d75b8dfe6f2cc0790117036f7888443587bd467e02a044",
-        "cache_key": "0abf47003c6c53187c1d779287f91ed0c092779f7ceff40d27182a663cbcc6aa",
+        "build_sha256": "f4b6e0b689ad80cb57a82424670ba9dfccc8c8a50067b7f27c48326ec5802d29",
+        "cache_key": "a68e102103d4912f8d19d732dba9f560fa2062499ffcb469f2f83d592ae90d9e",
         "ffi_targets": [
           "cuda_zlib_compress_sm_89",
           "cuda_zlib_decompress_sm_89",
@@ -373,37 +373,37 @@
           "sources": {
             "batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
             "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
-            "codec_ffi.cu": "892c568342627f59eff0f60dc4785749cee4bac2a8d8efe196e3280dedc1c7e2",
+            "codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0",
             "decoder.cuh": "199aae623c576a7e2c7e6b17dbf93ddd9a84748999bc107fef049bdb7bc39107",
             "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
-            "postprocess.cuh": "31579be73cd0fd6fc120b0ee6accd9267df5ed66c88f9170208bdd506664a38e"
+            "postprocess.cuh": "ca5125639b5691ce3edcc37c4f0c00f88d8470c5073235e5802c375203e7ae81"
           }
         },
-        "library_sha256": "b494e40936b99fc322b961c09a92a0fadd371fe371da6cb2b360c6497d806a73"
+        "library_sha256": "dc462bacda2e7cc17022a0b41d401e5c94491a4015528dc64d3756e8f092f681"
       }
     }
   },
   "resource_sample_intervals": {
     "compress": {
-      "maximum_ms": 45.627725,
-      "median_ms": 38.6536575,
-      "minimum_ms": 37.734543
+      "maximum_ms": 55.323943,
+      "median_ms": 41.709447499999996,
+      "minimum_ms": 39.372281
     },
     "decompress": {
-      "maximum_ms": 43.573476,
-      "median_ms": 38.769419,
-      "minimum_ms": 38.266301
+      "maximum_ms": 48.703967,
+      "median_ms": 41.61107,
+      "minimum_ms": 39.533277
     }
   },
   "schema": 1,
   "source_reports": {
     "compress": {
       "path": "benchmarks/results/workflow/rtx4090-compress-float32.json",
-      "sha256": "aa3b32230a5568e488d26c8bb58d87b1701e2daf2d3e3b568e640ab1e44eeb93"
+      "sha256": "c6cd47f4e37f555e8602f878eb7366e6e9780edd73969df2b87b63050570e2e7"
     },
     "decompress": {
       "path": "benchmarks/results/workflow/rtx4090-decompress-float32.json",
-      "sha256": "3cd251cb82503eac14a536d2457c34d774c53c14ec1ebacdfef1ddf85f0b73d5"
+      "sha256": "fb3425e9bf42365f3db3ef10cd5204ce71f00f5b69217064fc5ca0dd302ff070"
     }
   },
   "stage_styles": {
@@ -504,26 +504,26 @@
   },
   "time_origins": {
     "compress": {
-      "half_bracket_ns": 44313.5,
-      "label": "cuda_zlib:workflow-origin:4bb5fcaf1a6940c19c16ba97f6e4ac8f",
+      "half_bracket_ns": 57895.0,
+      "label": "cuda_zlib:workflow-origin:e3f6c4c9892d43de882450af83bd1bbb",
       "method": "NVTX instant to bracketed monotonic midpoint",
-      "monotonic_after_ns": 3340042949550954,
-      "monotonic_before_ns": 3340042949462327,
-      "monotonic_ns": 3340042949506640,
-      "nsight_ns": 338876347,
+      "monotonic_after_ns": 3354074960219861,
+      "monotonic_before_ns": 3354074960104071,
+      "monotonic_ns": 3354074960161966,
+      "nsight_ns": 418179054,
       "rounding": "integer midpoint rounded down; uncertainty rounded up",
-      "uncertainty_ns": 44314
+      "uncertainty_ns": 57895
     },
     "decompress": {
-      "half_bracket_ns": 44474.0,
-      "label": "cuda_zlib:workflow-origin:c7a075b64a76475babb64c0b9e66e030",
+      "half_bracket_ns": 46563.0,
+      "label": "cuda_zlib:workflow-origin:bdf9cc5929c54c7ab5f741e14f118c5c",
       "method": "NVTX instant to bracketed monotonic midpoint",
-      "monotonic_after_ns": 3340157082508302,
-      "monotonic_before_ns": 3340157082419354,
-      "monotonic_ns": 3340157082463828,
-      "nsight_ns": 347235408,
+      "monotonic_after_ns": 3354190543860303,
+      "monotonic_before_ns": 3354190543767177,
+      "monotonic_ns": 3354190543813740,
+      "nsight_ns": 392992116,
       "rounding": "integer midpoint rounded down; uncertainty rounded up",
-      "uncertainty_ns": 44474
+      "uncertainty_ns": 46563
     }
   },
   "units": {
@@ -537,9 +537,9 @@
     "compress": [
       {
         "diagnostic_source": 3,
-        "global_pid": 335831277502464,
+        "global_pid": 301171830947840,
         "pid": null,
-        "recorded_timestamp": 174085203,
+        "recorded_timestamp": 168671096,
         "scope": "other",
         "severity": "Warning",
         "source": "sqlite",
@@ -548,9 +548,9 @@
       },
       {
         "diagnostic_source": 3,
-        "global_pid": 335831277502464,
+        "global_pid": 301171830947840,
         "pid": null,
-        "recorded_timestamp": 174091304,
+        "recorded_timestamp": 168677538,
         "scope": "other",
         "severity": "Warning",
         "source": "sqlite",
@@ -559,9 +559,9 @@
       },
       {
         "diagnostic_source": 3,
-        "global_pid": 335802840121344,
-        "pid": 3238193,
-        "recorded_timestamp": 174092447,
+        "global_pid": 301146228916224,
+        "pid": 1172498,
+        "recorded_timestamp": 168678781,
         "scope": "worker",
         "severity": "Warning",
         "source": "sqlite",
@@ -570,9 +570,9 @@
       },
       {
         "diagnostic_source": 3,
-        "global_pid": 335792924786688,
-        "pid": 3237602,
-        "recorded_timestamp": 174095923,
+        "global_pid": 301138628837376,
+        "pid": 1172045,
+        "recorded_timestamp": 168683039,
         "scope": "collector",
         "severity": "Warning",
         "source": "sqlite",
@@ -581,9 +581,9 @@
       },
       {
         "diagnostic_source": 3,
-        "global_pid": 335831277502464,
+        "global_pid": 301171830947840,
         "pid": null,
-        "recorded_timestamp": 174098528,
+        "recorded_timestamp": 168685493,
         "scope": "other",
         "severity": "Warning",
         "source": "sqlite",
@@ -592,9 +592,9 @@
       },
       {
         "diagnostic_source": 3,
-        "global_pid": 335831277502464,
+        "global_pid": 301171830947840,
         "pid": null,
-        "recorded_timestamp": 174099420,
+        "recorded_timestamp": 168686495,
         "scope": "other",
         "severity": "Warning",
         "source": "sqlite",
@@ -603,9 +603,9 @@
       },
       {
         "diagnostic_source": 3,
-        "global_pid": 335792924786688,
-        "pid": 3237602,
-        "recorded_timestamp": 174100963,
+        "global_pid": 301138628837376,
+        "pid": 1172045,
+        "recorded_timestamp": 168688088,
         "scope": "collector",
         "severity": "Warning",
         "source": "sqlite",
@@ -614,9 +614,9 @@
       },
       {
         "diagnostic_source": 3,
-        "global_pid": 335792924786688,
-        "pid": 3237602,
-        "recorded_timestamp": 174101474,
+        "global_pid": 301138628837376,
+        "pid": 1172045,
+        "recorded_timestamp": 168688559,
         "scope": "collector",
         "severity": "Warning",
         "source": "sqlite",
@@ -630,38 +630,26 @@
       },
       {
         "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      },
+      {
+        "severity": "Warning",
+        "source": "export_log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      },
+      {
+        "severity": "Warning",
         "source": "worker_log",
-        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n3340043162757994 stderr \n3340043167183860 stderr   Traceback (most recent call last):\n3340043167192947 stderr     File \"<frozen site>\", line 206, in addpackage\n3340043167201904 stderr     File \"<string>\", line 1, in <module>\n3340043167207585 stderr     File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n3340043167211412 stderr   AttributeError: 'NoneType' object has no attribute 'loader'\n3340043167216512 stderr \n3340043167219998 stderr Remainder of file ignored"
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n3354075171490717 stderr \n3354075175898712 stderr   Traceback (most recent call last):\n3354075175907829 stderr     File \"<frozen site>\", line 206, in addpackage\n3354075175912518 stderr     File \"<string>\", line 1, in <module>\n3354075175921505 stderr     File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n3354075175926314 stderr   AttributeError: 'NoneType' object has no attribute 'loader'\n3354075175930602 stderr \n3354075175934760 stderr Remainder of file ignored"
       }
     ],
     "decompress": [
       {
         "diagnostic_source": 3,
-        "global_pid": 336758956883968,
-        "pid": null,
-        "recorded_timestamp": 159997462,
-        "scope": "other",
-        "severity": "Warning",
-        "source": "sqlite",
-        "text": "Not all NVTX events might have been collected.",
-        "timestamp_type": 2
-      },
-      {
-        "diagnostic_source": 3,
-        "global_pid": 336758956883968,
-        "pid": null,
-        "recorded_timestamp": 160003834,
-        "scope": "other",
-        "severity": "Warning",
-        "source": "sqlite",
-        "text": "No NVTX events collected. Does the process use NVTX?",
-        "timestamp_type": 2
-      },
-      {
-        "diagnostic_source": 3,
-        "global_pid": 336703659180032,
-        "pid": 3291886,
-        "recorded_timestamp": 160005256,
+        "global_pid": 302098151374848,
+        "pid": 1229237,
+        "recorded_timestamp": 165985433,
         "scope": "worker",
         "severity": "Warning",
         "source": "sqlite",
@@ -670,9 +658,31 @@
       },
       {
         "diagnostic_source": 3,
-        "global_pid": 336696830853120,
-        "pid": 3291479,
-        "recorded_timestamp": 160008593,
+        "global_pid": 302153952395264,
+        "pid": null,
+        "recorded_timestamp": 165994911,
+        "scope": "other",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all NVTX events might have been collected.",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 302153952395264,
+        "pid": null,
+        "recorded_timestamp": 165995482,
+        "scope": "other",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "No NVTX events collected. Does the process use NVTX?",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 302090601627648,
+        "pid": 1228787,
+        "recorded_timestamp": 165996123,
         "scope": "collector",
         "severity": "Warning",
         "source": "sqlite",
@@ -681,9 +691,9 @@
       },
       {
         "diagnostic_source": 3,
-        "global_pid": 336758956883968,
+        "global_pid": 302153952395264,
         "pid": null,
-        "recorded_timestamp": 160011077,
+        "recorded_timestamp": 165999559,
         "scope": "other",
         "severity": "Warning",
         "source": "sqlite",
@@ -692,9 +702,9 @@
       },
       {
         "diagnostic_source": 3,
-        "global_pid": 336758956883968,
+        "global_pid": 302153952395264,
         "pid": null,
-        "recorded_timestamp": 160011989,
+        "recorded_timestamp": 166000130,
         "scope": "other",
         "severity": "Warning",
         "source": "sqlite",
@@ -703,9 +713,9 @@
       },
       {
         "diagnostic_source": 3,
-        "global_pid": 336696830853120,
-        "pid": 3291479,
-        "recorded_timestamp": 160013442,
+        "global_pid": 302090601627648,
+        "pid": 1228787,
+        "recorded_timestamp": 166001122,
         "scope": "collector",
         "severity": "Warning",
         "source": "sqlite",
@@ -714,9 +724,9 @@
       },
       {
         "diagnostic_source": 3,
-        "global_pid": 336696830853120,
-        "pid": 3291479,
-        "recorded_timestamp": 160014203,
+        "global_pid": 302090601627648,
+        "pid": 1228787,
+        "recorded_timestamp": 166001573,
         "scope": "collector",
         "severity": "Warning",
         "source": "sqlite",
@@ -730,8 +740,18 @@
       },
       {
         "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      },
+      {
+        "severity": "Warning",
+        "source": "export_log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      },
+      {
+        "severity": "Warning",
         "source": "worker_log",
-        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n3340157295960281 stderr \n3340157300257285 stderr   Traceback (most recent call last):\n3340157300266903 stderr     File \"<frozen site>\", line 206, in addpackage\n3340157300274567 stderr     File \"<string>\", line 1, in <module>\n3340157300280238 stderr     File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n3340157300284045 stderr   AttributeError: 'NoneType' object has no attribute 'loader'\n3340157300288995 stderr \n3340157300292501 stderr Remainder of file ignored"
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n3354190763171691 stderr \n3354190767515872 stderr   Traceback (most recent call last):\n3354190767529397 stderr     File \"<frozen site>\", line 206, in addpackage\n3354190767540157 stderr     File \"<string>\", line 1, in <module>\n3354190767545237 stderr     File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n3354190767549816 stderr   AttributeError: 'NoneType' object has no attribute 'loader'\n3354190767555607 stderr \n3354190767560015 stderr Remainder of file ignored"
       }
     ]
   }

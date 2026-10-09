@@ -1,0 +1,44 @@
+{
+  "artifact_sha256": {
+    "benchmarks/results/workflow/captures/controller/RUN.failure.json": "851114c402bcbd7650c5281f3475cedaa642863617673ff388855f95caacb4da",
+    "benchmarks/results/workflow/captures/controller/collector-provenance.json": "23493cf535ee407c4b0ed0d08a9d033c3dd6411e3c19815513f70ddd92528a3e",
+    "benchmarks/results/workflow/captures/controller/resume-1/RESUME.json": "f0d6bedc046650dc466d10b6bb1d5eebcd9c779276b75bd3a02f18a98f951635",
+    "benchmarks/results/workflow/captures/controller/resume-1/dependencies.json": "bab5499ea920abd6ab47202f78a616f490c38bb3d6533e221e7ed510b229e0cb",
+    "benchmarks/results/workflow/captures/controller/resume-1/dependency-preflight.launch.json": "d5c06c085c1183f8874aea72d29ca563f60cf9fdd7553d061f186dace55aa786",
+    "benchmarks/results/workflow/captures/controller/resume-1/dependency-preflight.log": "9fb69a9d025c0e03eed1e866a6c3a606ddfa3c972ca3c0d04fdf6ef4210a3b02",
+    "benchmarks/results/workflow/captures/controller/resume-1/driver-sources/common.py": "fb2e24208ababd677fe6f57786c90f3696366d5b408e20feb39076b2aca886ac",
+    "benchmarks/results/workflow/captures/controller/resume-1/driver-sources/ingest.py": "aedd300521ba7f0f16d41f300044eeb471ad7a86905a159c4b064fd4a4e62e6e",
+    "benchmarks/results/workflow/captures/controller/resume-1/driver-sources/refresh_controller.py": "aa17e73a84e9f9ed71cab3aa81c1a1eef2c9c5669202f7909c1c63072599c32c",
+    "benchmarks/results/workflow/captures/controller/resume-1/driver-sources/resume.py": "c1f8ce21ccdbeb3db412b4c27b6453ae87cf67db252ad70363ada4000a3fd953",
+    "benchmarks/results/workflow/captures/controller/timeline-failed-missing-pynvml/live-command.json": "eed563bb61ba2052975346d05561c5c75507698dadf260c29bf36848fcfec5c6",
+    "benchmarks/results/workflow/captures/controller/timeline-failed-missing-pynvml/live.launch.json": "436f23cf7e70bb384a4d044c8dcc4dd0c7a04121c9e8a882baaf2e66010ecac6",
+    "benchmarks/results/workflow/captures/controller/timeline-failed-missing-pynvml/live.log": "70b1836ee26f0df06df199ff08e4328371b6fbd6188d8b17ec24d97085040e32"
+  },
+  "complete": true,
+  "helper_changed": true,
+  "kind": "publication_resume_provenance",
+  "local_ingest_wrapper_sha256": "eb202c2c010aaa4a7e23628a8678edfee217ba91c3dc785b9be81a55e0929c9a",
+  "methodology": "Completed measurements and stage captures were reused only after source/native/sample/hash validation. The failed coarse timeline is preserved separately. Its raw trace binaries remain private; published logs and receipts identify the failed attempt. Original and resumed helper bytes are recorded separately. Dependency versions, origins, snapshot hashes and successful preflight belong to the resumed capture. The original collector receipt and 62 workflow-artifact inventory are unchanged.",
+  "original_collector_receipt": {
+    "path": "benchmarks/results/workflow/captures/controller/collector-provenance.json",
+    "sha256": "23493cf535ee407c4b0ed0d08a9d033c3dd6411e3c19815513f70ddd92528a3e"
+  },
+  "original_controller_pid": 671844,
+  "original_helper_sha256": "ec8305ced807d0734a5608379b4f2737f881ecdc711b73dee8c257f751de54e7",
+  "private_failed_artifact_sha256": {
+    "timeline-failed-missing-pynvml/live.nsys-rep": "04f16ec3113787726798afbfa658d531c666bffecd7ccf833ce379f995994bb1"
+  },
+  "private_failed_artifacts_verified": true,
+  "resumed_controller_pid": 1133420,
+  "resumed_helper_sha256": "fb2e24208ababd677fe6f57786c90f3696366d5b408e20feb39076b2aca886ac",
+  "reused_report_sha256": {
+    "results/host-outputs.json": "fd57c05c7127b134df63dfda7aff6bdbc173435b07ed4aa6f6f7b988c344d301",
+    "results/nsight.json": "dc8289762ffc0d0dc7f1cc6916a1dc0981fc442ad7a41166aebb60075c7860d8",
+    "results/resident-checked-rtx4090-20261009.json": "404d60f265ebb8e881ef16e355dd1cf53c7d9cb39397de8c17319a779bc2d426",
+    "results/rtx4090-20261009.json": "c742fc712616244d97ef63f61a86ef5b110167ea93bddb49e3af87080459156c",
+    "results/small-batch-rtx4090-20261009.json": "23aabdaff06e416d24c924c905638795e2eaa521f6b008b995c67e17ba181aad"
+  },
+  "reused_steps": 38,
+  "schema_version": 1,
+  "source_revision": "bb00aea62bae71542cbb896b339da4842c976499"
+}

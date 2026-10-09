@@ -4,13 +4,15 @@
   "--trace=cuda",
   "--cuda-graph-trace=node",
   "--cuda-event-trace=false",
+  "--cuda-flush-interval=0",
+  "--wait=all",
   "--sample=none",
   "--cpuctxsw=none",
+  "--discard-environment=true",
   "--capture-range=cudaProfilerApi",
   "--capture-range-end=stop",
-  "--discard-environment=true",
   "--output",
-  "/dev/shm/cuda-zlib-nsight-stages-20261009-01a10cd3/captures/zeros-1048576",
+  "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/run-v1/stages/zeros-1048576",
   "/tmp/pycbc-jax-conventional-gpu-20261004/venv/bin/python",
   "benchmarks/profile_resident.py",
   "--sizes",
@@ -23,5 +25,5 @@
   "20261008",
   "--cuda-profiler-range",
   "--output",
-  "/dev/shm/cuda-zlib-nsight-stages-20261009-01a10cd3/captures/zeros-1048576-profile.json"
+  "/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/run-v1/stages/zeros-1048576-profile.json"
 ]
