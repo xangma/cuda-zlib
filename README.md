@@ -51,6 +51,8 @@ The [file example](examples/decompress_file.py) validates the stream before
 creating the output, refuses to overwrite an existing file, and writes the
 memoryview directly. It still reads the compressed file into memory and
 performs normal file I/O. This is a bounded, whole-stream decoder.
+See [output-format benchmarks](BENCHMARKS.md#consumer-output-formats-on-rtx-4090)
+for matching CPU/CUDA array, memoryview and bytes timings.
 
 For compiled workflows, use the fixed-shape interfaces:
 

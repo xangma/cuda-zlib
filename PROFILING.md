@@ -124,6 +124,14 @@ NumPy view; `memoryview(result)` shares its storage. Calling `.tobytes()` adds t
 allocation and copy shown above. The codec implementation is identical across
 these diagnostic modes.
 
+For a complete public-API comparison with fresh host inputs and matching CPU
+output types, see [consumer output formats](BENCHMARKS.md#consumer-output-formats-on-rtx-4090).
+The 64 MiB float32 measurements are 30.7 ms for a CUDA array, 31.1 ms for a
+memoryview and 84.5 ms for Python bytes, with validation outside timing.
+The [file example](examples/decompress_file.py) writes the shared memoryview
+without constructing a full-size Python bytes output. These consumer timings
+have a separate scope from the resident-input diagnostic above.
+
 The depth-two queue enqueues the next independent codec result before consuming
 the current result. It checks each status before its pinned output copy and
 retains at most two results. Its batch totals are close to serial pinned results;

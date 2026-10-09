@@ -12,6 +12,7 @@ import importlib.util
 import json
 from pathlib import Path
 import re
+import statistics
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +25,7 @@ MANIFESTS = (
     ("nsight/rtx4090-manifest.json", "nsight", "benchmarks/plot_nsight.py", 6),
     ("timeline/rtx4090-manifest.json", "timeline", "benchmarks/plot_timeline.py", 6),
     ("workflow/rtx4090-manifest.json", "workflow", "benchmarks/plot_workflow.py", 12),
+    ("host-outputs/rtx4090-manifest.json", "host_outputs", "benchmarks/plot_host_outputs.py", 3),
 )
 
 
@@ -241,11 +243,144 @@ def verify_workflow_manifest(path, manifest, plotter, count):
     return verify_exports(path, list(exports.items()), count)
 
 
+def host_output_statistics(report, series_order):
+    args = report["arguments"]
+    sizes = [65536, 1048576, 67108864]
+    names = {f"{backend}_{contract}" for backend in ("cpu", "cuda")
+             for contract in ("ndarray", "memoryview", "bytes")}
+    require(sorted(args["sizes"]) == sizes and args["workload"] == "float32", "unexpected host-output matrix")
+    require(len(series_order) == 6 and set(series_order) == names, "host-output figure requires six series")
+    require(all(type(args[field]) is int and args[field] > 0 for field in ("samples", "warmups")),
+            "invalid host-output sample counts")
+    require(len(report["cases"]) == 3 and sorted(case["output_bytes"] for case in report["cases"]) == sizes,
+            "missing or duplicate host-output cases")
+    statistics_rows = []
+    for case in sorted(report["cases"], key=lambda item: item["output_bytes"]):
+        size, fixture = case["output_bytes"], case["fixture"]
+        require(case["workload"] == args["workload"] and fixture["seed"] == args["seed"] and
+                fixture["stdlib_level"] == 6 and type(case["input_bytes"]) is int and
+                8 <= case["input_bytes"] <= 2**28 and fixture["stdlib_stream_bytes"] == case["input_bytes"],
+                "host-output fixture identity differs")
+        require(all(isinstance(fixture[field], str) and re.fullmatch(r"[0-9a-f]{64}", fixture[field])
+                    for field in ("raw_sha256", "stdlib_stream_sha256")), "invalid host-output fixture hashes")
+        require(case["order_seed"] == args["order_seed"] + size, "host-output ordering seed differs")
+        order = case["order"]
+        expected = {(warmup, index, name) for warmup, count in ((True, args["warmups"]), (False, args["samples"]))
+                    for index in range(count) for name in names}
+        require(len(order) == len(expected) and all(type(row["warmup"]) is bool and type(row["round"]) is int for row in order)
+                and {(row["warmup"], row["round"], row["series"]) for row in order} == expected,
+                "incomplete or duplicate host-output round order")
+        require([(not row["warmup"], row["round"]) for row in order] ==
+                sorted((not row["warmup"], row["round"]) for row in order), "host-output rounds are out of order")
+        require(len(case["series"]) == 6 and {item["name"] for item in case["series"]} == names,
+                "host-output case requires all six series")
+        indexed, observed = {}, {}
+        for series in case["series"]:
+            backend, contract = series["backend"], series["contract"]
+            require(backend in ("cpu", "cuda") and contract in ("ndarray", "memoryview", "bytes") and
+                    series["name"] == f"{backend}_{contract}" and isinstance(series["backing_storage"], str) and
+                    bool(series["backing_storage"]), "host-output consumer identity differs")
+            indexed[series["name"]] = series
+            for group, warmup in (("warmups", True), ("samples", False)):
+                rows = series[group]
+                require(len(rows) == args[group] and {row["round"] for row in rows} == set(range(args[group])),
+                        "host-output sample rounds differ")
+                for row in rows:
+                    require(row["complete"] is True and row["byte_exact"] is True and row["readonly"] is True and
+                            row["warmup"] is warmup and type(row["round"]) is int and
+                            row["output_bytes"] == size and row["output_type"] == contract,
+                            "incomplete or invalid host-output consumer result")
+                    if contract == "ndarray":
+                        require(row["dtype"] == "uint8" and row["shape"] == [size], "host-output ndarray contract differs")
+                    elif contract == "memoryview":
+                        require(row["format"] == "B" and row["shape"] == [size] and
+                                row["backing_type"] == ("bytes" if backend == "cpu" else "ndarray"),
+                                "host-output memoryview contract differs")
+                    metrics = ("start_ns", "end_ns", "wall_ns", "thread_cpu_ns", "minor_faults", "major_faults", "order_index")
+                    require(all(type(row[field]) is int and row[field] >= 0 for field in metrics) and
+                            row["wall_ns"] > 0 and row["end_ns"] - row["start_ns"] == row["wall_ns"],
+                            "invalid host-output timing or counter")
+                    index = row["order_index"]
+                    require(index < len(order) and index not in observed and
+                            order[index] == {"warmup": warmup, "round": row["round"], "series": series["name"]},
+                            "host-output sample differs from round order")
+                    observed[index] = row
+            timings = [row["wall_ns"] for row in series["samples"]]
+            summary = {"median_wall_ns": statistics.median(timings), "min_wall_ns": min(timings), "max_wall_ns": max(timings),
+                       **{f"median_{field}": statistics.median(row[field] for row in series["samples"])
+                          for field in ("thread_cpu_ns", "minor_faults", "major_faults")}}
+            require(series["summary"] == summary, "host-output summary differs from raw samples")
+        require(set(observed) == set(range(len(order))) and
+                all(observed[index]["end_ns"] <= observed[index + 1]["start_ns"] for index in range(len(order) - 1)),
+                "host-output samples are missing or overlap")
+        statistics_rows.append({"output_bytes": size, "series": [
+            {"name": name, "samples": len(indexed[name]["samples"]),
+             **{field: indexed[name]["summary"][field] for field in ("median_wall_ns", "min_wall_ns", "max_wall_ns")},
+             "backing_storage": indexed[name]["backing_storage"]} for name in series_order]})
+    return statistics_rows
+
+
+def verify_host_outputs_manifest(path, manifest, plotter, count):
+    require(type(manifest["schema"]) is int and manifest["schema"] == 1 and manifest["kind"] == "host_outputs",
+            "expected host-output schema-1 manifest")
+    report_path = repo_path(manifest["source_report"])
+    require(report_path.is_relative_to(ROOT / "benchmarks/results/host-outputs"), "host-output report outside results directory")
+    check_hash(report_path, manifest["source_report_sha256"])
+    check_hash(repo_path(plotter), manifest["plotter_sha256"])
+    require(set(manifest["style_helpers_sha256"]) == {"benchmarks/plot_results.py"}, "host-output style helper inventory differs")
+    check_hash(repo_path("benchmarks/plot_results.py"), manifest["style_helpers_sha256"]["benchmarks/plot_results.py"])
+    report = read_json(report_path)
+    require(type(report["schema_version"]) is int and report["schema_version"] == 1 and
+            report["kind"] == "host_outputs" and report["complete"] is True and not report.get("error"),
+            "expected complete schema-1 host-output report")
+    check_hash(repo_path("benchmarks/host_outputs.py"), report["harness_sha256"])
+    dependencies = report["dependencies_sha256"]
+    require(set(dependencies) == {"benchmarks/profile_workflow.py", "benchmarks/profile_timeline.py",
+                                  "benchmarks/profile_resident.py", "benchmarks/benchmark.py"},
+            "host-output dependency inventory differs")
+    for filename, expected in dependencies.items():
+        check_hash(repo_path(filename), expected)
+    require(report["benchmark_sha256"] == dependencies["benchmarks/benchmark.py"] and
+            report["profile_resident_sha256"] == dependencies["benchmarks/profile_resident.py"],
+            "host-output dependency aliases differ")
+    proof = {**report, "harness_sha256": dependencies["benchmarks/profile_timeline.py"]}
+    check_sources(proof, "timeline")
+    # The frozen native-source proof uses only the standard library.
+    spec = importlib.util.spec_from_file_location("host_output_source_proof", repo_path("benchmarks/extract_timeline.py"))
+    extractor = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(extractor)
+    extractor.source_binding(proof, ROOT)
+    measured = {"revision": report["source_revision"], "harness_sha256": report["harness_sha256"], "sha256": report["source_sha256"]}
+    require(manifest["measurement_source"] == measured, "host-output measured source differs")
+    fields = ("dependencies_sha256", "benchmark_sha256", "profile_resident_sha256", "native_build", "environment", "arguments",
+              "gpu_snapshot_before", "gpu_snapshot_after", "methodology", "validation", "warnings")
+    require(manifest["report_evidence"] == {field: report[field] for field in fields if field in report},
+            "host-output report evidence differs")
+    require(isinstance(report["environment"]["gpu_uuid"], str) and re.fullmatch(
+        r"GPU-[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}", report["environment"]["gpu_uuid"]),
+        "missing host-output CUDA GPU UUID")
+    require(all(isinstance(report[field], dict) for field in ("gpu_snapshot_before", "gpu_snapshot_after", "methodology")),
+            "missing host-output measurement context")
+    require(report["methodology"] and all(isinstance(value, str) and value for value in report["methodology"].values()),
+            "invalid host-output methodology")
+    require(set(manifest["figures"]) == {"host-output-latency"}, "host-output figure identity differs")
+    figure = manifest["figures"]["host-output-latency"]
+    require(figure["sizes"] == [65536, 1048576, 67108864] and figure["statistic"] == "median of individual wall_ns" and
+            figure["units"] == "ms", "host-output figure statistic differs")
+    require(figure["case_statistics"] == host_output_statistics(report, figure["series_order"]),
+            "host-output figure statistics differ from raw samples")
+    require(figure["exports"] == manifest["exports"] and set(manifest["exports"]) ==
+            {"host-output-latency" + extension for extension in EXTENSIONS}, "host-output figure exports differ")
+    return verify_exports(path, list(manifest["exports"].items()), count)
+
+
 def verify_manifest(name, kind, plotter, count):
     path = FIGURES / name
     manifest = read_json(path)
     if kind == "workflow":
         return verify_workflow_manifest(path, manifest, plotter, count)
+    if kind == "host_outputs":
+        return verify_host_outputs_manifest(path, manifest, plotter, count)
     if kind == "general":
         report_name = manifest["source"]
         raw_hash, plotter_hash = manifest["source_sha256"], manifest["script_sha256"]
