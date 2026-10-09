@@ -1,9 +1,77 @@
-# Decompression stages on RTX 4090
+# Decompression profiles on RTX 4090
+
+Two views answer different questions: [the synchronized workflow timeline](#synchronized-workflow-timeline)
+shows application phases, CUDA activity, transfers and sampled resources;
+[the stage matrix](#kernel-time-by-stage) compares recorded kernels across input types and sizes.
+Use [the benchmark results](BENCHMARKS.md) for throughput, latency and CPU comparisons.
+Instrumentation and CUDA graph node tracing add overhead.
+
+## Synchronized workflow timeline
+
+![Application, CUDA and resource timeline](benchmarks/figures/timeline/whole-process.png)
+
+[SVG](benchmarks/figures/timeline/whole-process.svg) ·
+[PDF](benchmarks/figures/timeline/whole-process.pdf)
+
+This full-process capture decodes a 64 MiB float32 byte stream compressed with
+stdlib zlib level 6. It includes input preparation, JAX/native initialization,
+two complete warmups and 20 complete checked workflows. Each workflow enqueues
+an upload, waits for the checked compiled decoder, reads its status, downloads
+the output and verifies every byte. CPU codec calls are forbidden during these
+workflows. The native library comes from a verified cache; this capture does
+not measure a cold CUDA compiler build.
+
+![Warmed workflow timeline](benchmarks/figures/timeline/warmed-loop.png)
+
+[SVG](benchmarks/figures/timeline/warmed-loop.svg) ·
+[PDF](benchmarks/figures/timeline/warmed-loop.pdf)
+
+The zoom shows the measured loop with up to 40 ms of context on each side.
+All panels share one elapsed-time axis. Dashed lines mark the measured loop.
+
+| Panel | Interpretation |
+| --- | --- |
+| Host annotations | Gray intervals describe nested application phases. Upload is an enqueue interval; decode waits for completion, including its input dependency. Download/check includes metadata and byte validation. |
+| CUDA intervals | Exact recorded kernels, copies and memsets for the worker process tree on the selected GPU. Colors use the stage definitions below. |
+| Transfers | Bytes assigned to 10 ms bins at copy completion, separated by direction; these are not instantaneous PCIe bandwidth. |
+| Kernel activity | Union of recorded kernel intervals divided by actual bin duration, including the final partial bin; this measures activity coverage, not occupancy. |
+| GPU memory | NVML compute allocations belonging to observed worker PIDs, alongside whole-device used memory. Other applications contribute to the whole-device line. |
+| CPU | Differences in cumulative process-tree CPU time at actual sample intervals; 100% represents one logical CPU. |
+| RSS | Summed process-tree resident memory, which can count shared pages more than once. |
+
+The collector requests 10 ms polling and retains the actual query brackets,
+timestamps, process lifetimes and query errors. Missing observations remain
+gaps. This capture contains 236 resource observations, with a median interval
+of 45.8 ms because queries took longer than the requested polling interval.
+Resource curves use each metric's query midpoint; CPU averages are placed
+at the midpoint of the counter interval. This sampling cannot resolve every
+short upload or decode phase. The 10 ms CUDA activity bins have a separate
+timing scope. NVML utilization
+has its own reporting window; polling does not improve
+that resolution. A unique NVTX instant brackets the monotonic clock origin;
+the figure states its alignment uncertainty. Host phases do not establish
+exclusive GPU costs or the cause of intervals without recorded GPU activity.
+The origin bracket gives host/CUDA alignment uncertainty of ±42.355 µs;
+resource observations also have their own query windows and sample spacing.
+Nsight warns that NVTX collection may be incomplete; all 70 expected host
+phase ranges were found and checked against their clock brackets. Warnings
+about absent CUDA events refer to the collector and a helper process; the
+decoding worker has 704 recorded kernels. Scheduling information is absent,
+so no thread scheduling state is inferred. All diagnostics are retained with
+their process scope in the report and figure manifest.
+
+The [raw workflow capture](benchmarks/results/timeline/captures/live.nsys-rep),
+[telemetry and receipts](benchmarks/results/timeline/captures), and
+[normalized report](benchmarks/results/timeline/rtx4090-float32.json) pin the runtime,
+profiling harness, native library and artifact hashes. The runtime source is
+[`6e49963961b22997e5e802f4f6501720f9a2bebe`](https://github.com/xangma/cuda-zlib/tree/6e49963961b22997e5e802f4f6501720f9a2bebe).
+No CPU speedup is inferred from this instrumented workflow.
+
+## Resident decoding stage matrix
 
 These Nsight Systems figures show **recorded GPU activity for one warmed,
 checked JIT decoding call per case**. They identify where recorded kernel time
-is spent; use [the benchmark results](BENCHMARKS.md) for throughput, latency and
-CPU comparisons. Instrumentation and CUDA graph node tracing add overhead.
+is spent.
 
 The captures use an RTX 4090 on a shared workstation, stdlib zlib level-6 input
 streams, and source revision
@@ -100,6 +168,7 @@ Regenerate the figures from the committed normalized data with Matplotlib:
 
 ```sh
 python benchmarks/plot_nsight.py
+python benchmarks/plot_timeline.py
 python benchmarks/verify_figures.py
 ```
 
@@ -122,3 +191,40 @@ python benchmarks/extract_nsight.py --capture-dir /tmp/cuda-zlib-captures \
 export. The extractor retains both digests and still checks the raw trace,
 source, fixture and launch identities. It rejects unmapped kernels and failed
 imports; it retains collection warnings.
+
+### Capturing a synchronized workflow
+
+Install `psutil` and `nvidia-ml-py` in the profiling environment. Select the GPU
+UUID shown by `nvidia-smi -L` and its CUDA-visible ordinal. Use a fresh output
+directory and the path to the toolkit's `libnvToolsExt.so`:
+
+```sh
+mkdir -p /tmp/cuda-zlib-timeline
+PYTHONPATH=src CUDA_VISIBLE_DEVICES=0 XLA_PYTHON_CLIENT_PREALLOCATE=false \
+nsys profile --trace=cuda,nvtx,osrt --nvtx-domain-exclude=TSL \
+  --cuda-graph-trace=node --cuda-event-trace=false --sample=none --cpuctxsw=none \
+  --wait=all --discard-environment=true --output /tmp/cuda-zlib-timeline/live \
+  python benchmarks/profile_timeline.py --source-revision "$(git rev-parse HEAD)" \
+    --gpu-uuid GPU-YOUR-UUID --device 0 \
+    --nvtx-library /usr/local/cuda/lib64/libnvToolsExt.so \
+    --size 67108864 --workload float32 --seed 20261008 \
+    --warmups 2 --iterations 20 --sample-ms 10 \
+    --output /tmp/cuda-zlib-timeline/live-telemetry.json
+
+nsys export --type sqlite --output /tmp/cuda-zlib-timeline/live.sqlite \
+  /tmp/cuda-zlib-timeline/live.nsys-rep
+```
+
+The published capture uses the same Nsight/CUDA/JAX versions as the stage
+matrix, with `psutil` 6.1.1 and `nvidia-ml-py` 13.615.71. Excluding the TSL NVTX
+domain preserves application markers and avoids a string-table import error on
+this stack. No CPU affinity or numerical thread limits are forced.
+
+`extract_timeline.py` takes `--sqlite`, `--telemetry`, `--receipt` and `--output`.
+The committed `live-capture.json` shows the receipt schema: relative artifact
+paths and SHA-256 hashes, source revision, capture time and toolchain.
+SQLite remains a private intermediate. Exporting it again may change its bytes;
+record the fresh SQLite hash in a copy of the receipt before extraction.
+The extractor validates source/native identity, fixture and completed workflows,
+the origin marker, selected physical GPU and host launch correlations. It
+rejects failed imports and retains collection warnings.

@@ -21,6 +21,7 @@ MANIFESTS = (
     ("small-batch/rtx4090-manifest.json", "batch", "benchmarks/plot_small_batch.py", 18),
     ("resident-checked-manifest.json", "resident", "benchmarks/plot_resident.py", 3),
     ("nsight/rtx4090-manifest.json", "nsight", "benchmarks/plot_nsight.py", 6),
+    ("timeline/rtx4090-manifest.json", "timeline", "benchmarks/plot_timeline.py", 6),
 )
 
 
@@ -73,8 +74,9 @@ def check_sources(report, kind):
         hashes = (report["environment"]["codec_sha256"] if kind == "general"
                   else report["source_sha256"])
         recorded = {"src/cuda_zlib/" + name: value for name, value in hashes.items()}
-        harness = ("benchmarks/benchmark.py" if kind == "general"
-                   else "benchmarks/profile_resident.py")
+        harness = ("benchmarks/benchmark.py" if kind == "general" else
+                   "benchmarks/profile_timeline.py" if kind == "timeline" else
+                   "benchmarks/profile_resident.py")
         required = package | {harness}
     require(recorded.get(harness, report["harness_sha256"]) == report["harness_sha256"],
             f"conflicting harness identities for {harness}")
@@ -109,6 +111,40 @@ def verify_manifest(name, kind, plotter, count):
             and report["schema_version"] == 1,
             f"{report_name}: expected a complete schema-1 benchmark report")
     check_sources(report, kind)
+    if kind == "timeline":
+        for filename, field in (("benchmarks/benchmark.py", "benchmark_sha256"),
+                                ("benchmarks/profile_resident.py", "profile_resident_sha256"),
+                                ("benchmarks/extract_timeline.py", "extractor_sha256"),
+                                ("benchmarks/extract_nsight.py", "helper_sha256")):
+            check_hash(repo_path(filename), report[field])
+        check_hash(repo_path("benchmarks/plot_results.py"), manifest["style_helper_sha256"])
+        style_helpers = manifest["style_helpers_sha256"]
+        require(set(style_helpers) == {"benchmarks/plot_results.py", "benchmarks/plot_nsight.py"},
+                "missing timeline style helper identities")
+        for filename, expected in style_helpers.items():
+            check_hash(repo_path(filename), expected)
+        require(manifest["warnings"] == report["warnings"], "Timeline diagnostic warnings differ")
+        for field in ("native_build", "extractor_sha256", "artifact_sha256", "time_origin"):
+            require(manifest[field] == report[field], f"Timeline {field} differs from report")
+        require(report["fixture_oracle_verified"] is True, "Timeline fixture oracle was skipped")
+        artifacts = report["artifact_sha256"]
+        require(isinstance(artifacts, dict) and bool(artifacts), "missing timeline artifacts")
+        required = {"nsys_report", "telemetry", "command", "log", "export_log",
+                    "worker_log", "worker_result", "capture_receipt"}
+        require(required <= set(report["artifacts"]), "missing timeline capture evidence")
+        for key in required:
+            item = report["artifacts"][key]
+            require(artifacts.get(item["path"]) == item["sha256"],
+                    f"Timeline {key} missing from artifact inventory")
+        for filename, expected in artifacts.items():
+            artifact = repo_path(filename)
+            require(artifact.is_relative_to(ROOT / "benchmarks/results/timeline/captures"),
+                    f"timeline artifact outside capture directory: {filename}")
+            check_hash(artifact, expected)
+        require(any(filename.endswith(".nsys-rep") for filename in artifacts),
+                "missing raw timeline Nsight report")
+        require(set(report["views"]) == {"whole_process", "measured_loop"},
+                "timeline requires whole-process and measured-loop views")
     if kind == "nsight":
         check_hash(repo_path("benchmarks/plot_results.py"), manifest["style_helper_sha256"])
         require(manifest["warnings"] == {case["name"]: case["warnings"]
