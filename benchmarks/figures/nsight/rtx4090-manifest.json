@@ -1,0 +1,617 @@
+{
+  "capture_manifest_sha256": "ab414ba96ba5984aaee1080c1eaad6db1df7876e2ec8875693280e425982b013",
+  "exports": {
+    "activity-timeline.pdf": "099305d32ceaf1bdeb6cb576b81a46e77534e29072b8f59a627783eb378f45fa",
+    "activity-timeline.png": "11068d751c0ce0c3c3c1bc594ce3ff5be2f66c6e058a5a4f9a0e4b5eb16c2de3",
+    "activity-timeline.svg": "3c16cc1f40c51c8c884565cb27bde7b667792c45ddf86e1ab40f230aa1912344",
+    "stage-shares.pdf": "11d29211c18d0a987b674e5ee6b626593bcb1611f8aed893056cda9190761464",
+    "stage-shares.png": "0135abb1bfa3fd1845a337192e4ac6c23089a1946ee74cba59a10e0009afc27d",
+    "stage-shares.svg": "75c56b2817c2075d6f66153b8ede74355a58e984abb8aee8261da8df850a6f9b"
+  },
+  "figures": {
+    "activity-timeline": {
+      "cases": [
+        {
+          "activity_count": 37,
+          "gap_ns": 113248,
+          "gpu_span_ns": 6938230,
+          "name": "uint32-131072",
+          "output_bytes": 131072,
+          "workload": "uint32"
+        },
+        {
+          "activity_count": 40,
+          "gap_ns": 83073,
+          "gpu_span_ns": 19256673,
+          "name": "float32-67108864",
+          "output_bytes": 67108864,
+          "workload": "float32"
+        },
+        {
+          "activity_count": 1,
+          "gap_ns": 0,
+          "gpu_span_ns": 2083729,
+          "name": "text-65536",
+          "output_bytes": 65536,
+          "workload": "text"
+        }
+      ],
+      "exports": {
+        "activity-timeline.pdf": "099305d32ceaf1bdeb6cb576b81a46e77534e29072b8f59a627783eb378f45fa",
+        "activity-timeline.png": "11068d751c0ce0c3c3c1bc594ce3ff5be2f66c6e058a5a4f9a0e4b5eb16c2de3",
+        "activity-timeline.svg": "3c16cc1f40c51c8c884565cb27bde7b667792c45ddf86e1ab40f230aa1912344"
+      }
+    },
+    "stage-shares": {
+      "cases": [
+        {
+          "kernel_sum_ns": 177570,
+          "name": "zeros-65536",
+          "output_bytes": 65536,
+          "stage_percent": {
+            "chain_selection": 0.0,
+            "checksum": 0.0,
+            "description": 0.0,
+            "discovery": 0.0,
+            "emission": 0.0,
+            "framing": 0.0,
+            "fused_decode": 100.0,
+            "refinement": 0.0,
+            "sorting": 0.0,
+            "verification": 0.0
+          },
+          "workload": "zeros"
+        },
+        {
+          "kernel_sum_ns": 2083729,
+          "name": "text-65536",
+          "output_bytes": 65536,
+          "stage_percent": {
+            "chain_selection": 0.0,
+            "checksum": 0.0,
+            "description": 0.0,
+            "discovery": 0.0,
+            "emission": 0.0,
+            "framing": 0.0,
+            "fused_decode": 100.0,
+            "refinement": 0.0,
+            "sorting": 0.0,
+            "verification": 0.0
+          },
+          "workload": "text"
+        },
+        {
+          "kernel_sum_ns": 9121514,
+          "name": "uint32-65536",
+          "output_bytes": 65536,
+          "stage_percent": {
+            "chain_selection": 0.0,
+            "checksum": 0.0,
+            "description": 0.0,
+            "discovery": 0.0,
+            "emission": 0.0,
+            "framing": 0.0,
+            "fused_decode": 100.0,
+            "refinement": 0.0,
+            "sorting": 0.0,
+            "verification": 0.0
+          },
+          "workload": "uint32"
+        },
+        {
+          "kernel_sum_ns": 7431549,
+          "name": "float32-65536",
+          "output_bytes": 65536,
+          "stage_percent": {
+            "chain_selection": 0.0,
+            "checksum": 0.0,
+            "description": 0.0,
+            "discovery": 0.0,
+            "emission": 0.0,
+            "framing": 0.0,
+            "fused_decode": 100.0,
+            "refinement": 0.0,
+            "sorting": 0.0,
+            "verification": 0.0
+          },
+          "workload": "float32"
+        },
+        {
+          "kernel_sum_ns": 101537,
+          "name": "random-65536",
+          "output_bytes": 65536,
+          "stage_percent": {
+            "chain_selection": 0.0,
+            "checksum": 0.0,
+            "description": 0.0,
+            "discovery": 0.0,
+            "emission": 0.0,
+            "framing": 0.0,
+            "fused_decode": 100.0,
+            "refinement": 0.0,
+            "sorting": 0.0,
+            "verification": 0.0
+          },
+          "workload": "random"
+        },
+        {
+          "kernel_sum_ns": 1526988,
+          "name": "zeros-1048576",
+          "output_bytes": 1048576,
+          "stage_percent": {
+            "chain_selection": 0.16765030242542836,
+            "checksum": 0.36673503655562456,
+            "description": 0.1655546736451105,
+            "discovery": 0.14878964340256767,
+            "emission": 0.3835000667981674,
+            "framing": 0.28290988534291034,
+            "fused_decode": 96.26558951347359,
+            "refinement": 0.7837651638388776,
+            "sorting": 0.9053116330973131,
+            "verification": 0.5301940814204172
+          },
+          "workload": "zeros"
+        },
+        {
+          "kernel_sum_ns": 12728330,
+          "name": "text-1048576",
+          "output_bytes": 1048576,
+          "stage_percent": {
+            "chain_selection": 0.03569989150187024,
+            "checksum": 0.04072804523452802,
+            "description": 32.681765793313026,
+            "discovery": 1.5786045773483246,
+            "emission": 65.28885564720588,
+            "framing": 0.010307715151948449,
+            "fused_decode": 0.0,
+            "refinement": 0.11589894353776183,
+            "sorting": 0.18553887273507208,
+            "verification": 0.06260051397158936
+          },
+          "workload": "text"
+        },
+        {
+          "kernel_sum_ns": 7107354,
+          "name": "uint32-1048576",
+          "output_bytes": 1048576,
+          "stage_percent": {
+            "chain_selection": 1.1211063920553275,
+            "checksum": 0.07248829873958719,
+            "description": 47.604045049676714,
+            "discovery": 1.5560221145590891,
+            "emission": 48.956573712242275,
+            "framing": 0.01665880157369395,
+            "fused_decode": 0.0,
+            "refinement": 0.21926584774024202,
+            "sorting": 0.34263102696165126,
+            "verification": 0.11120875645141638
+          },
+          "workload": "uint32"
+        },
+        {
+          "kernel_sum_ns": 3973888,
+          "name": "float32-1048576",
+          "output_bytes": 1048576,
+          "stage_percent": {
+            "chain_selection": 0.7110668443599819,
+            "checksum": 0.12884107453456162,
+            "description": 46.900944364813505,
+            "discovery": 8.078385701861754,
+            "emission": 43.005087209302324,
+            "framing": 0.03462603878116344,
+            "fused_decode": 0.0,
+            "refinement": 0.3357920505057012,
+            "sorting": 0.6079688204599626,
+            "verification": 0.1972878953810475
+          },
+          "workload": "float32"
+        },
+        {
+          "kernel_sum_ns": 494820,
+          "name": "random-1048576",
+          "output_bytes": 1048576,
+          "stage_percent": {
+            "chain_selection": 8.892122387939049,
+            "checksum": 1.0411866941514085,
+            "description": 12.403904450103068,
+            "discovery": 64.3084353906471,
+            "emission": 4.2423507538094665,
+            "framing": 0.2457459278121337,
+            "fused_decode": 0.0,
+            "refinement": 2.4251242876197403,
+            "sorting": 4.8567155733398,
+            "verification": 1.5844145345782306
+          },
+          "workload": "random"
+        },
+        {
+          "kernel_sum_ns": 13545521,
+          "name": "zeros-67108864",
+          "output_bytes": 67108864,
+          "stage_percent": {
+            "chain_selection": 0.07063589506819265,
+            "checksum": 2.916410524187294,
+            "description": 32.72193812257203,
+            "discovery": 0.4202717636331596,
+            "emission": 59.05233914590661,
+            "framing": 0.012993224845319718,
+            "fused_decode": 0.0,
+            "refinement": 4.559721253984989,
+            "sorting": 0.17741657925154744,
+            "verification": 0.06827349055086179
+          },
+          "workload": "zeros"
+        },
+        {
+          "kernel_sum_ns": 17414162,
+          "name": "text-67108864",
+          "output_bytes": 67108864,
+          "stage_percent": {
+            "chain_selection": 0.6433441930768762,
+            "checksum": 2.2084324241384685,
+            "description": 24.199355673847528,
+            "discovery": 6.030637592552544,
+            "emission": 47.86434167776778,
+            "framing": 0.010657992041190383,
+            "fused_decode": 0.0,
+            "refinement": 18.850651555900306,
+            "sorting": 0.13837013805200618,
+            "verification": 0.054208752623295914
+          },
+          "workload": "text"
+        },
+        {
+          "kernel_sum_ns": 13196174,
+          "name": "uint32-67108864",
+          "output_bytes": 67108864,
+          "stage_percent": {
+            "chain_selection": 6.475634528614127,
+            "checksum": 2.9417238663267096,
+            "description": 35.79564046366772,
+            "discovery": 10.113810260458827,
+            "emission": 39.76312376602491,
+            "framing": 0.014307177216669013,
+            "fused_decode": 0.0,
+            "refinement": 4.634100762842321,
+            "sorting": 0.18599330381669718,
+            "verification": 0.07566587103201276
+          },
+          "workload": "uint32"
+        },
+        {
+          "kernel_sum_ns": 19133599,
+          "name": "float32-67108864",
+          "output_bytes": 67108864,
+          "stage_percent": {
+            "chain_selection": 10.167078342135214,
+            "checksum": 2.0651577363986777,
+            "description": 26.770640484312437,
+            "discovery": 34.784584959682704,
+            "emission": 22.705216096563955,
+            "framing": 0.008529498292506286,
+            "fused_decode": 0.0,
+            "refinement": 3.3042868725324492,
+            "sorting": 0.13195635593700902,
+            "verification": 0.06254965414504611
+          },
+          "workload": "float32"
+        },
+        {
+          "kernel_sum_ns": 11418080,
+          "name": "random-67108864",
+          "output_bytes": 67108864,
+          "stage_percent": {
+            "chain_selection": 27.217693342488403,
+            "checksum": 3.439063310118689,
+            "description": 1.0055718649720444,
+            "discovery": 64.06427350307582,
+            "emission": 3.6195577540181887,
+            "framing": 0.014012863808976641,
+            "fused_decode": 0.0,
+            "refinement": 0.3127671202163586,
+            "sorting": 0.21383630172498352,
+            "verification": 0.11322393957653125
+          },
+          "workload": "random"
+        }
+      ],
+      "denominator": "sum of recorded kernel durations; memory operations and gaps excluded",
+      "exports": {
+        "stage-shares.pdf": "11d29211c18d0a987b674e5ee6b626593bcb1611f8aed893056cda9190761464",
+        "stage-shares.png": "0135abb1bfa3fd1845a337192e4ac6c23089a1946ee74cba59a10e0009afc27d",
+        "stage-shares.svg": "75c56b2817c2075d6f66153b8ede74355a58e984abb8aee8261da8df850a6f9b"
+      }
+    }
+  },
+  "gap_definition": "GPU span minus union of all imported GPU activity intervals",
+  "kind": "nsight-diagnostics",
+  "limitations": [
+    "One warmed instrumented call per case; no uncertainty or speedup estimate",
+    "Fused internal stages cannot be separated",
+    "Guarded launches counted without inferring useful work",
+    "Gaps do not identify a cause; interval sums are not wall time"
+  ],
+  "measurement_source": {
+    "harness_sha256": "a50f5b0ca028dcddb50a6eb0a7fdb402d2dae2ed1ab337ecc2e045ba8a8cc7c0",
+    "revision": "011afd67bfa2d2402706067271dd014e44003260",
+    "sha256": {
+      "__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
+      "_codec.py": "0a0a5484f90a55cf53530b3dc837a12b2a293d5bb88c0b9426758d17409af5d2",
+      "_decode_kernels.py": "8e05014eb82ecdd20a8f0d6eea6be5ec67f97829cd6451d3ae3f4e1909d513e1",
+      "_encode_kernels.py": "514bd9aba9978010f4a1659209ac0a6b9b0e72a043d6605805c4c698f6d87964",
+      "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
+      "_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
+      "_postprocess.py": "bfbc7664b4c6255890388716f4e16999676ebe2b37c900c5e41eafad387ea307",
+      "jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
+      "native/batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
+      "native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+      "native/codec_ffi.cu": "892c568342627f59eff0f60dc4785749cee4bac2a8d8efe196e3280dedc1c7e2"
+    }
+  },
+  "native_identity": {
+    "build_sha256": "062ac00311ec2fa460d75b8dfe6f2cc0790117036f7888443587bd467e02a044",
+    "cache_key": "0abf47003c6c53187c1d779287f91ed0c092779f7ceff40d27182a663cbcc6aa",
+    "library_sha256": "b494e40936b99fc322b961c09a92a0fadd371fe371da6cb2b360c6497d806a73"
+  },
+  "plotter_sha256": "b1fa5cb12975ba8883a948cb982518606d573d1753e456c2e1904869f64d17f7",
+  "renderer": {
+    "backend": "Agg",
+    "matplotlib": "3.11.1"
+  },
+  "schema": 1,
+  "source_report": "benchmarks/results/nsight/rtx4090-decode.json",
+  "source_report_sha256": "c41e76a4718e5f759841b0da24473d2e65b64e3c5f433fc9a22de29ac1d86547",
+  "stage_styles": {
+    "chain_selection": {
+      "color": "#F0D573",
+      "hatch": "//",
+      "label": "Chain selection"
+    },
+    "checksum": {
+      "color": "#009E73",
+      "hatch": "",
+      "label": "Checksum"
+    },
+    "description": {
+      "color": "#E69F00",
+      "hatch": "",
+      "label": "Token description"
+    },
+    "discovery": {
+      "color": "#0072B2",
+      "hatch": "",
+      "label": "Discovery"
+    },
+    "emission": {
+      "color": "#D55E00",
+      "hatch": "",
+      "label": "Emission"
+    },
+    "framing": {
+      "color": "#94A3B8",
+      "hatch": "//",
+      "label": "Framing"
+    },
+    "fused_decode": {
+      "color": "#4477AA",
+      "hatch": "",
+      "label": "Fused decode"
+    },
+    "refinement": {
+      "color": "#CC79A7",
+      "hatch": "//",
+      "label": "Refinement"
+    },
+    "sorting": {
+      "color": "#56B4E9",
+      "hatch": "//",
+      "label": "Sorting"
+    },
+    "verification": {
+      "color": "#475569",
+      "hatch": "//",
+      "label": "Status verification"
+    }
+  },
+  "style_helper_sha256": "55963990b310b16d281f60eeaff6ddf09d00e340b0218ef5e14d6c7ecb639f21",
+  "time_origin": "first imported GPU activity, separately for each case",
+  "units": {
+    "display_time": "ms",
+    "source_time": "ns",
+    "stage_share": "% of kernel sum"
+  },
+  "warnings": {
+    "float32-1048576": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ],
+    "float32-65536": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ],
+    "float32-67108864": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ],
+    "random-1048576": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ],
+    "random-65536": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ],
+    "random-67108864": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ],
+    "text-1048576": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ],
+    "text-65536": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ],
+    "text-67108864": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ],
+    "uint32-1048576": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ],
+    "uint32-131072": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ],
+    "uint32-65536": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ],
+    "uint32-67108864": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ],
+    "zeros-1048576": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ],
+    "zeros-65536": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ],
+    "zeros-67108864": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      },
+      {
+        "severity": "Warning",
+        "source": "log",
+        "text": "Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:\n\n  Traceback (most recent call last):\n    File \"<frozen site>\", line 206, in addpackage\n    File \"<string>\", line 1, in <module>\n    File \"<frozen importlib._bootstrap>\", line 810, in module_from_spec\n  AttributeError: 'NoneType' object has no attribute 'loader'\n\nRemainder of file ignored"
+      }
+    ]
+  }
+}

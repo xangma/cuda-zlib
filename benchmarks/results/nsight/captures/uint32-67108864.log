@@ -1,0 +1,16 @@
+Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:
+
+  Traceback (most recent call last):
+    File "<frozen site>", line 206, in addpackage
+    File "<string>", line 1, in <module>
+    File "<frozen importlib._bootstrap>", line 810, in module_from_spec
+  AttributeError: 'NoneType' object has no attribute 'loader'
+
+Remainder of file ignored
+Capture range started in the application.
+Capture range ended in the application.
+Generating '/tmp/nsys-report-1266.qdstrm'
+[1/1] [0%                          ] uint32-67108864.nsys-repProcessing events...
+[1/1] [0%                          ] uint32-67108864.nsys-rep[1/1] [==========49%               ] uint32-67108864.nsys-rep[1/1] [========================97% ] uint32-67108864.nsys-rep[1/1] [========================100%] uint32-67108864.nsys-rep[1/1] [========================100%] uint32-67108864.nsys-rep
+Generated:
+	/dev/shm/cuda-zlib-nsight-stages-20261009-01a10cd3/captures/uint32-67108864.nsys-rep

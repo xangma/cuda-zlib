@@ -11,6 +11,10 @@ checks; host-byte measurements include packing, transfers and byte copies.
 | Independent small files | 256 B, 4 KiB, 64 KiB; 1, 8, 32, 128 files | Compiled resident calls and synchronous host-byte calls | Same-host CPU processing the same files |
 | Resident checked decode | 64 KiB–64 MiB; five workloads | One completed checked `jax.jit` call | None; no CPU speedup inferred |
 
+[Nsight profiles](PROFILING.md) provide compression and decompression timelines
+with kernel stages, detailed host phases, transfers, CPU and memory samples.
+These diagnostic captures are separate from the benchmark samples.
+
 Compression levels are not equivalent across codecs. Read throughput alongside
 encoded size. These synthetic workloads were measured on a shared workstation;
 other GPU compute was observed during all three runs. The measurements do not
@@ -153,6 +157,67 @@ payload/stream hash, startup measurement and environment record. There are
 All timed calls complete; the **last returned output from each workflow** is
 checked outside timing against the original bytes. Stdlib decodes CUDA output
 and CUDA decodes independent level-6 streams. A failed check stops the run.
+
+## Consumer output formats on RTX 4090
+
+These measurements start with **host compressed bytes** and finish with the
+requested completed host object. CUDA uses `decompress_zlib_host`, including
+input validation, upload, native decoding/status checks and a pinned-host
+download. Returning its array or `memoryview(array)` shares that storage;
+requesting `array.tobytes()` additionally allocates and copies the decoded data.
+CPU uses fresh `zlib.decompress` output for every call. Its arrays and memoryviews
+share the resulting immutable Python bytes without another output copy.
+
+Values are median **milliseconds**, lower is better. All six series decode
+identical stdlib level-6 streams containing Gaussian float32 bytes.
+
+| Raw size | CPU array | CUDA array | CPU memoryview | CUDA memoryview | CPU bytes | CUDA bytes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 64 KiB | 0.457 | 8.213 | 0.414 | 8.193 | 0.430 | 8.224 |
+| 1 MiB | 5.961 | 4.809 | 5.943 | 4.835 | 5.919 | 5.009 |
+| 64 MiB | 469.123 | 30.745 | 469.355 | 31.053 | 468.587 | 84.513 |
+
+At 64 MiB, CUDA array/memoryview output takes **36–37% of the time** required
+for CUDA bytes output. The CUDA implementation is identical across these output
+formats. This benefit applies to consumers that accept the shared buffer;
+callers requiring Python bytes still pay its allocation/copy cost. CPU is
+faster at 64 KiB for every output format. CUDA is faster at 1 MiB and 64 MiB for
+this float32 fixture; these results do not establish a general crossover.
+
+![Completed host-output decompression latency by consumer format](benchmarks/figures/host-outputs/host-output-latency.png)
+
+[SVG](benchmarks/figures/host-outputs/host-output-latency.svg) ·
+[PDF](benchmarks/figures/host-outputs/host-output-latency.pdf) ·
+[Raw samples](benchmarks/results/host-outputs/rtx4090-float32.json) ·
+[Capture command](benchmarks/results/host-outputs/command.json)
+
+Each series has two untimed warmups and 12 samples, interleaved in seeded,
+randomized rounds. Every one of the **252 outputs**, including warmups, is
+checked outside timing; array/view checks do not construct Python bytes.
+Fixture generation, native initialization, output release, oracle comparisons
+and file I/O are excluded. The figure displays all 216 measured observations,
+with independent latency scales for each size. Measurements used the shared
+RTX 4090 workstation, JAX/JAXlib 0.11.2, NumPy 2.2.6 and zlib 1.3.1, at source
+[`5ceaedd45cd3`](https://github.com/xangma/cuda-zlib/commit/5ceaedd45cd3126827aa571d962bbf3e1d079a7c).
+The report records runtime/helper/native hashes, the selected GPU UUID and
+before/after resource snapshots; snapshots do not prove isolation throughout.
+
+Reproduce with a fresh output path:
+
+```sh
+PYTHONPATH=src CUDA_VISIBLE_DEVICES=0 XLA_PYTHON_CLIENT_PREALLOCATE=false \
+python benchmarks/host_outputs.py --source-revision "$(git rev-parse HEAD)" \
+  --sizes 65536 1048576 67108864 --workload float32 --samples 12 --warmups 2 \
+  --output /tmp/cuda-zlib-host-outputs.json
+python benchmarks/plot_host_outputs.py --input /tmp/cuda-zlib-host-outputs.json \
+  --output-dir /tmp/cuda-zlib-host-output-figures
+```
+
+The [file consumer example](examples/decompress_file.py) passes a memoryview
+directly to unbuffered file writes. For numerical streams,
+`np.frombuffer(host, dtype=...)` shares the decoded buffer when the recorded
+dtype and byte order are supplied. Retaining either view keeps the host storage
+alive. File I/O remains outside the timing scope above.
 
 ## Independent small files on RTX 4090
 

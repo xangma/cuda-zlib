@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "complete": true,
+  "harness_sha256": "a50f5b0ca028dcddb50a6eb0a7fdb402d2dae2ed1ab337ecc2e045ba8a8cc7c0",
+  "arguments": {
+    "sizes": [
+      131072
+    ],
+    "workloads": [
+      "uint32"
+    ],
+    "samples": 1,
+    "seed": 20261008,
+    "device": 0,
+    "output": "/dev/shm/cuda-zlib-nsight-stages-20261009-01a10cd3/captures/uint32-131072-profile.json",
+    "cuda_profiler_range": true
+  },
+  "environment": {
+    "gpu_before": [
+      "NVIDIA GeForce RTX 4090, 610.57.04, 2916, 24564, 0, 48"
+    ],
+    "python": "3.12.8",
+    "jax": "0.11.2",
+    "jaxlib": "0.11.2",
+    "numpy": "2.2.6",
+    "backend": "JAX typed CUDA FFI",
+    "cuda_platform": "cuda 13040",
+    "zlib_runtime": "1.3.1",
+    "gpu_after": null,
+    "workspace_pool_after": null
+  },
+  "source_sha256": {
+    "__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
+    "_codec.py": "0a0a5484f90a55cf53530b3dc837a12b2a293d5bb88c0b9426758d17409af5d2",
+    "_decode_kernels.py": "8e05014eb82ecdd20a8f0d6eea6be5ec67f97829cd6451d3ae3f4e1909d513e1",
+    "_encode_kernels.py": "514bd9aba9978010f4a1659209ac0a6b9b0e72a043d6605805c4c698f6d87964",
+    "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
+    "_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
+    "_postprocess.py": "bfbc7664b4c6255890388716f4e16999676ebe2b37c900c5e41eafad387ea307",
+    "jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
+    "native/batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
+    "native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+    "native/codec_ffi.cu": "892c568342627f59eff0f60dc4785749cee4bac2a8d8efe196e3280dedc1c7e2"
+  },
+  "native_build": {
+    "cache_key": "0abf47003c6c53187c1d779287f91ed0c092779f7ceff40d27182a663cbcc6aa",
+    "library_sha256": "b494e40936b99fc322b961c09a92a0fadd371fe371da6cb2b360c6497d806a73",
+    "build_sha256": "062ac00311ec2fa460d75b8dfe6f2cc0790117036f7888443587bd467e02a044",
+    "identity": {
+      "architecture": "sm_89",
+      "jaxlib": "0.11.2",
+      "compiler": "/usr/local/cuda-12.1/bin/nvcc",
+      "compiler_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2023 NVIDIA Corporation\nBuilt on Mon_Apr__3_17:16:06_PDT_2023\nCuda compilation tools, release 12.1, V12.1.105\nBuild cuda_12.1.r12.1/compiler.32688072_0\n",
+      "sources": {
+        "codec_ffi.cu": "892c568342627f59eff0f60dc4785749cee4bac2a8d8efe196e3280dedc1c7e2",
+        "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
+        "decoder.cuh": "199aae623c576a7e2c7e6b17dbf93ddd9a84748999bc107fef049bdb7bc39107",
+        "postprocess.cuh": "31579be73cd0fd6fc120b0ee6accd9267df5ed66c88f9170208bdd506664a38e",
+        "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+        "batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73"
+      },
+      "headers": {
+        "api.h": "1426ea8206a1b9f1824f460572ea731665eb7cb9def1f0fc166b13df4b955ad0",
+        "c_api.h": "9847993912aa1aadb2dac4af16eeb9d8bae3f470905b519977d1d09b3f37eedf",
+        "collectives_api.h": "59f78f7358e33ad4c98d9356cce45b43c22c745eb6e88785070889e546b7e0b4",
+        "collectives_c_api.h": "ed27017e78d9adc100927b868b8578941765aaee483c16138c6e6ec3d982063f",
+        "ffi.h": "0878473a1ee35fdd9ff15424d46a44602fb53019f0d0a9f5117abdb386c35129",
+        "record_api.h": "35214dc4910a1de61e8903adca060d8a1354070fb0a31936cf97c7ce9292ec37",
+        "record_c_api.h": "6972199566e88987f224e42aac1a6b433d4d9a25f1eaa6526288b4922ff02db0"
+      },
+      "flags": [
+        "-O3",
+        "-lineinfo",
+        "--std=c++17",
+        "--cudart=shared",
+        "-Xcompiler=-pthread",
+        "-ldl"
+      ]
+    },
+    "ffi_targets": [
+      "cuda_zlib_compress_sm_89",
+      "cuda_zlib_decompress_sm_89",
+      "cuda_zlib_compress_batch_sm_89",
+      "cuda_zlib_decompress_batch_sm_89"
+    ]
+  },
+  "methodology": "Completed warm JIT checked decompression with resident inputs. Native build, XLA compilation, generation, upload, status and byte checks excluded. CPU codec forbidden inside calls. All shapes warmed before timing or capture. Normal timings sample completed calls; capture uses one call per case in a single continuous range with NVTX labels and retains output and metadata until stop. Capture wall timings are diagnostic. Status is checked before consuming output bytes after capture.",
+  "all_workflows_warmed_before_capture": true,
+  "cases": [
+    {
+      "workload": "uint32",
+      "input_bytes": 131072,
+      "encoded_bytes": 45357,
+      "input_sha256": "55cbe1972bf5e6d07c7743eb8e27ca8912e950d6a8f73a34a082610cbeefa0ee",
+      "stream_sha256": "fe8374541f548f29922bf150ab19f9770d58792d3e04a9d8bf5655aa1f81299f",
+      "seconds": [
+        0.007382526062428951
+      ],
+      "median_seconds": 0.007382526062428951,
+      "byte_exact": true,
+      "cpu_codec_forbidden": true
+    }
+  ],
+  "capture": "One warmed continuous range; status and oracle reads after stop."
+}

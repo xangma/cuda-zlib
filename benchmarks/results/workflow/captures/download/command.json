@@ -1,0 +1,26 @@
+{
+  "host": "len",
+  "pid": 3585821,
+  "cwd": "/dev/shm/cuda-zlib-workflow-20261009-01a10cd3/source",
+  "command": [
+    "timeout",
+    "--signal=TERM",
+    "180",
+    "/tmp/pycbc-jax-conventional-gpu-20261004/venv/bin/python",
+    "/dev/shm/cuda-zlib-workflow-20261009-01a10cd3/source/benchmarks/profile_download.py",
+    "--output",
+    "/dev/shm/cuda-zlib-workflow-20261009-01a10cd3/download-v1.json",
+    "--source-revision",
+    "7d083ff804e08586aa5c0333f6173a4530de5dd5",
+    "--operation",
+    "both",
+    "--size",
+    "67108864",
+    "--iterations",
+    "12",
+    "--warmups",
+    "2"
+  ],
+  "log": "/dev/shm/cuda-zlib-workflow-20261009-01a10cd3/download-v1.log",
+  "stop": "kill -TERM 3585821"
+}
