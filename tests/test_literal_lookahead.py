@@ -8,7 +8,9 @@ import zlib
 import numpy as np
 import pytest
 
-from literal_lookahead_fixtures import dynamic_fallback, fixed, fixed_repeat, literal_payload
+from literal_lookahead_fixtures import (
+    dynamic_fallback, dynamic_full_window, fixed, fixed_repeat, literal_payload,
+)
 
 
 @pytest.fixture(scope="module")
@@ -80,6 +82,15 @@ def test_wide_primary_zero_canonical_fallback(cuda_device, monkeypatch, size):
     payload, expected = dynamic_fallback(raw)
     assert zlib.decompress(payload) == expected
     assert (payload[2] >> 1) & 3 == 2
+    assert_result(checked(payload, size, cuda_device, monkeypatch), raw, cuda_device)
+
+
+@pytest.mark.parametrize("size", [256, 65536])
+def test_wide_full_cached_window_commit(cuda_device, monkeypatch, size):
+    # The 256-byte specimen reaches pos2600/cached64/consumed64 after a
+    # canonical ten-bit literal; committing the cache must avoid a shift by64.
+    payload, raw = dynamic_full_window(size)
+    assert zlib.decompress(payload) == raw
     assert_result(checked(payload, size, cuda_device, monkeypatch), raw, cuda_device)
 
 

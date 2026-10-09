@@ -581,7 +581,13 @@ __device__ __noinline__ void DecodeOneFileShared(
           output, begin, length, consumed);
       if (!lane && literals) {
         // The leader reader still holds the dispatched literal reservoir.
-        reader.drop(consumed);
+        if (consumed == 64) {
+          // Avoid shifting the 64-bit cache by its full width.
+          reader.drop(32);
+          reader.drop(32);
+        } else {
+          reader.drop(consumed);
+        }
         produced += literals;
       }
     } else {

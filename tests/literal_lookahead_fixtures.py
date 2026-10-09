@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Independent Deflate fixture writer. CPU codecs are used only as oracles."""
 import struct
+import random
 import zlib
 
 
@@ -75,6 +76,28 @@ def dynamic_fallback(raw):
     fields += [(cl_lengths[symbol], 3) for symbol in order[:18]]
     cl = codes(cl_lengths)
     fields += [cl[width] for width in lengths + [1]]
+    table = codes(lengths)
+    fields += [table[value] for value in raw] + [table[256]]
+    return wrap(bits(fields), raw), raw
+
+
+def dynamic_full_window(size):
+    """A canonical long literal can refill a full 64-bit literal reservoir."""
+    lengths = [7] + [8] * 252 + [9] * 2 + [10, 9, 10]
+    cl_lengths = [0] * 19
+    for symbol in (1, 7, 8):
+        cl_lengths[symbol] = 2
+    for symbol in (9, 10):
+        cl_lengths[symbol] = 3
+    order = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15]
+    fields = [(1, 1), (2, 2), (1, 5), (0, 5), (14, 4)]
+    fields += [(cl_lengths[symbol], 3) for symbol in order[:18]]
+    cl = codes(cl_lengths)
+    fields += [cl[width] for width in lengths + [1]]
+    randomizer = random.Random(20261009)
+    for _ in range(6):
+        pattern = bytes(randomizer.choice((0, 1, 253, 255)) for _ in range(256))
+    raw = (pattern * ((size + 255) // 256))[:size]
     table = codes(lengths)
     fields += [table[value] for value in raw] + [table[256]]
     return wrap(bits(fields), raw), raw
