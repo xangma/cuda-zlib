@@ -36,6 +36,22 @@ array. Nonempty outputs use JAX-owned pinned host memory. The array retains its
 storage across subsequent calls. `memoryview(host)` shares that storage without
 another copy; `host.tobytes()` allocates and copies into a Python `bytes` object.
 
+Pass the array or memoryview directly to consumers that accept the buffer
+protocol. For numerical streams, `np.frombuffer(host, dtype=...)` also shares
+storage: use the dtype, byte order and shape recorded with your data. These
+views are read-only; retaining a view keeps the decoded storage alive.
+
+To write a decoded file without allocating a Python `bytes` output:
+
+```sh
+python examples/decompress_file.py input.zlib output.bin --expected-bytes 67108864
+```
+
+The [file example](examples/decompress_file.py) validates the stream before
+creating the output, refuses to overwrite an existing file, and writes the
+memoryview directly. It still reads the compressed file into memory and
+performs normal file I/O. This is a bounded, whole-stream decoder.
+
 For compiled workflows, use the fixed-shape interfaces:
 
 ```python
@@ -93,7 +109,7 @@ files = (b"first file" * 100, b"second file" * 500, b"")
 sizes = tuple(map(len, files))
 streams = cuda_zlib.compress_zlib_batch_host(files, device=0)
 outputs = cuda_zlib.decompress_zlib_batch_host(streams, sizes, device=0)
-assert tuple(view.tobytes() for view in outputs) == files
+assert tuple(memoryview(view) for view in outputs) == files
 ```
 
 Files can have different lengths, including zero. Each gets its own zlib
