@@ -383,19 +383,22 @@ __device__ __forceinline__ void DecodeMatchShared(SharedDecodeOutput output, U32
   }
 }
 
-// Each lane probes one bounded bit offset, then all lanes follow only the
+// Each lane probes two bounded bit offsets, then all lanes follow only the
 // actual literal successor chain. The caller publishes stores with __syncwarp.
 __device__ __forceinline__ U32 SmallSharedLiteralRun(
     const decoder::u16* primary, U64 cache, U32 cached,
     SharedDecodeOutput output, U32 begin, U32 available, U32& consumed) {
   constexpr U32 mask = 0xffffffffu;
   const U32 lane = threadIdx.x;
-  const U32 entry = lane + 9 <= cached ?
+  const U32 entry_low = lane + 9 <= cached ?
       U32(primary[U32(cache >> lane) & 511u]) : 0;
+  const U32 entry_high = lane + 41 <= cached ?
+      U32(primary[U32(cache >> (lane + 32)) & 511u]) : 0;
   const U32 capacity = available < 32 ? available : 32;
   U32 offset = 0, count = 0, byte = 0;
-  while (offset < 32 && count < capacity) {
-    const U32 current = __shfl_sync(mask, entry, offset);
+  while (offset < 64 && count < capacity) {
+    const U32 entry = offset < 32 ? entry_low : entry_high;
+    const U32 current = __shfl_sync(mask, entry, offset & 31);
     if (!current || (current & 511u) >= 256) break;
     if (lane == count) byte = current & 511u;
     offset += current >> 9;
