@@ -43,6 +43,8 @@ constexpr U32 kMaxBytes = 1u << 28;
 constexpr U32 kMaxCandidates = 262144;
 constexpr U32 kMaxBlocks = 262144;
 constexpr U32 kFixedTileBytes = 2048;
+// Internal queued-path gate; authenticated fast success owns the final result.
+constexpr U32 kFastDecodeComplete = 0xffffffffu;
 
 // Deflate statuses 1..13 come directly from the existing decoder kernels.
 // Compress metadata is [encoded extent, status]; decode is [status, 0].
@@ -316,11 +318,14 @@ __global__ void DecompressionFraming(const U8* input, U32 size, U32* framing,
                (U32(input[size - 2]) << 8) | U32(input[size - 1]);
     }
   }
-  framing[0] = error;
+  const bool fast_complete = !error && fast_metadata && !fast_metadata[0];
+  // Skip both split discovery and exact-chain parsing after fast success.
+  // The final verifier checks fast_metadata before any queued-path status.
+  framing[0] = fast_complete ? kFastDecodeComplete : error;
   framing[1] = window;
   framing[2] = wanted;
   // Fast status is finalized before this launch and immutable thereafter.
-  framing[3] = !error && !(fast_metadata && !fast_metadata[0]);
+  framing[3] = !error && !fast_complete;
 }
 
 __global__ void ResetDenseDiscovery(U32* control, U32 prefix_capacity) {
@@ -487,6 +492,47 @@ __global__ void ClearFusedFailure(const U32* fast_metadata, U8* output, U32 size
     output[i] = 0;
 }
 
+// All-stored streams have five framing bytes per byte-aligned block. Extents
+// only admit this probe; every wrapper, header and span is validated on device.
+// Failure publishes no accepted output and defers to ordinary error precedence.
+__global__ void ProbeStoredBlocks(const U8* input, U32 input_size, U32 expected,
+                                  U32 blocks, U32* payloads, U32* prefixes,
+                                  U32* lengths, U32* metadata) {
+  if (blockIdx.x || threadIdx.x) return;
+  metadata[0] = 1;
+  metadata[1] = 0;
+  if (input_size < 8 || !blocks) return;
+  const U32 cmf = input[0], flg = input[1];
+  if ((cmf & 15) != 8 || (cmf >> 4) > 7 ||
+      (cmf * 256 + flg) % 31 || (flg & 32)) return;
+  const U32 end = input_size - 4;
+  U32 cursor = 2, produced = 0;
+  for (U32 i = 0; i < blocks; ++i) {
+    if (cursor > end || end - cursor < 5) return;
+    const U32 header = input[cursor];
+    if ((header & 6) || bool(header & 1) != (i + 1 == blocks)) return;
+    const U32 size = U32(input[cursor + 1]) | (U32(input[cursor + 2]) << 8);
+    const U32 complement = U32(input[cursor + 3]) | (U32(input[cursor + 4]) << 8);
+    if ((size ^ complement) != 65535 || size > expected - produced ||
+        size > end - cursor - 5) return;
+    payloads[i] = cursor + 5;
+    prefixes[i] = produced;
+    lengths[i] = size;
+    cursor += 5 + size;
+    produced += size;
+  }
+  if (cursor == end && produced == expected) metadata[0] = 0;
+}
+
+__global__ void CopyStoredBlocks(const U8* input, U8* output, U32 blocks,
+                                 const U32* payloads, const U32* prefixes,
+                                 const U32* lengths, const U32* metadata) {
+  if (metadata[0]) return;
+  for (U32 i = blockIdx.x; i < blocks; i += gridDim.x)
+    for (U32 j = threadIdx.x; j < lengths[i]; j += blockDim.x)
+      output[prefixes[i] + j] = input[payloads[i] + j];
+}
+
 // The parser finalized status before the parallel checksum launches. Failed
 // output remains fully initialized, but its checksum must not replace that error.
 __global__ void VerifyFusedChecksum(const U8* input, U32 input_size,
@@ -649,27 +695,49 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
   }
   if (expected) CUDA_TRY(cudaMemsetAsync(output->typed_data(), 0, expected, stream));
 
-  // A bounded fast parser handles valid medium streams. Any
-  // failure falls through to the ordinary queued pipeline and its precedence.
+  // Default limits permit specialized routes; explicit bounds retain the
+  // ordinary candidate/block accounting. Stored extents are only a necessary
+  // condition: the device probe must authenticate the complete chain.
   U32* fast_metadata = nullptr;
-  if (expected > 65536 && expected <= 1048576 && full_size <= 29133 &&
-      max_candidates == kMaxCandidates && max_blocks == kMaxBlocks) {
-    const U32 fast_parts = (expected + 4095) / 4096;
+  const bool default_limits = max_candidates == kMaxCandidates && max_blocks == kMaxBlocks;
+  const bool stored_route = default_limits && full_size >= U64(expected) + 11 &&
+      (full_size - expected - 6) % 5 == 0 &&
+      (full_size - expected - 6) / 5 <= U64(max_blocks);
+  const bool medium_route = default_limits && expected > 65536 &&
+      expected <= 1048576 && full_size <= 29133;
+  if (stored_route || medium_route) {
+    const U32 fast_parts = std::max<U32>(1, (expected + 4095) / 4096);
     U64 *fast_partial_a = nullptr, *fast_partial_b = nullptr;
     U32* fast_actual = nullptr;
     CUDA_TRY(workspace.Allocate(&fast_metadata, 2));
     CUDA_TRY(workspace.Allocate(&fast_partial_a, fast_parts));
     CUDA_TRY(workspace.Allocate(&fast_partial_b, fast_parts));
     CUDA_TRY(workspace.Allocate(&fast_actual, 1));
-    SmallDecode<<<1, 32, 0, stream>>>(
-        input.typed_data(), U32(full_size), output->typed_data(), expected,
-        U32(max_blocks), fast_metadata, true);
+    if (stored_route) {
+      const U32 stored_blocks = U32((full_size - expected - 6) / 5);
+      U32 *payloads = nullptr, *prefixes = nullptr, *lengths = nullptr;
+      CUDA_TRY(workspace.Allocate(&payloads, stored_blocks));
+      CUDA_TRY(workspace.Allocate(&prefixes, stored_blocks));
+      CUDA_TRY(workspace.Allocate(&lengths, stored_blocks));
+      ProbeStoredBlocks<<<1, 1, 0, stream>>>(
+          input.typed_data(), U32(full_size), expected, stored_blocks,
+          payloads, prefixes, lengths, fast_metadata);
+      CUDA_TRY(cudaGetLastError());
+      CopyStoredBlocks<<<std::min<U32>(16384, stored_blocks), 256, 0, stream>>>(
+          input.typed_data(), output->typed_data(), stored_blocks,
+          payloads, prefixes, lengths, fast_metadata);
+    } else {
+      SmallDecode<<<1, 32, 0, stream>>>(
+          input.typed_data(), U32(full_size), output->typed_data(), expected,
+          U32(max_blocks), fast_metadata, true);
+    }
     CUDA_TRY(cudaGetLastError());
     checksum::adler_parts<<<fast_parts, 256, 0, stream>>>(
-        output->typed_data(), expected, fast_partial_a, fast_partial_b);
+        output->typed_data(), expected, fast_partial_a, fast_partial_b, fast_metadata);
     CUDA_TRY(cudaGetLastError());
     checksum::adler_finish<<<1, 256, 0, stream>>>(
-        fast_partial_a, fast_partial_b, fast_parts, expected, fast_actual);
+        fast_partial_a, fast_partial_b, fast_parts, expected, fast_actual, nullptr,
+        fast_metadata);
     CUDA_TRY(cudaGetLastError());
     VerifyFusedChecksum<<<1, 1, 0, stream>>>(
         input.typed_data(), U32(full_size), fast_actual, fast_metadata);
@@ -677,7 +745,7 @@ cudaError_t Decompress(cudaStream_t stream, std::int64_t max_candidates,
   }
   // Pointer presence depends only on the static route, never a host status read.
   if (fast_metadata) {
-    ClearFusedFailure<<<std::min<U32>(16384, (expected + 255) / 256),
+    ClearFusedFailure<<<std::max<U32>(1, std::min<U32>(16384, (expected + 255) / 256)),
                         256, 0, stream>>>(fast_metadata, output->typed_data(), expected);
     CUDA_TRY(cudaGetLastError());
   }
