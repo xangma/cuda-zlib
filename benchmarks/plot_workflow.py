@@ -245,8 +245,11 @@ def main():
     for operation in OPERATIONS:
         parser.add_argument(f"--{operation}", type=Path, help=f"Normalized {operation} workflow report")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "figures/workflow")
+    parser.add_argument("--prefix", default="rtx4090", help="hardware identifier for the manifest filename")
     parser.add_argument("--validate-only", action="store_true")
     args = parser.parse_args()
+    if not args.prefix or Path(args.prefix).name != args.prefix or args.prefix in (".", ".."):
+        parser.error("prefix must be a filename component")
     if not any(getattr(args, operation) is not None for operation in OPERATIONS):
         parser.error("provide at least one of --compress or --decompress")
     reports = {operation: load_report(getattr(args, operation), operation) for operation in OPERATIONS if getattr(args, operation) is not None}
@@ -273,9 +276,15 @@ def main():
     helpers = {f"benchmarks/{name}": sha256(ROOT / name) for name in ("plot_results.py", "plot_nsight.py", "plot_timeline.py")}
     manifest = {
         "schema": 1, "kind": "workflow", "operations": list(reports), "plotter_sha256": sha256(Path(__file__)),
+        **({"publication": {operation: report["publication"] for operation, report in reports.items()
+                            if "publication" in report}} if any("publication" in report for report in reports.values()) else {}),
         "source_reports": {operation: {"path": report_identifier(getattr(args, operation)), "sha256": sha256(getattr(args, operation))} for operation in reports},
         "measurement_sources": {operation: {"revision": report["source_revision"], "harness_sha256": report["harness_sha256"], "sha256": report["source_sha256"]} for operation, report in reports.items()},
-        "report_evidence": {operation: {field: report[field] for field in ("native_build", "extractor_sha256", "artifact_sha256", "dependencies_sha256", "extractor_dependencies_sha256")} for operation, report in reports.items()},
+        "report_evidence": {operation: {field: report[field]
+            for field in ("native_build", "extractor_sha256", "artifact_sha256",
+                          "dependencies_sha256", "extractor_dependencies_sha256")
+            if field != "artifact_sha256" or "publication" not in report}
+            for operation, report in reports.items()},
         "style_helpers_sha256": helpers, "exports": exports, "figures": figures,
         "warnings": {operation: report["warnings"] for operation, report in reports.items()},
         "time_origins": {operation: report["time_origin"] for operation, report in reports.items()},
@@ -286,7 +295,7 @@ def main():
         "units": {"display_time": "seconds since collector clock origin", "copy": "MiB completed per bin", "activity": "kernel interval union/actual bin duration", "memory": "GiB", "cpu": "percent; 100 is one logical CPU"},
         "limitations": ["Instrumented diagnostics, not benchmarks", "Kernel activity is not occupancy", "Completed bytes per bin are not instantaneous bandwidth", "Host phases do not establish exclusive costs or GPU ownership", "Resource points use metric-specific query clocks; CPU uses averaging-interval midpoints", "Null resources remain gaps", "Summed RSS may double-count shared pages"],
     }
-    (args.output_dir / "rtx4090-manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    (args.output_dir / f"{args.prefix}-manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     print(f"Rendered {len(figures)} workflow families, {len(exports)} exports and provenance manifest")
 
 

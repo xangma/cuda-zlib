@@ -170,8 +170,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=ROOT / "results/host-outputs/rtx4090-float32.json")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "figures/host-outputs")
+    parser.add_argument("--prefix", default="rtx4090", help="hardware identifier for the manifest filename")
     parser.add_argument("--validate-only", action="store_true")
     args = parser.parse_args()
+    if not args.prefix or Path(args.prefix).name != args.prefix or args.prefix in (".", ".."):
+        parser.error("prefix must be a filename component")
     report, cases = load_report(args.input)
     if args.validate_only:
         print("Validated three sizes and all six host-output contracts")
@@ -182,8 +185,12 @@ def main():
     name = "host-output-latency"
     exports = save_figure(render(report, cases), args.output_dir, name)
     evidence_fields = ("dependencies_sha256", "benchmark_sha256", "profile_resident_sha256", "native_build", "environment", "arguments", "gpu_snapshot_before", "gpu_snapshot_after", "methodology", "validation", "warnings")
+    if "publication" in report:
+        evidence_fields = tuple(field for field in evidence_fields
+                                if field not in {"gpu_snapshot_before", "gpu_snapshot_after"})
     manifest = {
         "schema": 1, "kind": "host_outputs", "source_report": report_identifier(args.input), "source_report_sha256": sha256(args.input),
+        **({"publication": report["publication"]} if "publication" in report else {}),
         "plotter_sha256": sha256(Path(__file__)),
         "measurement_source": {"revision": report["source_revision"], "harness_sha256": report["harness_sha256"], "sha256": report["source_sha256"]},
         "report_evidence": {field: report[field] for field in evidence_fields if field in report},
@@ -194,7 +201,7 @@ def main():
         "scope": "host compressed bytes through completed consumer output, including transfers/status checks/conversion; byte oracle and file I/O excluded",
         "limitations": ["Independent linear latency scale for each size", "All individual samples shown; jitter only separates points", "CPU and CUDA memoryviews have different backing storage", "Shared workstation; no isolated kernel cost claim"],
     }
-    (args.output_dir / "rtx4090-manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    (args.output_dir / f"{args.prefix}-manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     print("Rendered one host-output figure, three exports and provenance manifest")
 
 

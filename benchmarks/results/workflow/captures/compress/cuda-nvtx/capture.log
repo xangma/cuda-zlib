@@ -1,23 +1,0 @@
-Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:
-
-  Traceback (most recent call last):
-    File "<frozen site>", line 206, in addpackage
-    File "<string>", line 1, in <module>
-    File "<frozen importlib._bootstrap>", line 810, in module_from_spec
-  AttributeError: 'NoneType' object has no attribute 'loader'
-
-Remainder of file ignored
-Error processing line 1 of /home/xangma/miniconda3/envs/ai/lib/python3.12/site-packages/pyannote_audio-3.1.1-nspkg.pth:
-
-  Traceback (most recent call last):
-    File "<frozen site>", line 206, in addpackage
-    File "<string>", line 1, in <module>
-    File "<frozen importlib._bootstrap>", line 810, in module_from_spec
-  AttributeError: 'NoneType' object has no attribute 'loader'
-
-Remainder of file ignored
-Collecting data...
-Generating '/tmp/nsys-report-4e89.qdstrm'
-[1/1] [0%                          ] capture.nsys-rep[1/1] [0%                          ] capture.nsys-rep[1/1] [=16%                        ] capture.nsys-rep[1/1] [=====32%                    ] capture.nsys-rep[1/1] [==========47%               ] capture.nsys-rep[1/1] [===========53%              ] capture.nsys-rep[1/1] [=============58%            ] capture.nsys-rep[1/1] [=============59%            ] capture.nsys-rep[1/1] [=============60%            ] capture.nsys-rep[1/1] [==============61%           ] capture.nsys-rep[1/1] [==============63%           ] capture.nsys-rep[1/1] [==============64%           ] capture.nsys-rep[1/1] [===============65%          ] capture.nsys-rep[1/1] [===============66%          ] capture.nsys-rep[1/1] [===============67%          ] capture.nsys-rep[1/1] [================68%         ] capture.nsys-rep[1/1] [================69%         ] capture.nsys-rep[1/1] [================70%         ] capture.nsys-rep[1/1] [================71%         ] capture.nsys-rep[1/1] [=================72%        ] capture.nsys-rep[1/1] [=================73%        ] capture.nsys-rep[1/1] [=================74%        ] capture.nsys-rep[1/1] [==================75%       ] capture.nsys-rep[1/1] [==================76%       ] capture.nsys-rep[1/1] [==================77%       ] capture.nsys-rep[1/1] [==================78%       ] capture.nsys-rep[1/1] [===================79%      ] capture.nsys-rep[1/1] [===================80%      ] capture.nsys-rep[1/1] [===================81%      ] capture.nsys-rep[1/1] [===================82%      ] capture.nsys-rep[1/1] [====================83%     ] capture.nsys-rep[1/1] [========================100%] capture.nsys-rep[1/1] [========================100%] capture.nsys-rep
-Generated:
-	/dev/shm/cuda-zlib-stored-publication-20261009-01a10cd3/run-v1/workflows/compress/cuda-nvtx/capture.nsys-rep

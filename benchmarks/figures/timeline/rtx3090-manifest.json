@@ -1,0 +1,303 @@
+{
+  "artifact_sha256": {},
+  "bin_count": 1275,
+  "exports": {
+    "warmed-loop.pdf": "231042defe7249e6600ab337bbfacc0b4a8d237dc2b098011b02c07b7f2ba1e4",
+    "warmed-loop.png": "52e23a832421fa4217301c09fede6fae7fcf97683d2b90f5798450e7dc1d3df2",
+    "warmed-loop.svg": "0c5cbc18c454aa37cee4da7a7b44b777bc50218cf4bc02ef58c3cf2f12fcf487",
+    "whole-process.pdf": "fb2ff607479ffd3708c23c89fa44932179e2b6ee623ef7d3c7a7859ed9147cf5",
+    "whole-process.png": "de3373c43ef2470d843883d57d712e6d10484d06d21f8e627443afb936f81892",
+    "whole-process.svg": "e5cf2c399ed0765f3f3c99ab371be8bc4bb60780ddee71fab34ba74b042c2246"
+  },
+  "extractor_sha256": "1cd4f8aa5b1e8ae2e552bf336b2f711c45d6a392d023c7917ae6319fae5697ca",
+  "figures": {
+    "warmed-loop": {
+      "copy_bytes_completed": {
+        "D2D": 0,
+        "D2H": 1342177440,
+        "H2D": 1243087700,
+        "other": 0
+      },
+      "display_bounds_ns": {
+        "end_ns": 12079427910,
+        "start_ns": 8206211668
+      },
+      "exports": {
+        "warmed-loop.pdf": "231042defe7249e6600ab337bbfacc0b4a8d237dc2b098011b02c07b7f2ba1e4",
+        "warmed-loop.png": "52e23a832421fa4217301c09fede6fae7fcf97683d2b90f5798450e7dc1d3df2",
+        "warmed-loop.svg": "0c5cbc18c454aa37cee4da7a7b44b777bc50218cf4bc02ef58c3cf2f12fcf487"
+      },
+      "kernel_union_ns": 808669932,
+      "view": "measured_loop"
+    },
+    "whole-process": {
+      "copy_bytes_completed": {
+        "D2D": 0,
+        "D2H": 1476395184,
+        "H2D": 1367396470,
+        "other": 0
+      },
+      "display_bounds_ns": {
+        "end_ns": 12744942442,
+        "start_ns": 1192476
+      },
+      "exports": {
+        "whole-process.pdf": "fb2ff607479ffd3708c23c89fa44932179e2b6ee623ef7d3c7a7859ed9147cf5",
+        "whole-process.png": "de3373c43ef2470d843883d57d712e6d10484d06d21f8e627443afb936f81892",
+        "whole-process.svg": "e5cf2c399ed0765f3f3c99ab371be8bc4bb60780ddee71fab34ba74b042c2246"
+      },
+      "kernel_union_ns": 889624773,
+      "view": "whole_process"
+    }
+  },
+  "gpu_activity_count": 950,
+  "host_phase_count": 70,
+  "kind": "timeline",
+  "limitations": [
+    "Instrumented diagnostics, not end-to-end benchmarks",
+    "Kernel activity is not occupancy",
+    "Host annotations do not establish GPU ownership",
+    "Fused internal stages remain indivisible",
+    "Missing resource values remain gaps",
+    "Summed RSS may count shared pages more than once"
+  ],
+  "measurement_source": {
+    "harness_sha256": "785e28fd554721c1b4dac55601dd7c5a8f62bfb4137ddf83d6818b1706fcb5b4",
+    "revision": "d323fee215658d2c03731c2e282b395860a27ac8",
+    "sha256": {
+      "__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
+      "_codec.py": "0a0a5484f90a55cf53530b3dc837a12b2a293d5bb88c0b9426758d17409af5d2",
+      "_decode_kernels.py": "24d4cf545663daa385d3cb08184f8261f8803b002e1ce9edff95254cc6e37ad7",
+      "_encode_kernels.py": "514bd9aba9978010f4a1659209ac0a6b9b0e72a043d6605805c4c698f6d87964",
+      "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
+      "_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
+      "_postprocess.py": "c1ac2370317f08360c857a225bc3be6e96d93d97bc75fe49f9b434954cda8632",
+      "jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
+      "native/batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
+      "native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+      "native/codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0"
+    }
+  },
+  "native_build": {
+    "build_sha256": "a1f169c838f67397cdb7a6052f1b98f0bea1558dd32b6df7c661689ef237d68d",
+    "cache_key": "f23e64aefe987fab7f182221c3db7ca4f512676ec9874e2ee1de3e72e8691d4e",
+    "ffi_targets": [
+      "cuda_zlib_compress_sm_86",
+      "cuda_zlib_decompress_sm_86",
+      "cuda_zlib_compress_batch_sm_86",
+      "cuda_zlib_decompress_batch_sm_86"
+    ],
+    "identity": {
+      "architecture": "sm_86",
+      "compiler": "/usr/local/cuda-12.6/bin/nvcc",
+      "compiler_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2024 NVIDIA Corporation\nBuilt on Tue_Oct_29_23:50:19_PDT_2024\nCuda compilation tools, release 12.6, V12.6.85\nBuild cuda_12.6.r12.6/compiler.35059454_0\n",
+      "flags": [
+        "-O3",
+        "-lineinfo",
+        "--std=c++17",
+        "--cudart=shared",
+        "-Xcompiler=-pthread",
+        "-ldl"
+      ],
+      "headers": {
+        "api.h": "1426ea8206a1b9f1824f460572ea731665eb7cb9def1f0fc166b13df4b955ad0",
+        "c_api.h": "9847993912aa1aadb2dac4af16eeb9d8bae3f470905b519977d1d09b3f37eedf",
+        "collectives_api.h": "59f78f7358e33ad4c98d9356cce45b43c22c745eb6e88785070889e546b7e0b4",
+        "collectives_c_api.h": "ed27017e78d9adc100927b868b8578941765aaee483c16138c6e6ec3d982063f",
+        "ffi.h": "0878473a1ee35fdd9ff15424d46a44602fb53019f0d0a9f5117abdb386c35129",
+        "record_api.h": "35214dc4910a1de61e8903adca060d8a1354070fb0a31936cf97c7ce9292ec37",
+        "record_c_api.h": "6972199566e88987f224e42aac1a6b433d4d9a25f1eaa6526288b4922ff02db0"
+      },
+      "jaxlib": "0.11.2",
+      "sources": {
+        "batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
+        "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+        "codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0",
+        "decoder.cuh": "cd0e51889b383975abe6f9de5037b42cf09c9ef5b0f5e887d7fa3520c197b9ce",
+        "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
+        "postprocess.cuh": "ca5125639b5691ce3edcc37c4f0c00f88d8470c5073235e5802c375203e7ae81"
+      }
+    },
+    "library_sha256": "83420785b15e2fb659e87008bb994fa4572fec4c510f4ba406ebd32db582c405"
+  },
+  "phase_semantics": {
+    "decode": {
+      "description": "block_until_ready on output and checked metadata",
+      "kind": "completed"
+    },
+    "download_check": {
+      "description": "Metadata transfer/status check before output transfer and byte oracle",
+      "kind": "completed"
+    },
+    "init": {
+      "description": "Initialization annotation; backend/native APIs may enqueue GPU work",
+      "kind": "host_annotation"
+    },
+    "measured_loop": {
+      "description": "Complete measured workflows",
+      "kind": "container"
+    },
+    "prepare": {
+      "description": "CPU fixture preparation and stdlib input oracle",
+      "kind": "host_only"
+    },
+    "upload": {
+      "description": "jax.device_put; no added GPU synchronization",
+      "kind": "enqueue"
+    },
+    "warmup": {
+      "description": "Complete warmup workflows",
+      "kind": "container"
+    }
+  },
+  "plotter_sha256": "7fa16c4ea15757fbc07052265bf4fbb9fdaa306833c34f292df2f81c95f2be3e",
+  "publication": {
+    "kind": "portable_measurement",
+    "private_evidence_sha256": "8952e6439c9f7898652dcc54ee26f8da36c6053d29385e64d83d8e8b7579f40d",
+    "schema_version": 1
+  },
+  "renderer": {
+    "backend": "Agg",
+    "matplotlib": "3.11.2",
+    "numpy": "2.5.3"
+  },
+  "resource_sample_intervals": {
+    "maximum_ms": 74.765221,
+    "median_ms": 61.8820305,
+    "minimum_ms": 61.365008
+  },
+  "resource_timestamp_policy": {
+    "cpu_percent": "midpoint of the averaging interval between process-query midpoints",
+    "gpu_memory": "NVML memory-query midpoint",
+    "gpu_owned_memory": "NVML compute-process-query midpoint",
+    "rss_bytes": "process-query span midpoint"
+  },
+  "sample_count": 203,
+  "schema": 1,
+  "source_report": "benchmarks/results/timeline/rtx3090-float32.json",
+  "source_report_sha256": "566a9658312a5f6e7e994f13dd6abbe7bfb1f25157cb1259b411789f6a3b9bb1",
+  "style_helper_sha256": "aa7e34864b3396b6ea3fcd77a1dbdee35bec99c7cb3d0bb37e12d22abf22ebb8",
+  "style_helpers_sha256": {
+    "benchmarks/plot_nsight.py": "38bd5f73c4d4d9a64649c040cd165dd2f93ace3a792214f61fc63305b68d46bc",
+    "benchmarks/plot_results.py": "aa7e34864b3396b6ea3fcd77a1dbdee35bec99c7cb3d0bb37e12d22abf22ebb8"
+  },
+  "time_origin": {
+    "half_bracket_ns": 50991.5,
+    "label": "cuda_zlib:origin:bc37660af0b842d8b0006edbd194d2e9",
+    "method": "NVTX instant to bracketed monotonic midpoint",
+    "monotonic_after_ns": 3112085671618353,
+    "monotonic_before_ns": 3112085671516370,
+    "monotonic_ns": 3112085671567361,
+    "nsight_ns": 391250251,
+    "rounding": "integer midpoint rounded down; uncertainty rounded up",
+    "uncertainty_ns": 50992
+  },
+  "units": {
+    "copy": "MiB completed per bin",
+    "cpu": "percent; 100 means one logical CPU",
+    "display_time": "seconds since collector clock origin",
+    "kernel_activity": "union(kernel intervals)/actual bin duration",
+    "memory": "GiB"
+  },
+  "warnings": [
+    {
+      "diagnostic_source": 3,
+      "global_pid": 4,
+      "pid": null,
+      "recorded_timestamp": 11913745974,
+      "scope": "session",
+      "severity": "Warning",
+      "source": "sqlite",
+      "text": "Scheduling information is absent. The thread activity is deduced based on OS runtime libraries traces. This is inaccurate and does not take into account asynchronous interrupts and exception faults.",
+      "timestamp_type": 2
+    },
+    {
+      "diagnostic_source": 3,
+      "global_pid": 5,
+      "pid": 6,
+      "recorded_timestamp": 11913937767,
+      "scope": "collector",
+      "severity": "Warning",
+      "source": "sqlite",
+      "text": "Not all NVTX events might have been collected.",
+      "timestamp_type": 2
+    },
+    {
+      "diagnostic_source": 3,
+      "global_pid": 1,
+      "pid": 2,
+      "recorded_timestamp": 11913943819,
+      "scope": "worker",
+      "severity": "Warning",
+      "source": "sqlite",
+      "text": "Not all NVTX events might have been collected.",
+      "timestamp_type": 2
+    },
+    {
+      "diagnostic_source": 3,
+      "global_pid": 7,
+      "pid": null,
+      "recorded_timestamp": 11913945472,
+      "scope": "other",
+      "severity": "Warning",
+      "source": "sqlite",
+      "text": "Not all NVTX events might have been collected.",
+      "timestamp_type": 2
+    },
+    {
+      "diagnostic_source": 3,
+      "global_pid": 7,
+      "pid": null,
+      "recorded_timestamp": 11913946364,
+      "scope": "other",
+      "severity": "Warning",
+      "source": "sqlite",
+      "text": "No NVTX events collected. Does the process use NVTX?",
+      "timestamp_type": 2
+    },
+    {
+      "diagnostic_source": 3,
+      "global_pid": 5,
+      "pid": 6,
+      "recorded_timestamp": 11913948748,
+      "scope": "collector",
+      "severity": "Warning",
+      "source": "sqlite",
+      "text": "CUDA profiling might have not been started correctly.",
+      "timestamp_type": 2
+    },
+    {
+      "diagnostic_source": 3,
+      "global_pid": 5,
+      "pid": 6,
+      "recorded_timestamp": 11913950051,
+      "scope": "collector",
+      "severity": "Warning",
+      "source": "sqlite",
+      "text": "No CUDA events collected. Does the process use CUDA?",
+      "timestamp_type": 2
+    },
+    {
+      "diagnostic_source": 3,
+      "global_pid": 7,
+      "pid": null,
+      "recorded_timestamp": 11913951934,
+      "scope": "other",
+      "severity": "Warning",
+      "source": "sqlite",
+      "text": "CUDA profiling might have not been started correctly.",
+      "timestamp_type": 2
+    },
+    {
+      "diagnostic_source": 3,
+      "global_pid": 7,
+      "pid": null,
+      "recorded_timestamp": 11913952515,
+      "scope": "other",
+      "severity": "Warning",
+      "source": "sqlite",
+      "text": "No CUDA events collected. Does the process use CUDA?",
+      "timestamp_type": 2
+    }
+  ]
+}

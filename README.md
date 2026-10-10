@@ -51,7 +51,7 @@ The [file example](examples/decompress_file.py) validates the stream before
 creating the output, refuses to overwrite an existing file, and writes the
 memoryview directly. It still reads the compressed file into memory and
 performs normal file I/O. This is a bounded, whole-stream decoder.
-See [output-format benchmarks](BENCHMARKS.md#consumer-output-formats-on-rtx-4090)
+See [output-format benchmarks](BENCHMARKS.md#consumer-output-formats-on-rtx-3090)
 for matching CPU/CUDA array, memoryview and bytes timings.
 
 For compiled workflows, use the fixed-shape interfaces:
@@ -165,17 +165,17 @@ and checksum reductions. DEFLATE bit parsing still follows stream order.
 
 ## Performance
 
-On an RTX 4090 with an AMD Threadripper PRO 3995WX, warm **64 MiB** host-byte
-compression measured **5.78–15.10×** the throughput of single-threaded CPU
-zlib level 1. Decompression of identical stdlib level-6 streams measured
-**1.28–4.96×** CPU throughput. Both comparisons include uploads, downloads,
-allocations, codec validation and conversion to Python `bytes`.
-
+On an RTX 3090 with an AMD Threadripper PRO 3995WX, warm host-byte timings
+were measured at [`d323fee`](https://github.com/xangma/cuda-zlib/tree/d323fee215658d2c03731c2e282b395860a27ac8).
+For **64 MiB** inputs, warm host-byte compression measured **4.65–12.85×** CPU
+zlib level-1 throughput. Decompression of identical stdlib level-6 streams
+measured **1.34–4.88×** CPU throughput. Both comparisons include GPU uploads,
+downloads, allocations, codec status checks and conversion to Python `bytes`.
 At **64 KiB**, CPU compression and decompression were faster for every workload.
-At **1 MiB**, host-byte compression measured **0.91–4.55×** CPU level-1
+At **1 MiB**, host-byte compression measured **0.90–4.48×** CPU level-1
 throughput. CUDA was faster for four workloads; CPU was faster for generated
-text (**0.91×**). Decompression was faster on CUDA for zeros
-(**1.47×**) and Gaussian float32 (**1.23×**). CPU won the other three
+text (**0.90×**). Decompression was faster on CUDA for zeros
+(**1.32×**) and Gaussian float32 (**1.14×**). CPU won the other three
 workloads.
 Compression sizes differ across codecs; CUDA has no zlib-equivalent level.
 
@@ -186,12 +186,12 @@ crossover.
 **CPU host-byte workflows were faster for every measured single-file small-input
 case** (256 B, 4 KiB and 64 KiB) than the matching CUDA host-byte workflows.
 With **128 independent 64 KiB files**, host-byte compression measured
-**2.49–18.69×** CPU level-1 throughput. Host-byte decompression measured
-**9.67×** CPU for zeros and **1.97×** for text. CPU was faster for
-random bytes (**0.94×**).
-See [small-file results and batch-count plots](BENCHMARKS.md#independent-small-files-on-rtx-4090).
+**2.33–12.66×** CPU level-1 throughput. Host-byte decompression measured
+**12.65×** CPU for zeros, **2.50×** for text and **1.04×** for
+random bytes. The random-byte result is close to parity.
+See [small-file results and batch-count plots](BENCHMARKS.md#independent-small-files-on-rtx-3090).
 
-For compiled consumers, [resident checked decode measurements](BENCHMARKS.md#resident-checked-decoding-on-rtx-4090)
+For compiled consumers, [resident checked decode measurements](BENCHMARKS.md#resident-checked-decoding-on-rtx-3090)
 report completed JIT latency without uploads or host status transfers. That
 dataset has a separate timing scope and does not report CPU speedup.
 

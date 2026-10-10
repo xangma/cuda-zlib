@@ -114,6 +114,7 @@ def main():
     (args.output_dir/'resident-checked-manifest.json').write_text(json.dumps(
         {'schema_version': 1, 'source_report': report_identifier(args.input),
          'source_report_sha256': hashlib.sha256(args.input.read_bytes()).hexdigest(),
+         **({'publication': report['publication']} if 'publication' in report else {}),
          'plotter_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
          'renderer': {'matplotlib': matplotlib.__version__, 'numpy': np.__version__, 'backend': 'Agg'},
          'measurement_source': {'revision': report.get('source_revision'),

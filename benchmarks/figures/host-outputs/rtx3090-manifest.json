@@ -1,0 +1,330 @@
+{
+  "exports": {
+    "host-output-latency.pdf": "1b88f79e82317f76a628e4fdc598bb10f22f08478b2d1df8c568912c955b5875",
+    "host-output-latency.png": "a0efc9627aa397cd4e61d15d7362dd7c544a5c98fccbfc324421690ab433cd66",
+    "host-output-latency.svg": "19893a6f13e3d170ec300d45f2a9cfa4126c263fe850b88aa852b881d935a4b2"
+  },
+  "figures": {
+    "host-output-latency": {
+      "case_statistics": [
+        {
+          "output_bytes": 65536,
+          "series": [
+            {
+              "backing_storage": "fresh stdlib zlib bytes",
+              "max_wall_ns": 471073,
+              "median_wall_ns": 459596.0,
+              "min_wall_ns": 446596,
+              "name": "cpu_ndarray",
+              "samples": 12
+            },
+            {
+              "backing_storage": "fresh JAX-owned pinned host storage",
+              "max_wall_ns": 12130602,
+              "median_wall_ns": 11241045.5,
+              "min_wall_ns": 10956307,
+              "name": "cuda_ndarray",
+              "samples": 12
+            },
+            {
+              "backing_storage": "fresh stdlib zlib bytes",
+              "max_wall_ns": 489448,
+              "median_wall_ns": 457817.5,
+              "min_wall_ns": 444302,
+              "name": "cpu_memoryview",
+              "samples": 12
+            },
+            {
+              "backing_storage": "fresh JAX-owned pinned host storage",
+              "max_wall_ns": 12256089,
+              "median_wall_ns": 11281753.0,
+              "min_wall_ns": 11005169,
+              "name": "cuda_memoryview",
+              "samples": 12
+            },
+            {
+              "backing_storage": "fresh stdlib zlib bytes",
+              "max_wall_ns": 470812,
+              "median_wall_ns": 463954.5,
+              "min_wall_ns": 450413,
+              "name": "cpu_bytes",
+              "samples": 12
+            },
+            {
+              "backing_storage": "fresh Python bytes copied from JAX-owned pinned host storage",
+              "max_wall_ns": 12193262,
+              "median_wall_ns": 11343430.0,
+              "min_wall_ns": 10996682,
+              "name": "cuda_bytes",
+              "samples": 12
+            }
+          ]
+        },
+        {
+          "output_bytes": 1048576,
+          "series": [
+            {
+              "backing_storage": "fresh stdlib zlib bytes",
+              "max_wall_ns": 7283505,
+              "median_wall_ns": 7249250.0,
+              "min_wall_ns": 7223342,
+              "name": "cpu_ndarray",
+              "samples": 12
+            },
+            {
+              "backing_storage": "fresh JAX-owned pinned host storage",
+              "max_wall_ns": 6555856,
+              "median_wall_ns": 6466882.0,
+              "min_wall_ns": 6359694,
+              "name": "cuda_ndarray",
+              "samples": 12
+            },
+            {
+              "backing_storage": "fresh stdlib zlib bytes",
+              "max_wall_ns": 7255151,
+              "median_wall_ns": 7232839.5,
+              "min_wall_ns": 7222290,
+              "name": "cpu_memoryview",
+              "samples": 12
+            },
+            {
+              "backing_storage": "fresh JAX-owned pinned host storage",
+              "max_wall_ns": 6541719,
+              "median_wall_ns": 6467529.0,
+              "min_wall_ns": 6426160,
+              "name": "cuda_memoryview",
+              "samples": 12
+            },
+            {
+              "backing_storage": "fresh stdlib zlib bytes",
+              "max_wall_ns": 7249621,
+              "median_wall_ns": 7233520.5,
+              "min_wall_ns": 7221267,
+              "name": "cpu_bytes",
+              "samples": 12
+            },
+            {
+              "backing_storage": "fresh Python bytes copied from JAX-owned pinned host storage",
+              "max_wall_ns": 6661055,
+              "median_wall_ns": 6545857.5,
+              "min_wall_ns": 6446679,
+              "name": "cuda_bytes",
+              "samples": 12
+            }
+          ]
+        },
+        {
+          "output_bytes": 67108864,
+          "series": [
+            {
+              "backing_storage": "fresh stdlib zlib bytes",
+              "max_wall_ns": 565136428,
+              "median_wall_ns": 564303616.0,
+              "min_wall_ns": 563200341,
+              "name": "cpu_ndarray",
+              "samples": 12
+            },
+            {
+              "backing_storage": "fresh JAX-owned pinned host storage",
+              "max_wall_ns": 52277186,
+              "median_wall_ns": 51918796.0,
+              "min_wall_ns": 49329528,
+              "name": "cuda_ndarray",
+              "samples": 12
+            },
+            {
+              "backing_storage": "fresh stdlib zlib bytes",
+              "max_wall_ns": 565685152,
+              "median_wall_ns": 564239354.5,
+              "min_wall_ns": 563029367,
+              "name": "cpu_memoryview",
+              "samples": 12
+            },
+            {
+              "backing_storage": "fresh JAX-owned pinned host storage",
+              "max_wall_ns": 52910485,
+              "median_wall_ns": 51967508.0,
+              "min_wall_ns": 49486936,
+              "name": "cuda_memoryview",
+              "samples": 12
+            },
+            {
+              "backing_storage": "fresh stdlib zlib bytes",
+              "max_wall_ns": 564940690,
+              "median_wall_ns": 564283082.5,
+              "min_wall_ns": 563413995,
+              "name": "cpu_bytes",
+              "samples": 12
+            },
+            {
+              "backing_storage": "fresh Python bytes copied from JAX-owned pinned host storage",
+              "max_wall_ns": 112997403,
+              "median_wall_ns": 112540783.0,
+              "min_wall_ns": 110364493,
+              "name": "cuda_bytes",
+              "samples": 12
+            }
+          ]
+        }
+      ],
+      "exports": {
+        "host-output-latency.pdf": "1b88f79e82317f76a628e4fdc598bb10f22f08478b2d1df8c568912c955b5875",
+        "host-output-latency.png": "a0efc9627aa397cd4e61d15d7362dd7c544a5c98fccbfc324421690ab433cd66",
+        "host-output-latency.svg": "19893a6f13e3d170ec300d45f2a9cfa4126c263fe850b88aa852b881d935a4b2"
+      },
+      "series_order": [
+        "cpu_ndarray",
+        "cuda_ndarray",
+        "cpu_memoryview",
+        "cuda_memoryview",
+        "cpu_bytes",
+        "cuda_bytes"
+      ],
+      "sizes": [
+        65536,
+        1048576,
+        67108864
+      ],
+      "statistic": "median of individual wall_ns",
+      "units": "ms"
+    }
+  },
+  "kind": "host_outputs",
+  "limitations": [
+    "Independent linear latency scale for each size",
+    "All individual samples shown; jitter only separates points",
+    "CPU and CUDA memoryviews have different backing storage",
+    "Shared workstation; no isolated kernel cost claim"
+  ],
+  "measurement_source": {
+    "harness_sha256": "9216d53c64dea3c2676a7acb5a62e20b05e7fd3bf4cdc0d8cf8f21a2d389833f",
+    "revision": "d323fee215658d2c03731c2e282b395860a27ac8",
+    "sha256": {
+      "__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
+      "_codec.py": "0a0a5484f90a55cf53530b3dc837a12b2a293d5bb88c0b9426758d17409af5d2",
+      "_decode_kernels.py": "24d4cf545663daa385d3cb08184f8261f8803b002e1ce9edff95254cc6e37ad7",
+      "_encode_kernels.py": "514bd9aba9978010f4a1659209ac0a6b9b0e72a043d6605805c4c698f6d87964",
+      "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
+      "_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
+      "_postprocess.py": "c1ac2370317f08360c857a225bc3be6e96d93d97bc75fe49f9b434954cda8632",
+      "jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
+      "native/batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
+      "native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+      "native/codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0"
+    }
+  },
+  "plotter_sha256": "6e655e5a0033f0d4f3cfc2edba4d0aa331aacac504f6e2ff45c845c29d8a000a",
+  "publication": {
+    "kind": "portable_measurement",
+    "private_evidence_sha256": "8114373b7b31ec2d8c0577cc1a5638cb87ea6c32b86d0a833fd85711c60bf506",
+    "schema_version": 1
+  },
+  "renderer": {
+    "backend": "Agg",
+    "matplotlib": "3.11.2",
+    "numpy": "2.5.3"
+  },
+  "report_evidence": {
+    "arguments": {
+      "device": 0,
+      "order_seed": 20261009,
+      "output": "<private-path>",
+      "samples": 12,
+      "seed": 20261008,
+      "sizes": [
+        65536,
+        1048576,
+        67108864
+      ],
+      "source_revision": "d323fee215658d2c03731c2e282b395860a27ac8",
+      "warmups": 2,
+      "workload": "float32"
+    },
+    "benchmark_sha256": "a542c79b14b3380a81fea08e33db9d3f566599c0349f5c1ca1add8d558022f7e",
+    "dependencies_sha256": {
+      "benchmarks/benchmark.py": "a542c79b14b3380a81fea08e33db9d3f566599c0349f5c1ca1add8d558022f7e",
+      "benchmarks/profile_resident.py": "a50f5b0ca028dcddb50a6eb0a7fdb402d2dae2ed1ab337ecc2e045ba8a8cc7c0",
+      "benchmarks/profile_timeline.py": "785e28fd554721c1b4dac55601dd7c5a8f62bfb4137ddf83d6818b1706fcb5b4",
+      "benchmarks/profile_workflow.py": "64aef6db9083c6f55e3c35f0b1c2747fb5428c66fffe38f91b076c300fa67631"
+    },
+    "environment": {
+      "backend": "JAX typed CUDA FFI",
+      "cuda_platform": "cuda 12060",
+      "cuda_visible_devices": "<device-id>",
+      "cuda_zlib": "0.1.0a1",
+      "device_kind": "NVIDIA GeForce RTX 3090",
+      "gpu_uuid": "redacted",
+      "jax": "0.11.2",
+      "jaxlib": "0.11.2",
+      "local_hardware_id": 0,
+      "numpy": "2.2.5",
+      "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.39",
+      "python": "3.13.3 | packaged by conda-forge | (main, Apr 14 2025, 20:44:03) [GCC 13.3.0]",
+      "runtime_package": "<private-path>",
+      "zlib_runtime": "1.3.1"
+    },
+    "methodology": {
+      "cpu_api": "fresh stdlib zlib.decompress each call; ndarray np.frombuffer and memoryview reuse that fresh bytes storage",
+      "cpu_time": "calling thread_time_ns; counter snapshots bracket the timed call",
+      "cuda_api": "cuda_zlib.decompress_zlib_host; successful return is public status-check evidence, no raw metadata returned",
+      "cuda_outputs": "ndarray/memoryview share completed JAX-owned pinned storage; bytes adds tobytes allocation/copy",
+      "faults": "minor/major_faults are process-wide deltas and may include concurrent JAX activity",
+      "limits": "single-file synchronous API; no batch, pipelining or GPU-only claim; no affinity/thread environment forced",
+      "ordering": "all six series shuffled once per round, warmups first, random.Random(order_seed + output_bytes)",
+      "scope": "full synchronous public host-input decompression plus consumer conversion",
+      "timing_excludes": "fixture generation, initialization/build, output release, post-timing oracle comparisons",
+      "timing_includes": "host compressed input, public API validation, upload, native decode/status check, pinned download, consumer conversion",
+      "validation": "every warmup/sample byte-exact after timer; ndarray/memoryview checks do not call tobytes"
+    },
+    "native_build": {
+      "build_sha256": "a1f169c838f67397cdb7a6052f1b98f0bea1558dd32b6df7c661689ef237d68d",
+      "cache_key": "f23e64aefe987fab7f182221c3db7ca4f512676ec9874e2ee1de3e72e8691d4e",
+      "ffi_targets": [
+        "cuda_zlib_compress_sm_86",
+        "cuda_zlib_decompress_sm_86",
+        "cuda_zlib_compress_batch_sm_86",
+        "cuda_zlib_decompress_batch_sm_86"
+      ],
+      "identity": {
+        "architecture": "sm_86",
+        "compiler": "/usr/local/cuda-12.6/bin/nvcc",
+        "compiler_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2024 NVIDIA Corporation\nBuilt on Tue_Oct_29_23:50:19_PDT_2024\nCuda compilation tools, release 12.6, V12.6.85\nBuild cuda_12.6.r12.6/compiler.35059454_0\n",
+        "flags": [
+          "-O3",
+          "-lineinfo",
+          "--std=c++17",
+          "--cudart=shared",
+          "-Xcompiler=-pthread",
+          "-ldl"
+        ],
+        "headers": {
+          "api.h": "1426ea8206a1b9f1824f460572ea731665eb7cb9def1f0fc166b13df4b955ad0",
+          "c_api.h": "9847993912aa1aadb2dac4af16eeb9d8bae3f470905b519977d1d09b3f37eedf",
+          "collectives_api.h": "59f78f7358e33ad4c98d9356cce45b43c22c745eb6e88785070889e546b7e0b4",
+          "collectives_c_api.h": "ed27017e78d9adc100927b868b8578941765aaee483c16138c6e6ec3d982063f",
+          "ffi.h": "0878473a1ee35fdd9ff15424d46a44602fb53019f0d0a9f5117abdb386c35129",
+          "record_api.h": "35214dc4910a1de61e8903adca060d8a1354070fb0a31936cf97c7ce9292ec37",
+          "record_c_api.h": "6972199566e88987f224e42aac1a6b433d4d9a25f1eaa6526288b4922ff02db0"
+        },
+        "jaxlib": "0.11.2",
+        "sources": {
+          "batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
+          "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+          "codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0",
+          "decoder.cuh": "cd0e51889b383975abe6f9de5037b42cf09c9ef5b0f5e887d7fa3520c197b9ce",
+          "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
+          "postprocess.cuh": "ca5125639b5691ce3edcc37c4f0c00f88d8470c5073235e5802c375203e7ae81"
+        }
+      },
+      "library_sha256": "83420785b15e2fb659e87008bb994fa4572fec4c510f4ba406ebd32db582c405"
+    },
+    "profile_resident_sha256": "a50f5b0ca028dcddb50a6eb0a7fdb402d2dae2ed1ab337ecc2e045ba8a8cc7c0"
+  },
+  "schema": 1,
+  "scope": "host compressed bytes through completed consumer output, including transfers/status checks/conversion; byte oracle and file I/O excluded",
+  "source_report": "benchmarks/results/host-outputs/rtx3090-float32.json",
+  "source_report_sha256": "6eaa0f944ae22760546bfa42b88e1c41bbf5b1bec46dcc11fabd0a099ca075ad",
+  "style_helpers_sha256": {
+    "benchmarks/plot_results.py": "aa7e34864b3396b6ea3fcd77a1dbdee35bec99c7cb3d0bb37e12d22abf22ebb8"
+  }
+}

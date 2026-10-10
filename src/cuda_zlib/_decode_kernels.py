@@ -205,6 +205,30 @@ template<int N, int PrimaryBits> struct Huffman {
         r.error = 4;
         return -1;
     }
+
+    __device__ __forceinline__ int decode_cached(
+        BitReader& r, u32 maximum, u32 lookup) const {
+        if (lookup && !r.error && r.pos <= r.bits &&
+            PrimaryBits <= r.bits - r.pos) {
+            u16 entry = primary[r.peek(PrimaryBits)];
+            if (entry) {
+                r.drop(entry >> 9);
+                return entry & 511;
+            }
+        }
+        u32 code = 0, first = 0, index = 0;
+        for (u32 len = 1; len <= maximum; ++len) {
+            code |= r.take(1);
+            if (r.error) return -1;
+            if (code < first + count[len])
+                return int(symbols[index + code - first]);
+            index += count[len];
+            first = (first + count[len]) << 1;
+            code <<= 1;
+        }
+        r.error = 4;
+        return -1;
+    }
 };
 
 struct DecodeTables {
@@ -274,6 +298,43 @@ __device__ u32 fixed_tables(Huffman<288, 9>& ll, Huffman<32, 6>& dd) {
 // Each scan thread loads one bounded bit window for eight possible starts.
 // This changes only the cheap header prefilter; full header validation below
 // still uses the existing canonical-tree validity checks.
+// Exact sums for three packed 3-bit code lengths. Zero contributes nothing.
+// Constant-memory lookup divergence is measured separately from arithmetic.
+__device__ __constant__ u8 KRAFT_TRIPLES[512] = {
+    0,64,32,16,8,4,2,1,64,128,96,80,72,68,66,65,
+    32,96,64,48,40,36,34,33,16,80,48,32,24,20,18,17,
+    8,72,40,24,16,12,10,9,4,68,36,20,12,8,6,5,
+    2,66,34,18,10,6,4,3,1,65,33,17,9,5,3,2,
+    64,128,96,80,72,68,66,65,128,192,160,144,136,132,130,129,
+    96,160,128,112,104,100,98,97,80,144,112,96,88,84,82,81,
+    72,136,104,88,80,76,74,73,68,132,100,84,76,72,70,69,
+    66,130,98,82,74,70,68,67,65,129,97,81,73,69,67,66,
+    32,96,64,48,40,36,34,33,96,160,128,112,104,100,98,97,
+    64,128,96,80,72,68,66,65,48,112,80,64,56,52,50,49,
+    40,104,72,56,48,44,42,41,36,100,68,52,44,40,38,37,
+    34,98,66,50,42,38,36,35,33,97,65,49,41,37,35,34,
+    16,80,48,32,24,20,18,17,80,144,112,96,88,84,82,81,
+    48,112,80,64,56,52,50,49,32,96,64,48,40,36,34,33,
+    24,88,56,40,32,28,26,25,20,84,52,36,28,24,22,21,
+    18,82,50,34,26,22,20,19,17,81,49,33,25,21,19,18,
+    8,72,40,24,16,12,10,9,72,136,104,88,80,76,74,73,
+    40,104,72,56,48,44,42,41,24,88,56,40,32,28,26,25,
+    16,80,48,32,24,20,18,17,12,76,44,28,20,16,14,13,
+    10,74,42,26,18,14,12,11,9,73,41,25,17,13,11,10,
+    4,68,36,20,12,8,6,5,68,132,100,84,76,72,70,69,
+    36,100,68,52,44,40,38,37,20,84,52,36,28,24,22,21,
+    12,76,44,28,20,16,14,13,8,72,40,24,16,12,10,9,
+    6,70,38,22,14,10,8,7,5,69,37,21,13,9,7,6,
+    2,66,34,18,10,6,4,3,66,130,98,82,74,70,68,67,
+    34,98,66,50,42,38,36,35,18,82,50,34,26,22,20,19,
+    10,74,42,26,18,14,12,11,6,70,38,22,14,10,8,7,
+    4,68,36,20,12,8,6,5,3,67,35,19,11,7,5,4,
+    1,65,33,17,9,5,3,2,65,129,97,81,73,69,67,66,
+    33,97,65,49,41,37,35,34,17,81,49,33,25,21,19,18,
+    9,73,41,25,17,13,11,10,5,69,37,21,13,9,7,6,
+    3,67,35,19,11,7,5,4,2,66,34,18,10,6,4,3,
+};
+
 __device__ __forceinline__ bool dynamic_prefix_window(
     u64 low, u32 high, u32 bit, u64 available_bits) {
     if (available_bits < bit + 17) return false;
@@ -284,10 +345,12 @@ __device__ __forceinline__ bool dynamic_prefix_window(
     // At most 19 three-bit lengths fit in one word after the header.
     u64 lengths = (low >> (bit + 17)) | (u64(high) << (47 - bit));
     u32 kraft = 0;
-    for (u32 i = 0; i < nc; ++i) {
-        u32 len = u32(lengths) & 7u;
-        lengths >>= 3;
-        if (len) kraft += 128u >> len;
+    for (u32 i = 0; i < nc; i += 3) {
+        u32 packed = u32(lengths) & 511u;
+        u32 remaining = nc - i;
+        if (remaining < 3) packed &= (1u << (3 * remaining)) - 1u;
+        kraft += KRAFT_TRIPLES[packed];
+        lengths >>= 9;
         if (kraft > 128) return false;
     }
     return kraft == 128;
@@ -657,16 +720,8 @@ __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
         u32 err = type == 1 ? fixed_tables(ll, dd) :
                              dynamic_tables(r, ll, dd, tables.cl);
         if (err) { result.status = err; return result; }
-        const u16 length_base[29] = {
-            3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,
-            59,67,83,99,115,131,163,195,227,258};
-        const u8 length_extra[29] = {
-            0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0};
-        const u16 distance_base[30] = {
-            1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,
-            513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577};
-        const u8 distance_extra[30] = {
-            0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13};
+        const u32 ll_maximum = ll.maximum, ll_lookup = ll.lookup;
+        const u32 dd_maximum = dd.maximum, dd_lookup = dd.lookup;
         while (!r.error) {
             if constexpr (!Emit) {
                 if (type == 1 && fixed_budget &&
@@ -675,7 +730,7 @@ __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
                     break;
                 }
             }
-            int symbol = ll.decode(r);
+            int symbol = ll.decode_cached(r, ll_maximum, ll_lookup);
             if (r.error) break;
             if (symbol == 256) break;
             if (symbol < 256) {
@@ -688,16 +743,22 @@ __device__ __noinline__ BlockInfo parse_block(const u8* data, u32 bytes,
             }
             if (symbol < 257 || symbol > 285) { r.error = 4; break; }
             u32 index = u32(symbol - 257);
-            u32 length = length_base[index] + r.take(length_extra[index]);
+            const u32 length_extra = index < 8 || index == 28 ? 0 : (index >> 2) - 1;
+            const u32 length_base = index < 8 ? index + 3 : index == 28 ? 258 :
+                3 + ((4 + (index & 3)) << length_extra);
+            u32 length = length_base + r.take(length_extra);
             if (r.error) break;
-            int distance_symbol = dd.decode(r);
+            int distance_symbol = dd.decode_cached(r, dd_maximum, dd_lookup);
             if (r.error) break;
             if (distance_symbol < 0 || distance_symbol > 29) {
                 r.error = 4;
                 break;
             }
-            u32 distance = distance_base[distance_symbol] +
-                           r.take(distance_extra[distance_symbol]);
+            const u32 distance_index = u32(distance_symbol);
+            const u32 distance_extra = distance_index < 4 ? 0 : (distance_index >> 1) - 1;
+            const u32 distance_base = distance_index < 4 ? distance_index + 1 :
+                1 + ((2 + (distance_index & 1)) << distance_extra);
+            u32 distance = distance_base + r.take(distance_extra);
             if (r.error) break;
             if (length > limit - produced) { r.error = 7; break; }
             if (!distance || distance > window_bytes) { r.error = 6; break; }
@@ -773,26 +834,80 @@ struct PipelineProducer {
     }
 };
 
+__device__ __forceinline__ void pipeline_emit_match_roots(
+    u32* roots, u32 prefix, u32 begin, u32 distance, u32 length,
+    u32 lane, u32 mask) {
+    const u32 first = begin - distance;
+    if (distance == 1) {
+        u32 value = 0;
+        if (!lane) value = first < prefix ? first : roots[first];
+        value = __shfl_sync(mask, value, 0);
+        for (u32 j = lane; j < length; j += 32) roots[begin + j] = value;
+    } else {
+        // All sources precede begin, including overlapping matches. Preserve
+        // external prefix indices instead of reading another CTA's roots.
+        u32 source = first + lane % distance, stride = 32 % distance;
+        for (u32 j = lane; j < length; j += 32) {
+            roots[begin + j] = source < prefix ? source : roots[source];
+            source += stride;
+            if (source >= begin) source -= distance;
+        }
+    }
+}
+
 __device__ __noinline__ BlockInfo pipeline_consume(
     PipelineQueue& queue, u32 prefix, u32* roots) {
-    u32 index = 0;
+    const u32 lane = threadIdx.x & 31u, mask = 0xffffffffu;
+    u32 index = 0, cursor = 0, count = 0;
+    bool held = false;
+    BlockInfo result = {};
     while (true) {
-        PipelineSlot& slot = queue.slots[index];
-        PipelineAtomic state(slot.state);
-        while (state.load(cuda::std::memory_order_acquire) != 1) {}
-        const u32 count = slot.count;
-        for (u32 i = 0; i < count; ++i) {
-            const PipelineToken token = slot.tokens[i];
-            if (token.code & 0x80000000u) roots[token.begin] = token.code;
-            else emit_match_roots(roots, prefix, token.begin, token.code,
-                                  token.length);
+        u32 begin = 0, length = 0, distance = 0;
+        if (!lane) {
+            // Keep literals/short copies serial. Other lanes rendezvous only
+            // for long matches or terminal, rather than for every token.
+            while (true) {
+                PipelineSlot& slot = queue.slots[index];
+                PipelineAtomic state(slot.state);
+                if (!held) {
+                    while (state.load(cuda::std::memory_order_acquire) != 1) {}
+                    count = slot.count;
+                    cursor = 0;
+                    held = true;
+                }
+                while (cursor < count) {
+                    const PipelineToken token = slot.tokens[cursor++];
+                    if (token.code & 0x80000000u) roots[token.begin] = token.code;
+                    else if (token.length < 32)
+                        emit_match_roots(roots, prefix, token.begin,
+                                         token.code, token.length);
+                    else {
+                        begin = token.begin;
+                        length = token.length;
+                        distance = token.code;
+                        break;
+                    }
+                }
+                if (length) break;
+                const u32 terminal = slot.terminal;
+                result = slot.result;
+                // All cooperative stores completed at the preceding syncwarp;
+                // only this leader ever reads slot fields. No read follows FREE.
+                state.store(0, cuda::std::memory_order_release);
+                held = false;
+                index ^= 1;
+                if (terminal) break;
+            }
         }
-        const u32 terminal = slot.terminal;
-        const BlockInfo result = slot.result;
-        // No slot storage is accessed again after publishing FREE.
-        state.store(0, cuda::std::memory_order_release);
-        if (terminal) return result;
-        index ^= 1;
+        length = __shfl_sync(mask, length, 0);
+        if (!length) return result;  // Uniform terminal, including parser errors.
+        begin = __shfl_sync(mask, begin, 0);
+        distance = __shfl_sync(mask, distance, 0);
+        // Publish leader-written literals/short copies before seed loads, then
+        // finish this match before the next token may read any of its roots.
+        __syncwarp(mask);
+        pipeline_emit_match_roots(roots, prefix, begin, distance, length, lane, mask);
+        __syncwarp(mask);
     }
 }
 
@@ -831,18 +946,10 @@ __device__ __noinline__ BlockInfo pipeline_parse_block(const u8* data, u32 bytes
         u32 err = type == 1 ? fixed_tables(ll, dd) :
                              dynamic_tables(r, ll, dd, tables.cl);
         if (err) { result.status = err; return result; }
-        const u16 length_base[29] = {
-            3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,
-            59,67,83,99,115,131,163,195,227,258};
-        const u8 length_extra[29] = {
-            0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0};
-        const u16 distance_base[30] = {
-            1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,
-            513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577};
-        const u8 distance_extra[30] = {
-            0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13};
+        const u32 ll_maximum = ll.maximum, ll_lookup = ll.lookup;
+        const u32 dd_maximum = dd.maximum, dd_lookup = dd.lookup;
         while (!r.error) {
-            int symbol = ll.decode(r);
+            int symbol = ll.decode_cached(r, ll_maximum, ll_lookup);
             if (r.error) break;
             if (symbol == 256) break;
             if (symbol < 256) {
@@ -853,16 +960,22 @@ __device__ __noinline__ BlockInfo pipeline_parse_block(const u8* data, u32 bytes
             }
             if (symbol < 257 || symbol > 285) { r.error = 4; break; }
             u32 index = u32(symbol - 257);
-            u32 length = length_base[index] + r.take(length_extra[index]);
+            const u32 length_extra = index < 8 || index == 28 ? 0 : (index >> 2) - 1;
+            const u32 length_base = index < 8 ? index + 3 : index == 28 ? 258 :
+                3 + ((4 + (index & 3)) << length_extra);
+            u32 length = length_base + r.take(length_extra);
             if (r.error) break;
-            int distance_symbol = dd.decode(r);
+            int distance_symbol = dd.decode_cached(r, dd_maximum, dd_lookup);
             if (r.error) break;
             if (distance_symbol < 0 || distance_symbol > 29) {
                 r.error = 4;
                 break;
             }
-            u32 distance = distance_base[distance_symbol] +
-                           r.take(distance_extra[distance_symbol]);
+            const u32 distance_index = u32(distance_symbol);
+            const u32 distance_extra = distance_index < 4 ? 0 : (distance_index >> 1) - 1;
+            const u32 distance_base = distance_index < 4 ? distance_index + 1 :
+                1 + ((2 + (distance_index & 1)) << distance_extra);
+            u32 distance = distance_base + r.take(distance_extra);
             if (r.error) break;
             if (length > limit - produced) { r.error = 7; break; }
             if (!distance || distance > window_bytes) { r.error = 6; break; }
@@ -1440,8 +1553,9 @@ extern "C" __global__ void emit_blocks_pipeline(
                     producer, tables, window_bytes);
                 // Every parser exit, including a partial batch, reaches finish.
                 producer.finish(result);
-            } else if (threadIdx.x == 32) {
-                terminal_result = pipeline_consume(queue, prefix, roots);
+            } else if (threadIdx.x >= 32) {
+                const BlockInfo result = pipeline_consume(queue, prefix, roots);
+                if (threadIdx.x == 32) terminal_result = result;
             }
         }
         // All spare lanes also reach this rendezvous; no CTA barrier polls.

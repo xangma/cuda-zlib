@@ -4,3 +4,8 @@ __pycache__/
 build/
 dist/
 .venv/
+
+# Local benchmark captures may contain private paths, process IDs, and receipts.
+benchmarks/results/nsight/captures/
+benchmarks/results/timeline/captures/
+benchmarks/results/workflow/captures/

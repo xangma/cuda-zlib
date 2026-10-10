@@ -1,0 +1,342 @@
+{
+  "schema_version": 1,
+  "report_type": "cuda-zlib-small-batch",
+  "publication": {
+    "kind": "portable_measurement",
+    "private_evidence_sha256": "d7ab6da6292898fdb8254fed764a8e3d44df6b17eea67ceea3dc7a990a6f546e",
+    "schema_version": 1
+  },
+  "source_report": "benchmarks/results/small-batch-rtx3090-20261010.json",
+  "source_report_sha256": "0c8c51b4c85459c658357ac64dbb3fd420a52916c7d3b15e874f1691d4c2dee2",
+  "plotter_sha256": "5453110a773acf8c20e7f903cf20b00aae1b5112fc96f8bb23e44cd722d73c38",
+  "renderer": {
+    "matplotlib": "3.11.2",
+    "numpy": "2.5.3",
+    "backend": "Agg"
+  },
+  "source_revision": "d323fee215658d2c03731c2e282b395860a27ac8",
+  "harness_sha256": "3ec5ae27414a0c829cf7af3d042afff6992f525f05c5ccfab3751b1db87c0bbc",
+  "measurement_source": {
+    "git": {
+      "commit": null,
+      "status": null
+    },
+    "sha256": {
+      "benchmarks/benchmark.py": "a542c79b14b3380a81fea08e33db9d3f566599c0349f5c1ca1add8d558022f7e",
+      "benchmarks/plot_small_batch.py": "dccf04b22ee1a8c6492edee5867f5a8a57faf83b5b16c198f48b7f8494fb77a2",
+      "benchmarks/small_batch.py": "3ec5ae27414a0c829cf7af3d042afff6992f525f05c5ccfab3751b1db87c0bbc",
+      "src/cuda_zlib/__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
+      "src/cuda_zlib/_codec.py": "0a0a5484f90a55cf53530b3dc837a12b2a293d5bb88c0b9426758d17409af5d2",
+      "src/cuda_zlib/_decode_kernels.py": "24d4cf545663daa385d3cb08184f8261f8803b002e1ce9edff95254cc6e37ad7",
+      "src/cuda_zlib/_encode_kernels.py": "514bd9aba9978010f4a1659209ac0a6b9b0e72a043d6605805c4c698f6d87964",
+      "src/cuda_zlib/_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
+      "src/cuda_zlib/_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
+      "src/cuda_zlib/_postprocess.py": "c1ac2370317f08360c857a225bc3be6e96d93d97bc75fe49f9b434954cda8632",
+      "src/cuda_zlib/jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
+      "src/cuda_zlib/native/batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
+      "src/cuda_zlib/native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+      "src/cuda_zlib/native/codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0"
+    }
+  },
+  "environment": {
+    "backend": "JAX typed CUDA FFI",
+    "cpu": "AMD Ryzen Threadripper PRO 3995WX 64-Cores",
+    "cuda_platform": "cuda 12060",
+    "cuda_zlib": "0.1.0a1",
+    "gpu": "NVIDIA GeForce RTX 3090",
+    "gpu_snapshot_after": [
+      "NVIDIA GeForce RTX 3090, 610.57.04, 597, 24576, 36, 68",
+      "NVIDIA GeForce RTX 3090, 610.57.04, 126, 24576, 0, 33"
+    ],
+    "gpu_snapshot_before": [
+      "NVIDIA GeForce RTX 3090, 610.57.04, 397, 24576, 0, 59",
+      "NVIDIA GeForce RTX 3090, 610.57.04, 126, 24576, 0, 34"
+    ],
+    "jax": "0.11.2",
+    "jaxlib": "0.11.2",
+    "machine": "x86_64",
+    "native_build": {
+      "build_sha256": "a1f169c838f67397cdb7a6052f1b98f0bea1558dd32b6df7c661689ef237d68d",
+      "cache_key": "f23e64aefe987fab7f182221c3db7ca4f512676ec9874e2ee1de3e72e8691d4e",
+      "ffi_targets": [
+        "cuda_zlib_compress_sm_86",
+        "cuda_zlib_decompress_sm_86",
+        "cuda_zlib_compress_batch_sm_86",
+        "cuda_zlib_decompress_batch_sm_86"
+      ],
+      "identity": {
+        "architecture": "sm_86",
+        "compiler": "/usr/local/cuda-12.6/bin/nvcc",
+        "compiler_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2024 NVIDIA Corporation\nBuilt on Tue_Oct_29_23:50:19_PDT_2024\nCuda compilation tools, release 12.6, V12.6.85\nBuild cuda_12.6.r12.6/compiler.35059454_0\n",
+        "flags": [
+          "-O3",
+          "-lineinfo",
+          "--std=c++17",
+          "--cudart=shared",
+          "-Xcompiler=-pthread",
+          "-ldl"
+        ],
+        "headers": {
+          "api.h": "1426ea8206a1b9f1824f460572ea731665eb7cb9def1f0fc166b13df4b955ad0",
+          "c_api.h": "9847993912aa1aadb2dac4af16eeb9d8bae3f470905b519977d1d09b3f37eedf",
+          "collectives_api.h": "59f78f7358e33ad4c98d9356cce45b43c22c745eb6e88785070889e546b7e0b4",
+          "collectives_c_api.h": "ed27017e78d9adc100927b868b8578941765aaee483c16138c6e6ec3d982063f",
+          "ffi.h": "0878473a1ee35fdd9ff15424d46a44602fb53019f0d0a9f5117abdb386c35129",
+          "record_api.h": "35214dc4910a1de61e8903adca060d8a1354070fb0a31936cf97c7ce9292ec37",
+          "record_c_api.h": "6972199566e88987f224e42aac1a6b433d4d9a25f1eaa6526288b4922ff02db0"
+        },
+        "jaxlib": "0.11.2",
+        "sources": {
+          "batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
+          "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+          "codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0",
+          "decoder.cuh": "cd0e51889b383975abe6f9de5037b42cf09c9ef5b0f5e887d7fa3520c197b9ce",
+          "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
+          "postprocess.cuh": "ca5125639b5691ce3edcc37c4f0c00f88d8470c5073235e5802c375203e7ae81"
+        }
+      },
+      "library_sha256": "83420785b15e2fb659e87008bb994fa4572fec4c510f4ba406ebd32db582c405"
+    },
+    "native_builds": [
+      {
+        "architecture": "sm_86",
+        "compiler": "/usr/local/cuda-12.6/bin/nvcc",
+        "compiler_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2024 NVIDIA Corporation\nBuilt on Tue_Oct_29_23:50:19_PDT_2024\nCuda compilation tools, release 12.6, V12.6.85\nBuild cuda_12.6.r12.6/compiler.35059454_0\n",
+        "flags": [
+          "-O3",
+          "-lineinfo",
+          "--std=c++17",
+          "--cudart=shared",
+          "-Xcompiler=-pthread",
+          "-ldl"
+        ],
+        "headers": {
+          "api.h": "1426ea8206a1b9f1824f460572ea731665eb7cb9def1f0fc166b13df4b955ad0",
+          "c_api.h": "9847993912aa1aadb2dac4af16eeb9d8bae3f470905b519977d1d09b3f37eedf",
+          "collectives_api.h": "59f78f7358e33ad4c98d9356cce45b43c22c745eb6e88785070889e546b7e0b4",
+          "collectives_c_api.h": "ed27017e78d9adc100927b868b8578941765aaee483c16138c6e6ec3d982063f",
+          "ffi.h": "0878473a1ee35fdd9ff15424d46a44602fb53019f0d0a9f5117abdb386c35129",
+          "record_api.h": "35214dc4910a1de61e8903adca060d8a1354070fb0a31936cf97c7ce9292ec37",
+          "record_c_api.h": "6972199566e88987f224e42aac1a6b433d4d9a25f1eaa6526288b4922ff02db0"
+        },
+        "jaxlib": "0.11.2",
+        "sources": {
+          "batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
+          "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+          "codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0",
+          "decoder.cuh": "cd0e51889b383975abe6f9de5037b42cf09c9ef5b0f5e887d7fa3520c197b9ce",
+          "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
+          "postprocess.cuh": "ca5125639b5691ce3edcc37c4f0c00f88d8470c5073235e5802c375203e7ae81"
+        }
+      }
+    ],
+    "numpy": "2.2.5",
+    "os": "Linux",
+    "python": "3.13.3",
+    "workspace_pool_after": {
+      "pool_count": 1,
+      "reserved_bytes": 67108864,
+      "retention_bytes": 1073741824,
+      "used_bytes": 0
+    },
+    "workspace_pool_before": {
+      "pool_count": 0,
+      "reserved_bytes": 0,
+      "retention_bytes": 1073741824,
+      "used_bytes": 0
+    },
+    "zlib_runtime": "1.3.1"
+  },
+  "arguments": {
+    "chunk_bytes": 32768,
+    "counts": [
+      1,
+      8,
+      32,
+      128
+    ],
+    "cpu_only": false,
+    "device": 0,
+    "roundtrip": true,
+    "samples": 7,
+    "seed": 20261008,
+    "sizes": [
+      256,
+      4096,
+      65536
+    ],
+    "workloads": [
+      "zeros",
+      "text",
+      "random"
+    ]
+  },
+  "methodology": {
+    "clock": "perf_counter; JAX block_until_ready on every returned array",
+    "cpu": "single-threaded stdlib zlib; level 1 compression; level 6 input streams for decompression",
+    "decode_inputs": "identical independent stdlib level 6 streams for CPU, single-file CUDA and batched CUDA",
+    "host_bytes": "Python bytes inputs and per-file bytes outputs; includes input packing, transfers, synchronous codec status checks, and output materialization",
+    "per_file_latency": "total completed batch latency / file count; amortized, not individual file latency",
+    "resident": "one warmed jax.jit call; single-file loop unrolled into independent FFI calls, or one packed batch FFI call; inputs already on GPU",
+    "resident_status": "per-file device metadata and bytes checked after timing; timed calls wait for metadata completion but do not copy status to the host",
+    "roundtrip": "optional compiled padded batch compression then decompression; encoded lengths remain on device; both statuses checked after timing",
+    "throughput_denominator": "total uncompressed bytes / 2**20",
+    "timing_excludes": "payload generation, initial resident upload/packing, native build/registration, warmup/XLA compilation, post-timing oracle comparisons",
+    "timing_includes": "output allocations, Python/JAX dispatch, GPU execution and completion; host-byte scope additionally includes transfers and bytes copies",
+    "validation": "last output from each timed workflow checked outside timing; stdlib decodes every compressed stream; decoded bytes match every input",
+    "warmup": "recorded separately; includes per-shape XLA compilation and first execution",
+    "warmup_calls_per_measurement": 1
+  },
+  "plotted_operations": [
+    "compression",
+    "decompression"
+  ],
+  "roundtrip_plotted": false,
+  "point_statistic": "median completed call seconds / file count * 1e6",
+  "error_bars": "sample minimum and maximum seconds / file count * 1e6; not confidence intervals",
+  "series_styles": {
+    "cpu": {
+      "color": "#009E73",
+      "marker": "^",
+      "linestyle": "-."
+    },
+    "single": {
+      "color": "#0072B2",
+      "marker": "o",
+      "linestyle": "--"
+    },
+    "batch": {
+      "color": "#D55E00",
+      "marker": "s",
+      "linestyle": "-"
+    }
+  },
+  "exports": [
+    {
+      "file": "rtx3090-zeros-resident.png",
+      "sha256": "633fd2b0edb81b8fdc09f3aac7cea7cbab28662c7f18b56aeca7ca6b2e10dac2",
+      "workload": "zeros",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-zeros-resident.svg",
+      "sha256": "55b45cb8457434a165610a2ee261481547bdeaff89114d8194fb2822744f2cc3",
+      "workload": "zeros",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-zeros-resident.pdf",
+      "sha256": "2d07a3e00f4290ae88c7cb3cfb9a1964ad30a9c2664a91585657adab45a2cdd7",
+      "workload": "zeros",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-zeros-host-bytes.png",
+      "sha256": "77f803ea24f13656baec625f81cd1a16f1ba003b35b7d8d560775bb1bdd24198",
+      "workload": "zeros",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-zeros-host-bytes.svg",
+      "sha256": "156f364f8f5595eaad2049cce79181e9e8d7e252c9868130111a67eb991414e3",
+      "workload": "zeros",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-zeros-host-bytes.pdf",
+      "sha256": "ec8bbbd1b18b444ff7ca983a4918de87d747b9a98f62bfa842491fa59884fca7",
+      "workload": "zeros",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-text-resident.png",
+      "sha256": "1ffdd04c1a800b22818115d0c1ff615249b34fb0095cf46510d6e01cc3dc843d",
+      "workload": "text",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-text-resident.svg",
+      "sha256": "f66854fcfb32f52ec6d1122126742bb387971f19273e45a028229411cc68ad35",
+      "workload": "text",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-text-resident.pdf",
+      "sha256": "b86f856ab04e01cbeb995678e65dd0f0ebd0b7ef30ddf47d88711d00a7f54516",
+      "workload": "text",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-text-host-bytes.png",
+      "sha256": "8e8ab1f9ad75e6dff8c39d12c7664f5b3d3ba741ff786d08baece45548ba3d70",
+      "workload": "text",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-text-host-bytes.svg",
+      "sha256": "0533a5d88a2cb5a63bbaade7413e914ffde85952b8962b8709eef80ab1745acb",
+      "workload": "text",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-text-host-bytes.pdf",
+      "sha256": "a5547aefcd7c19b0e38bc2a44bc713544580b881ecb970736d2608b1a0f34ec6",
+      "workload": "text",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-random-resident.png",
+      "sha256": "b02672e90befb7ab99326ea753f6b2ac1abf591e32cfc01d748e61defa872e94",
+      "workload": "random",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-random-resident.svg",
+      "sha256": "a3eb59deb66ee6141b44f55b84bc83dd49113d18ed3dfcedb322b6832281205f",
+      "workload": "random",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-random-resident.pdf",
+      "sha256": "2dffce60f9463be9d1d57fd33085cec5bc1632d0031be143e6de57a2336a029b",
+      "workload": "random",
+      "scope": "resident",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-random-host-bytes.png",
+      "sha256": "40451331ddef72b4af015be0b61d3e9f42be8807659dcd69581876264d8c6ca7",
+      "workload": "random",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-random-host-bytes.svg",
+      "sha256": "0803310225babb840484f9e7fd640647c61479a5a2cc50c8cb1061f50419ea9b",
+      "workload": "random",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    },
+    {
+      "file": "rtx3090-random-host-bytes.pdf",
+      "sha256": "0a0ae71ad8ab2db13e2188d3f1762ce32bac410a71a62aa4b88fbc63ce8ce1f6",
+      "workload": "random",
+      "scope": "host_bytes",
+      "metric": "median total call seconds / file count, in microseconds"
+    }
+  ]
+}

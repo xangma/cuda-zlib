@@ -1,0 +1,710 @@
+{
+  "exports": {
+    "compress-warmed-loop.pdf": "9fa6b87383e14a35b06218321d14eeab9d9fa623f65a6f89222b5cf94701a369",
+    "compress-warmed-loop.png": "0a6c48a4c88f9aa05b1fe1617bd14bf4de7f44d2264f51722898fb7329d97cd5",
+    "compress-warmed-loop.svg": "65165a370f82dc4c200dace716d3619baa00aa355e6779e0566dfeeec1c86cc8",
+    "compress-whole-process.pdf": "1e678a7a5527f5a96ae4580b9b94c61be1abda197d67d7adb60057dc26373803",
+    "compress-whole-process.png": "4707141b794b1db7215283723d700f4735fe2ac74f71e4e5d945e7e5ed1576c5",
+    "compress-whole-process.svg": "ab2516dda2e77916cfb55a5289cb932727d76b0d39999048ac5817c2f0c3baa1",
+    "decompress-warmed-loop.pdf": "674c12e0c0f7ca92b2f26f2b588c093b7730ea9038d68efef676d47673052cad",
+    "decompress-warmed-loop.png": "92b6fa641c026e469dbe0faf2df5ec17e6f451b4f228c016bc3d87aaf6fb95e1",
+    "decompress-warmed-loop.svg": "c0a187687f9834c7da5310fb4649d4667943c64bfda9e3e94b6633d360e4ef4c",
+    "decompress-whole-process.pdf": "3b8a32b87e77b859e99492b3f8d6ab157470d3d8cecfafafd58cdd78d1d8fd55",
+    "decompress-whole-process.png": "21dbd02fc8a20637940c9b3828b923ab8a015e813ecd028fd611fca7b106ecb9",
+    "decompress-whole-process.svg": "fdb6100be46724e43db991a043b50af71f103974416bf352f876c77506e10d18"
+  },
+  "figures": {
+    "compress-warmed-loop": {
+      "copy_bytes_completed": {
+        "D2D": 0,
+        "D2H": 1342382520,
+        "H2D": 1342177280,
+        "other": 0
+      },
+      "display_bounds_ns": {
+        "end_ns": 22342739728,
+        "start_ns": 4953430650
+      },
+      "exports": {
+        "compress-warmed-loop.pdf": "9fa6b87383e14a35b06218321d14eeab9d9fa623f65a6f89222b5cf94701a369",
+        "compress-warmed-loop.png": "0a6c48a4c88f9aa05b1fe1617bd14bf4de7f44d2264f51722898fb7329d97cd5",
+        "compress-warmed-loop.svg": "65165a370f82dc4c200dace716d3619baa00aa355e6779e0566dfeeec1c86cc8"
+      },
+      "kernel_union_ns": 3196482365,
+      "operation": "compress",
+      "view": "measured_loop"
+    },
+    "compress-whole-process": {
+      "copy_bytes_completed": {
+        "D2D": 0,
+        "D2H": 1476620772,
+        "H2D": 1476395008,
+        "other": 0
+      },
+      "display_bounds_ns": {
+        "end_ns": 22884389666,
+        "start_ns": 1037497
+      },
+      "exports": {
+        "compress-whole-process.pdf": "1e678a7a5527f5a96ae4580b9b94c61be1abda197d67d7adb60057dc26373803",
+        "compress-whole-process.png": "4707141b794b1db7215283723d700f4735fe2ac74f71e4e5d945e7e5ed1576c5",
+        "compress-whole-process.svg": "ab2516dda2e77916cfb55a5289cb932727d76b0d39999048ac5817c2f0c3baa1"
+      },
+      "kernel_union_ns": 3534552403,
+      "operation": "compress",
+      "view": "whole_process"
+    },
+    "decompress-warmed-loop": {
+      "copy_bytes_completed": {
+        "D2D": 0,
+        "D2H": 1342177440,
+        "H2D": 1243087700,
+        "other": 0
+      },
+      "display_bounds_ns": {
+        "end_ns": 12226417587,
+        "start_ns": 8284940407
+      },
+      "exports": {
+        "decompress-warmed-loop.pdf": "674c12e0c0f7ca92b2f26f2b588c093b7730ea9038d68efef676d47673052cad",
+        "decompress-warmed-loop.png": "92b6fa641c026e469dbe0faf2df5ec17e6f451b4f228c016bc3d87aaf6fb95e1",
+        "decompress-warmed-loop.svg": "c0a187687f9834c7da5310fb4649d4667943c64bfda9e3e94b6633d360e4ef4c"
+      },
+      "kernel_union_ns": 808998154,
+      "operation": "decompress",
+      "view": "measured_loop"
+    },
+    "decompress-whole-process": {
+      "copy_bytes_completed": {
+        "D2D": 0,
+        "D2H": 1476395184,
+        "H2D": 1367396470,
+        "other": 0
+      },
+      "display_bounds_ns": {
+        "end_ns": 12726183140,
+        "start_ns": 1031450
+      },
+      "exports": {
+        "decompress-whole-process.pdf": "3b8a32b87e77b859e99492b3f8d6ab157470d3d8cecfafafd58cdd78d1d8fd55",
+        "decompress-whole-process.png": "21dbd02fc8a20637940c9b3828b923ab8a015e813ecd028fd611fca7b106ecb9",
+        "decompress-whole-process.svg": "fdb6100be46724e43db991a043b50af71f103974416bf352f876c77506e10d18"
+      },
+      "kernel_union_ns": 889930297,
+      "operation": "decompress",
+      "view": "whole_process"
+    }
+  },
+  "kind": "workflow",
+  "limitations": [
+    "Instrumented diagnostics, not benchmarks",
+    "Kernel activity is not occupancy",
+    "Completed bytes per bin are not instantaneous bandwidth",
+    "Host phases do not establish exclusive costs or GPU ownership",
+    "Resource points use metric-specific query clocks; CPU uses averaging-interval midpoints",
+    "Null resources remain gaps",
+    "Summed RSS may double-count shared pages"
+  ],
+  "measurement_sources": {
+    "compress": {
+      "harness_sha256": "64aef6db9083c6f55e3c35f0b1c2747fb5428c66fffe38f91b076c300fa67631",
+      "revision": "d323fee215658d2c03731c2e282b395860a27ac8",
+      "sha256": {
+        "__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
+        "_codec.py": "0a0a5484f90a55cf53530b3dc837a12b2a293d5bb88c0b9426758d17409af5d2",
+        "_decode_kernels.py": "24d4cf545663daa385d3cb08184f8261f8803b002e1ce9edff95254cc6e37ad7",
+        "_encode_kernels.py": "514bd9aba9978010f4a1659209ac0a6b9b0e72a043d6605805c4c698f6d87964",
+        "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
+        "_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
+        "_postprocess.py": "c1ac2370317f08360c857a225bc3be6e96d93d97bc75fe49f9b434954cda8632",
+        "jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
+        "native/batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
+        "native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+        "native/codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0"
+      }
+    },
+    "decompress": {
+      "harness_sha256": "64aef6db9083c6f55e3c35f0b1c2747fb5428c66fffe38f91b076c300fa67631",
+      "revision": "d323fee215658d2c03731c2e282b395860a27ac8",
+      "sha256": {
+        "__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
+        "_codec.py": "0a0a5484f90a55cf53530b3dc837a12b2a293d5bb88c0b9426758d17409af5d2",
+        "_decode_kernels.py": "24d4cf545663daa385d3cb08184f8261f8803b002e1ce9edff95254cc6e37ad7",
+        "_encode_kernels.py": "514bd9aba9978010f4a1659209ac0a6b9b0e72a043d6605805c4c698f6d87964",
+        "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
+        "_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
+        "_postprocess.py": "c1ac2370317f08360c857a225bc3be6e96d93d97bc75fe49f9b434954cda8632",
+        "jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
+        "native/batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
+        "native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+        "native/codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0"
+      }
+    }
+  },
+  "operations": [
+    "compress",
+    "decompress"
+  ],
+  "phase_semantics": {
+    "compress": {
+      "codec": {
+        "description": "Wait for output and metadata from the selected CUDA operation",
+        "kind": "completed"
+      },
+      "download_check": {
+        "description": "Metadata/status before output transfer, host conversion and validation",
+        "kind": "container"
+      },
+      "host_bytes": {
+        "description": "Convert the host array and select meaningful output bytes",
+        "kind": "host_only"
+      },
+      "init": {
+        "description": "Initialization may enqueue backend/native GPU work",
+        "kind": "host_annotation"
+      },
+      "measured_loop": {
+        "description": "Completed measured workflows",
+        "kind": "container"
+      },
+      "metadata_download": {
+        "description": "Download native checked metadata",
+        "kind": "completed"
+      },
+      "output_download": {
+        "description": "Download the full returned device array",
+        "kind": "completed"
+      },
+      "prepare": {
+        "description": "Seeded CPU fixture preparation and stdlib oracle",
+        "kind": "host_only"
+      },
+      "status_check": {
+        "description": "Check the operation-specific native status before reading output",
+        "kind": "host_only"
+      },
+      "upload": {
+        "description": "Device upload enqueue; following codec completion includes input dependency",
+        "kind": "enqueue"
+      },
+      "validate": {
+        "description": "Output oracle outside the CPU-codec guard",
+        "kind": "host_only"
+      },
+      "warmup": {
+        "description": "Completed warmup workflows",
+        "kind": "container"
+      }
+    },
+    "decompress": {
+      "codec": {
+        "description": "Wait for output and metadata from the selected CUDA operation",
+        "kind": "completed"
+      },
+      "download_check": {
+        "description": "Metadata/status before output transfer, host conversion and validation",
+        "kind": "container"
+      },
+      "host_bytes": {
+        "description": "Convert the host array and select meaningful output bytes",
+        "kind": "host_only"
+      },
+      "init": {
+        "description": "Initialization may enqueue backend/native GPU work",
+        "kind": "host_annotation"
+      },
+      "measured_loop": {
+        "description": "Completed measured workflows",
+        "kind": "container"
+      },
+      "metadata_download": {
+        "description": "Download native checked metadata",
+        "kind": "completed"
+      },
+      "output_download": {
+        "description": "Download the full returned device array",
+        "kind": "completed"
+      },
+      "prepare": {
+        "description": "Seeded CPU fixture preparation and stdlib oracle",
+        "kind": "host_only"
+      },
+      "status_check": {
+        "description": "Check the operation-specific native status before reading output",
+        "kind": "host_only"
+      },
+      "upload": {
+        "description": "Device upload enqueue; following codec completion includes input dependency",
+        "kind": "enqueue"
+      },
+      "validate": {
+        "description": "Output oracle outside the CPU-codec guard",
+        "kind": "host_only"
+      },
+      "warmup": {
+        "description": "Completed warmup workflows",
+        "kind": "container"
+      }
+    }
+  },
+  "plotter_sha256": "d7ffc873fa05eff0c55b6a22ca6f9c4a56ebda8a84e0b3ccf916cf4d1e22950b",
+  "publication": {
+    "compress": {
+      "kind": "portable_measurement",
+      "private_evidence_sha256": "a9df3e7f9264131c87568f344b6a8cf3c2e7644f8456a1d2530d34b84b5b83e1",
+      "schema_version": 1
+    },
+    "decompress": {
+      "kind": "portable_measurement",
+      "private_evidence_sha256": "2c880913766d79778e4249a3d5f9ff21d453ac1f99bb67a9b7917fcacc6ba9e3",
+      "schema_version": 1
+    }
+  },
+  "renderer": {
+    "backend": "Agg",
+    "matplotlib": "3.11.2",
+    "numpy": "2.5.3"
+  },
+  "report_evidence": {
+    "compress": {
+      "dependencies_sha256": {
+        "benchmarks/benchmark.py": "a542c79b14b3380a81fea08e33db9d3f566599c0349f5c1ca1add8d558022f7e",
+        "benchmarks/profile_resident.py": "a50f5b0ca028dcddb50a6eb0a7fdb402d2dae2ed1ab337ecc2e045ba8a8cc7c0",
+        "benchmarks/profile_timeline.py": "785e28fd554721c1b4dac55601dd7c5a8f62bfb4137ddf83d6818b1706fcb5b4"
+      },
+      "extractor_dependencies_sha256": {
+        "benchmarks/extract_nsight.py": "59dceee6a3f476d96513e198ba7adf9a5e7dda8669cf50d1de315215f8f0712e",
+        "benchmarks/extract_timeline.py": "1cd4f8aa5b1e8ae2e552bf336b2f711c45d6a392d023c7917ae6319fae5697ca"
+      },
+      "extractor_sha256": "62aa8c46cd72c1c967686a64cf29486e96de60a016c7af9c3e4abc6633ad88f9",
+      "native_build": {
+        "build_sha256": "a1f169c838f67397cdb7a6052f1b98f0bea1558dd32b6df7c661689ef237d68d",
+        "cache_key": "f23e64aefe987fab7f182221c3db7ca4f512676ec9874e2ee1de3e72e8691d4e",
+        "ffi_targets": [
+          "cuda_zlib_compress_sm_86",
+          "cuda_zlib_decompress_sm_86",
+          "cuda_zlib_compress_batch_sm_86",
+          "cuda_zlib_decompress_batch_sm_86"
+        ],
+        "identity": {
+          "architecture": "sm_86",
+          "compiler": "/usr/local/cuda-12.6/bin/nvcc",
+          "compiler_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2024 NVIDIA Corporation\nBuilt on Tue_Oct_29_23:50:19_PDT_2024\nCuda compilation tools, release 12.6, V12.6.85\nBuild cuda_12.6.r12.6/compiler.35059454_0\n",
+          "flags": [
+            "-O3",
+            "-lineinfo",
+            "--std=c++17",
+            "--cudart=shared",
+            "-Xcompiler=-pthread",
+            "-ldl"
+          ],
+          "headers": {
+            "api.h": "1426ea8206a1b9f1824f460572ea731665eb7cb9def1f0fc166b13df4b955ad0",
+            "c_api.h": "9847993912aa1aadb2dac4af16eeb9d8bae3f470905b519977d1d09b3f37eedf",
+            "collectives_api.h": "59f78f7358e33ad4c98d9356cce45b43c22c745eb6e88785070889e546b7e0b4",
+            "collectives_c_api.h": "ed27017e78d9adc100927b868b8578941765aaee483c16138c6e6ec3d982063f",
+            "ffi.h": "0878473a1ee35fdd9ff15424d46a44602fb53019f0d0a9f5117abdb386c35129",
+            "record_api.h": "35214dc4910a1de61e8903adca060d8a1354070fb0a31936cf97c7ce9292ec37",
+            "record_c_api.h": "6972199566e88987f224e42aac1a6b433d4d9a25f1eaa6526288b4922ff02db0"
+          },
+          "jaxlib": "0.11.2",
+          "sources": {
+            "batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
+            "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+            "codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0",
+            "decoder.cuh": "cd0e51889b383975abe6f9de5037b42cf09c9ef5b0f5e887d7fa3520c197b9ce",
+            "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
+            "postprocess.cuh": "ca5125639b5691ce3edcc37c4f0c00f88d8470c5073235e5802c375203e7ae81"
+          }
+        },
+        "library_sha256": "83420785b15e2fb659e87008bb994fa4572fec4c510f4ba406ebd32db582c405"
+      }
+    },
+    "decompress": {
+      "dependencies_sha256": {
+        "benchmarks/benchmark.py": "a542c79b14b3380a81fea08e33db9d3f566599c0349f5c1ca1add8d558022f7e",
+        "benchmarks/profile_resident.py": "a50f5b0ca028dcddb50a6eb0a7fdb402d2dae2ed1ab337ecc2e045ba8a8cc7c0",
+        "benchmarks/profile_timeline.py": "785e28fd554721c1b4dac55601dd7c5a8f62bfb4137ddf83d6818b1706fcb5b4"
+      },
+      "extractor_dependencies_sha256": {
+        "benchmarks/extract_nsight.py": "59dceee6a3f476d96513e198ba7adf9a5e7dda8669cf50d1de315215f8f0712e",
+        "benchmarks/extract_timeline.py": "1cd4f8aa5b1e8ae2e552bf336b2f711c45d6a392d023c7917ae6319fae5697ca"
+      },
+      "extractor_sha256": "62aa8c46cd72c1c967686a64cf29486e96de60a016c7af9c3e4abc6633ad88f9",
+      "native_build": {
+        "build_sha256": "a1f169c838f67397cdb7a6052f1b98f0bea1558dd32b6df7c661689ef237d68d",
+        "cache_key": "f23e64aefe987fab7f182221c3db7ca4f512676ec9874e2ee1de3e72e8691d4e",
+        "ffi_targets": [
+          "cuda_zlib_compress_sm_86",
+          "cuda_zlib_decompress_sm_86",
+          "cuda_zlib_compress_batch_sm_86",
+          "cuda_zlib_decompress_batch_sm_86"
+        ],
+        "identity": {
+          "architecture": "sm_86",
+          "compiler": "/usr/local/cuda-12.6/bin/nvcc",
+          "compiler_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2024 NVIDIA Corporation\nBuilt on Tue_Oct_29_23:50:19_PDT_2024\nCuda compilation tools, release 12.6, V12.6.85\nBuild cuda_12.6.r12.6/compiler.35059454_0\n",
+          "flags": [
+            "-O3",
+            "-lineinfo",
+            "--std=c++17",
+            "--cudart=shared",
+            "-Xcompiler=-pthread",
+            "-ldl"
+          ],
+          "headers": {
+            "api.h": "1426ea8206a1b9f1824f460572ea731665eb7cb9def1f0fc166b13df4b955ad0",
+            "c_api.h": "9847993912aa1aadb2dac4af16eeb9d8bae3f470905b519977d1d09b3f37eedf",
+            "collectives_api.h": "59f78f7358e33ad4c98d9356cce45b43c22c745eb6e88785070889e546b7e0b4",
+            "collectives_c_api.h": "ed27017e78d9adc100927b868b8578941765aaee483c16138c6e6ec3d982063f",
+            "ffi.h": "0878473a1ee35fdd9ff15424d46a44602fb53019f0d0a9f5117abdb386c35129",
+            "record_api.h": "35214dc4910a1de61e8903adca060d8a1354070fb0a31936cf97c7ce9292ec37",
+            "record_c_api.h": "6972199566e88987f224e42aac1a6b433d4d9a25f1eaa6526288b4922ff02db0"
+          },
+          "jaxlib": "0.11.2",
+          "sources": {
+            "batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
+            "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+            "codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0",
+            "decoder.cuh": "cd0e51889b383975abe6f9de5037b42cf09c9ef5b0f5e887d7fa3520c197b9ce",
+            "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
+            "postprocess.cuh": "ca5125639b5691ce3edcc37c4f0c00f88d8470c5073235e5802c375203e7ae81"
+          }
+        },
+        "library_sha256": "83420785b15e2fb659e87008bb994fa4572fec4c510f4ba406ebd32db582c405"
+      }
+    }
+  },
+  "resource_sample_intervals": {
+    "compress": {
+      "maximum_ms": 59.668795,
+      "median_ms": 53.697702,
+      "minimum_ms": 53.046623
+    },
+    "decompress": {
+      "maximum_ms": 65.386355,
+      "median_ms": 53.875887,
+      "minimum_ms": 53.352164
+    }
+  },
+  "schema": 1,
+  "source_reports": {
+    "compress": {
+      "path": "benchmarks/results/workflow/rtx3090-compress-float32.json",
+      "sha256": "95f4267705b3b485da92c2e704f29752c6cc8ead0e49244e6109fcf940100fac"
+    },
+    "decompress": {
+      "path": "benchmarks/results/workflow/rtx3090-decompress-float32.json",
+      "sha256": "c2d698d9e67927d08e7c163ddfc50c5cd7c020d5d921a05362eb24d9fb81863c"
+    }
+  },
+  "stage_styles": {
+    "compress": {
+      "checksum": {
+        "color": "#009E73",
+        "hatch": "",
+        "label": "Checksum"
+      },
+      "compression_prefix": {
+        "color": "#E69F00",
+        "hatch": "//",
+        "label": "Compression prefix"
+      },
+      "encoding": {
+        "color": "#8E44AD",
+        "hatch": "",
+        "label": "Chunk encoding"
+      },
+      "fused_encode": {
+        "color": "#9966AA",
+        "hatch": "",
+        "label": "Fused encode"
+      },
+      "packing": {
+        "color": "#0072B2",
+        "hatch": "",
+        "label": "Packing"
+      },
+      "verification": {
+        "color": "#475569",
+        "hatch": "//",
+        "label": "Status verification"
+      },
+      "wrapper": {
+        "color": "#94A3B8",
+        "hatch": "//",
+        "label": "Wrapper"
+      }
+    },
+    "decompress": {
+      "chain_selection": {
+        "color": "#F0D573",
+        "hatch": "//",
+        "label": "Chain selection"
+      },
+      "checksum": {
+        "color": "#009E73",
+        "hatch": "",
+        "label": "Checksum"
+      },
+      "description": {
+        "color": "#E69F00",
+        "hatch": "",
+        "label": "Token description"
+      },
+      "discovery": {
+        "color": "#0072B2",
+        "hatch": "",
+        "label": "Discovery"
+      },
+      "emission": {
+        "color": "#D55E00",
+        "hatch": "",
+        "label": "Emission"
+      },
+      "framing": {
+        "color": "#94A3B8",
+        "hatch": "//",
+        "label": "Framing"
+      },
+      "fused_decode": {
+        "color": "#4477AA",
+        "hatch": "",
+        "label": "Fused decode"
+      },
+      "refinement": {
+        "color": "#CC79A7",
+        "hatch": "//",
+        "label": "Refinement"
+      },
+      "sorting": {
+        "color": "#56B4E9",
+        "hatch": "//",
+        "label": "Sorting"
+      },
+      "verification": {
+        "color": "#475569",
+        "hatch": "//",
+        "label": "Status verification"
+      }
+    }
+  },
+  "style_helpers_sha256": {
+    "benchmarks/plot_nsight.py": "38bd5f73c4d4d9a64649c040cd165dd2f93ace3a792214f61fc63305b68d46bc",
+    "benchmarks/plot_results.py": "aa7e34864b3396b6ea3fcd77a1dbdee35bec99c7cb3d0bb37e12d22abf22ebb8",
+    "benchmarks/plot_timeline.py": "7fa16c4ea15757fbc07052265bf4fbb9fdaa306833c34f292df2f81c95f2be3e"
+  },
+  "time_origins": {
+    "compress": {
+      "half_bracket_ns": 54784.0,
+      "label": "cuda_zlib:workflow-origin:59fd0013c1114cce90a153fb30db39d5",
+      "method": "NVTX instant to bracketed monotonic midpoint",
+      "monotonic_after_ns": 3112181542815023,
+      "monotonic_before_ns": 3112181542705455,
+      "monotonic_ns": 3112181542760239,
+      "nsight_ns": 381350557,
+      "rounding": "integer midpoint rounded down; uncertainty rounded up",
+      "uncertainty_ns": 54784
+    },
+    "decompress": {
+      "half_bracket_ns": 58907.0,
+      "label": "cuda_zlib:workflow-origin:175218da181e4b649532fee201fc3a44",
+      "method": "NVTX instant to bracketed monotonic midpoint",
+      "monotonic_after_ns": 3112325600117319,
+      "monotonic_before_ns": 3112325599999505,
+      "monotonic_ns": 3112325600058412,
+      "nsight_ns": 378281070,
+      "rounding": "integer midpoint rounded down; uncertainty rounded up",
+      "uncertainty_ns": 58907
+    }
+  },
+  "units": {
+    "activity": "kernel interval union/actual bin duration",
+    "copy": "MiB completed per bin",
+    "cpu": "percent; 100 is one logical CPU",
+    "display_time": "seconds since collector clock origin",
+    "memory": "GiB"
+  },
+  "warnings": {
+    "compress": [
+      {
+        "diagnostic_source": 3,
+        "global_pid": 5,
+        "pid": 6,
+        "recorded_timestamp": 145765583,
+        "scope": "collector",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all NVTX events might have been collected.",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 1,
+        "pid": 2,
+        "recorded_timestamp": 145777045,
+        "scope": "worker",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all NVTX events might have been collected.",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 3,
+        "pid": 4,
+        "recorded_timestamp": 145778458,
+        "scope": "worker",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all NVTX events might have been collected.",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 3,
+        "pid": 4,
+        "recorded_timestamp": 145779069,
+        "scope": "worker",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "No NVTX events collected. Does the process use NVTX?",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 5,
+        "pid": 6,
+        "recorded_timestamp": 145781674,
+        "scope": "collector",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "CUDA profiling might have not been started correctly.",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 5,
+        "pid": 6,
+        "recorded_timestamp": 145782686,
+        "scope": "collector",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "No CUDA events collected. Does the process use CUDA?",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 3,
+        "pid": 4,
+        "recorded_timestamp": 145784419,
+        "scope": "worker",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "CUDA profiling might have not been started correctly.",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 3,
+        "pid": 4,
+        "recorded_timestamp": 145785010,
+        "scope": "worker",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "No CUDA events collected. Does the process use CUDA?",
+        "timestamp_type": 2
+      }
+    ],
+    "decompress": [
+      {
+        "diagnostic_source": 3,
+        "global_pid": 4,
+        "pid": 5,
+        "recorded_timestamp": 140725083,
+        "scope": "collector",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all NVTX events might have been collected.",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 1,
+        "pid": 2,
+        "recorded_timestamp": 140735533,
+        "scope": "worker",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all NVTX events might have been collected.",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 6,
+        "pid": null,
+        "recorded_timestamp": 140737126,
+        "scope": "other",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all NVTX events might have been collected.",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 6,
+        "pid": null,
+        "recorded_timestamp": 140737727,
+        "scope": "other",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "No NVTX events collected. Does the process use NVTX?",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 4,
+        "pid": 5,
+        "recorded_timestamp": 140740212,
+        "scope": "collector",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "CUDA profiling might have not been started correctly.",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 4,
+        "pid": 5,
+        "recorded_timestamp": 140741284,
+        "scope": "collector",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "No CUDA events collected. Does the process use CUDA?",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 6,
+        "pid": null,
+        "recorded_timestamp": 140743047,
+        "scope": "other",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "CUDA profiling might have not been started correctly.",
+        "timestamp_type": 2
+      },
+      {
+        "diagnostic_source": 3,
+        "global_pid": 6,
+        "pid": null,
+        "recorded_timestamp": 140743709,
+        "scope": "other",
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "No CUDA events collected. Does the process use CUDA?",
+        "timestamp_type": 2
+      }
+    ]
+  }
+}

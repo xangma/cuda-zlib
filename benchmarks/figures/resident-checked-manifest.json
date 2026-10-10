@@ -1,19 +1,24 @@
 {
   "schema_version": 1,
-  "source_report": "benchmarks/results/resident-checked-rtx4090-20261009.json",
-  "source_report_sha256": "87628a6c43564e0aa15d666252704eb779b9b4d258938cbc4c2aa807a4d78a99",
-  "plotter_sha256": "67f6a54c0d09bea050164488fbc98dafa3edf9d86f2b2dab4c57bce19e57609b",
+  "source_report": "benchmarks/results/resident-checked-rtx3090-20261010.json",
+  "source_report_sha256": "fb102a5eed2d82f4e9322943652c132bec47e28b8c5c6c82c7d30d1cad38fa41",
+  "publication": {
+    "kind": "portable_measurement",
+    "private_evidence_sha256": "50b7953a7bb4a1bc9f9461d1a964f338eb366353daa53921f2a95c475567edd0",
+    "schema_version": 1
+  },
+  "plotter_sha256": "6d3c96d86a9819528016e078c440a2c7226cb29f4a5728e1105b21cee99c28f1",
   "renderer": {
-    "matplotlib": "3.11.1",
-    "numpy": "2.5.2",
+    "matplotlib": "3.11.2",
+    "numpy": "2.5.3",
     "backend": "Agg"
   },
   "measurement_source": {
-    "revision": "bb00aea62bae71542cbb896b339da4842c976499",
+    "revision": "d323fee215658d2c03731c2e282b395860a27ac8",
     "sha256": {
       "__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
       "_codec.py": "0a0a5484f90a55cf53530b3dc837a12b2a293d5bb88c0b9426758d17409af5d2",
-      "_decode_kernels.py": "8e05014eb82ecdd20a8f0d6eea6be5ec67f97829cd6451d3ae3f4e1909d513e1",
+      "_decode_kernels.py": "24d4cf545663daa385d3cb08184f8261f8803b002e1ce9edff95254cc6e37ad7",
       "_encode_kernels.py": "514bd9aba9978010f4a1659209ac0a6b9b0e72a043d6605805c4c698f6d87964",
       "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
       "_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
@@ -27,17 +32,19 @@
   },
   "environment": {
     "backend": "JAX typed CUDA FFI",
-    "cuda_platform": "cuda 13040",
+    "cuda_platform": "cuda 12060",
     "gpu_after": [
-      "NVIDIA GeForce RTX 4090, 610.57.04, 6024, 24564, 34, 51"
+      "NVIDIA GeForce RTX 3090, 610.57.04, 1679, 24576, 19, 71",
+      "NVIDIA GeForce RTX 3090, 610.57.04, 126, 24576, 0, 33"
     ],
     "gpu_before": [
-      "NVIDIA GeForce RTX 4090, 610.57.04, 4618, 24564, 29, 50"
+      "NVIDIA GeForce RTX 3090, 610.57.04, 395, 24576, 0, 67",
+      "NVIDIA GeForce RTX 3090, 610.57.04, 126, 24576, 0, 33"
     ],
     "jax": "0.11.2",
     "jaxlib": "0.11.2",
-    "numpy": "2.2.6",
-    "python": "3.12.8",
+    "numpy": "2.2.5",
+    "python": "3.13.3",
     "workspace_pool_after": {
       "pool_count": 1,
       "reserved_bytes": 603979776,
@@ -47,18 +54,18 @@
     "zlib_runtime": "1.3.1"
   },
   "native_build": {
-    "build_sha256": "f4b6e0b689ad80cb57a82424670ba9dfccc8c8a50067b7f27c48326ec5802d29",
-    "cache_key": "a68e102103d4912f8d19d732dba9f560fa2062499ffcb469f2f83d592ae90d9e",
+    "build_sha256": "a1f169c838f67397cdb7a6052f1b98f0bea1558dd32b6df7c661689ef237d68d",
+    "cache_key": "f23e64aefe987fab7f182221c3db7ca4f512676ec9874e2ee1de3e72e8691d4e",
     "ffi_targets": [
-      "cuda_zlib_compress_sm_89",
-      "cuda_zlib_decompress_sm_89",
-      "cuda_zlib_compress_batch_sm_89",
-      "cuda_zlib_decompress_batch_sm_89"
+      "cuda_zlib_compress_sm_86",
+      "cuda_zlib_decompress_sm_86",
+      "cuda_zlib_compress_batch_sm_86",
+      "cuda_zlib_decompress_batch_sm_86"
     ],
     "identity": {
-      "architecture": "sm_89",
-      "compiler": "/usr/local/cuda-12.1/bin/nvcc",
-      "compiler_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2023 NVIDIA Corporation\nBuilt on Mon_Apr__3_17:16:06_PDT_2023\nCuda compilation tools, release 12.1, V12.1.105\nBuild cuda_12.1.r12.1/compiler.32688072_0\n",
+      "architecture": "sm_86",
+      "compiler": "/usr/local/cuda-12.6/bin/nvcc",
+      "compiler_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2024 NVIDIA Corporation\nBuilt on Tue_Oct_29_23:50:19_PDT_2024\nCuda compilation tools, release 12.6, V12.6.85\nBuild cuda_12.6.r12.6/compiler.35059454_0\n",
       "flags": [
         "-O3",
         "-lineinfo",
@@ -81,12 +88,12 @@
         "batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
         "batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
         "codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0",
-        "decoder.cuh": "199aae623c576a7e2c7e6b17dbf93ddd9a84748999bc107fef049bdb7bc39107",
+        "decoder.cuh": "cd0e51889b383975abe6f9de5037b42cf09c9ef5b0f5e887d7fa3520c197b9ce",
         "encoder.cuh": "2699cb43da7ee967a0d4eb593c895c338c373e7cfb78e113b51c63a59399afe0",
         "postprocess.cuh": "ca5125639b5691ce3edcc37c4f0c00f88d8470c5073235e5802c375203e7ae81"
       }
     },
-    "library_sha256": "dc462bacda2e7cc17022a0b41d401e5c94491a4015528dc64d3756e8f092f681"
+    "library_sha256": "83420785b15e2fb659e87008bb994fa4572fec4c510f4ba406ebd32db582c405"
   },
   "arguments": {
     "cuda_profiler_range": false,
@@ -143,8 +150,8 @@
     }
   },
   "exports": {
-    "resident-checked.png": "921f286755837cc29a59d41db51bded523673091452c2a7627c94a7db891b6d9",
-    "resident-checked.svg": "9c003d94d99fcc9b73362830371b7d3968d52793c563930dde24ad38f8fcec06",
-    "resident-checked.pdf": "c792938eba57c594d9353c68845a709916cd7781a4eed3f570f834ee85cc813d"
+    "resident-checked.png": "430dd80d01cabce78289151b758520eb959fc582a35d7dfbd67aab3bac99d10b",
+    "resident-checked.svg": "fe4a2e8e8b44af1a25f17ac699253b14d98ba92c02a3b9f460a3030e11423f6c",
+    "resident-checked.pdf": "a61f4c3c9a0384ccd3f611ef80fa87624e39d5209058b38a0f49a98d5234cb09"
   }
 }

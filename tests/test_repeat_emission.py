@@ -303,7 +303,7 @@ def repeat_helpers(tmp_path_factory):
     emission += source[source.index("__device__ __forceinline__ void emit_warp_match("):
                       source.index("__device__ __noinline__ BlockInfo emit_warp_block(")]
     cpp_source = _DRIVER.replace("TOKEN_SOURCE", tokens).replace("EMISSION_SOURCE", emission)
-    for qualifier in ("__device__", "__noinline__"):
+    for qualifier in ("__device__", "__noinline__", "__constant__"):
         cpp_source = cpp_source.replace(qualifier, "")
     cpp_source = cpp_source.replace("__forceinline__", "inline")
     directory = tmp_path_factory.mktemp("repeat-helpers")
