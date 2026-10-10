@@ -88,10 +88,11 @@ def check_hash(path, expected):
 
 
 def kernel_stage(name):
-    # Only normalize the anonymous namespace and template arguments. Preserve
-    # the exact outer symbol; an unfamiliar kernel must never disappear into Other.
+    # CUB includes its version and target architecture in an inline namespace.
+    # Preserve the outer kernel allowlist after removing that implementation tag.
     symbol = name.replace("<unnamed>::", "").replace("(anonymous namespace)::", "")
     symbol = symbol.removeprefix("void ").split("(", 1)[0].split("<", 1)[0].strip()
+    symbol = re.sub(r"^cub::CUB_[0-9]+_[0-9]+_NS::", "cub::", symbol)
     require(symbol in KERNEL_STAGES, f"unmapped CUDA kernel: {name}")
     return KERNEL_STAGES[symbol]
 
