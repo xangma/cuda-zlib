@@ -185,8 +185,12 @@ def main():
     name = "host-output-latency"
     exports = save_figure(render(report, cases), args.output_dir, name)
     evidence_fields = ("dependencies_sha256", "benchmark_sha256", "profile_resident_sha256", "native_build", "environment", "arguments", "gpu_snapshot_before", "gpu_snapshot_after", "methodology", "validation", "warnings")
+    if "publication" in report:
+        evidence_fields = tuple(field for field in evidence_fields
+                                if field not in {"gpu_snapshot_before", "gpu_snapshot_after"})
     manifest = {
         "schema": 1, "kind": "host_outputs", "source_report": report_identifier(args.input), "source_report_sha256": sha256(args.input),
+        **({"publication": report["publication"]} if "publication" in report else {}),
         "plotter_sha256": sha256(Path(__file__)),
         "measurement_source": {"revision": report["source_revision"], "harness_sha256": report["harness_sha256"], "sha256": report["source_sha256"]},
         "report_evidence": {field: report[field] for field in evidence_fields if field in report},

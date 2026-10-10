@@ -247,6 +247,7 @@ def main():
             plt.close(figure)
     manifest = {
         "schema_version": 1, "report_type": REPORT_TYPE,
+        **({"publication": report["publication"]} if "publication" in report else {}),
         "source_report": report_identifier(args.report), "source_report_sha256": digest,
         "plotter_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "renderer": {"matplotlib": matplotlib.__version__, "numpy": np.__version__, "backend": "Agg"},

@@ -270,6 +270,7 @@ def main():
     } for key in TIMELINE_CASES]
     manifest = {
         "schema": 1, "kind": "nsight-diagnostics", "source_report": report_identifier(args.input),
+        **({"publication": report["publication"]} if "publication" in report else {}),
         "source_report_sha256": sha256(args.input),
         "measurement_source": {"revision": report["source_revision"], "harness_sha256": report["harness_sha256"], "sha256": report["source_sha256"]},
         "capture_manifest_sha256": report["capture_manifest_sha256"],

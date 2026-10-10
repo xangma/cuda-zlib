@@ -10,6 +10,7 @@ the plotters; this check detects stale artifacts.
 import hashlib
 import importlib.util
 import json
+import math
 from pathlib import Path
 import re
 import statistics
@@ -61,6 +62,186 @@ def read_json(path):
     return value
 
 
+def portable_publication(report, marker):
+    """Public normalized measurements retain identities, not raw evidence files."""
+    publication = report.get("publication")
+    if publication is None:
+        require(marker is None, "publication marker has no matching report")
+        return False
+    require(isinstance(publication, dict) and set(publication) ==
+            {"schema_version", "kind", "private_evidence_sha256"} and
+            type(publication["schema_version"]) is int and publication["schema_version"] == 1 and
+            publication["kind"] == "portable_measurement" and
+            isinstance(publication["private_evidence_sha256"], str) and
+            re.fullmatch(r"[0-9a-f]{64}", publication["private_evidence_sha256"]),
+            "invalid portable publication marker")
+    require(marker == publication, "portable publication marker differs from report")
+    require(report.get("artifacts", {}) == {} and report.get("artifact_sha256", {}) == {},
+            "portable publication must not include raw artifact inventories")
+    private_keys = {"hostname", "host_name", "user", "username", "cwd",
+                    "source_root", "library", "build", "log_path", "result_path",
+                    "path", "exportOrigin", "exportTime"}
+
+    def inspect(value):
+        if isinstance(value, dict):
+            require(not private_keys & set(value), "private operational identity in portable publication")
+            for key, item in value.items():
+                lowered = key.lower()
+                if lowered == "command":
+                    require(item == [], "portable publication must not include command receipts")
+                elif lowered in {"uuid", "gpu_uuid", "device_uuid"}:
+                    require(item == "redacted", "portable publication must redact device UUIDs")
+                elif lowered in {"pid", "ppid", "pids", "captured_pid", "captured_processes",
+                                 "globalpid", "global_pid", "globaltid", "global_tid", "tid",
+                                 "thread_id", "process_id", "process_ids", "process_identities",
+                                 "collector_pid", "owned_pid"}:
+                    if lowered in {"captured_processes", "process_identities"}:
+                        pass  # Validate the IDs in each normalized process record below.
+                    elif lowered == "owned_pid" and isinstance(item, bool):
+                        pass  # This is an ownership flag, not a process ID.
+                    else:
+                        identifiers = item if isinstance(item, list) else list(item) if isinstance(item, dict) else [item]
+                        require(all(identifier is None or type(identifier) is int and
+                                    0 < identifier < 10000 for identifier in identifiers),
+                                "portable publication must use compact anonymized process identifiers")
+                inspect(item)
+        elif isinstance(value, list):
+            for item in value:
+                inspect(item)
+        elif isinstance(value, str):
+            require(not re.search(r"/Users/|/home/|/dev/shm/|/tmp/|\b(?:roni1|xangma)\b|"
+                                  r"(?:GPU-)?[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-"
+                                  r"[0-9a-fA-F]{12}", value),
+                    "private operational path in portable publication")
+    inspect(report)
+    return True
+
+
+def require_publication_marker(report, manifest, operation=None):
+    recorded = manifest.get("publication")
+    if operation is None:
+        return portable_publication(report, recorded)
+    if recorded is None:
+        return portable_publication(report, None)
+    require(isinstance(recorded, dict) and set(recorded) == {"compress", "decompress"},
+            "workflow publication markers require both operations")
+    return portable_publication(report, recorded[operation])
+
+
+def nonnegative(value, label, nullable=False):
+    require(nullable and value is None or type(value) in (int, float) and
+            math.isfinite(value) and value >= 0, f"invalid {label}")
+    return value
+
+
+def union_length(intervals):
+    total, end = 0, None
+    for left, right in sorted(intervals):
+        total += right - max(left, end if end is not None else left)
+        end = max(right, end if end is not None else right)
+    return total
+
+
+def verify_portable_timeline(report, workflow=False):
+    whole, loop = (report["views"][name] for name in ("whole_process", "measured_loop"))
+    require(all(type(view[key]) is int for view in (whole, loop) for key in ("start_ns", "end_ns")) and
+            whole["start_ns"] <= loop["start_ns"] < loop["end_ns"] <= whole["end_ns"],
+            "invalid portable timeline view bounds")
+    nonnegative(report["time_origin"]["uncertainty_ns"], "clock uncertainty")
+    require(report["timestamp_unit"] == "ns" and isinstance(report["phase_semantics"], dict) and
+            report["phase_semantics"], "missing portable timeline clock or phase semantics")
+    phases = report["phase_intervals"]
+    ids = {phase["id"] for phase in phases}
+    require(phases and len(ids) == len(phases), "missing or duplicate portable host phases")
+    for phase in phases:
+        require(type(phase["start_ns"]) is int and type(phase["end_ns"]) is int and
+                phase["end_ns"] >= phase["start_ns"] and
+                (phase["parent_id"] is None or phase["parent_id"] in ids) and
+                phase["name"] in report["phase_semantics"], "invalid portable host phase")
+    if workflow:
+        require({"metadata_download", "status_check", "output_download", "host_bytes", "validate"} <=
+                {phase["name"] for phase in phases}, "missing portable workflow download phases")
+    kernels, copied = [], dict.fromkeys(("H2D", "D2H", "D2D", "other"), 0)
+    require(report["gpu_activities"] and report["bins"], "missing portable GPU activities or bins")
+    for event in report["gpu_activities"]:
+        start, end = event["start_ns"], event["end_ns"]
+        require(type(start) is int and type(end) is int and end > start and
+                type(event["duration_ns"]) is int and end - start == event["duration_ns"],
+                "invalid portable GPU interval")
+        if event["kind"] == "kernel":
+            require(event["stage"] in report["stages"], "unknown portable GPU stage")
+            kernels.append((start, end))
+        else:
+            require(event["kind"] in ("memcpy", "memset"), "unknown portable GPU activity")
+            if event["kind"] == "memcpy":
+                require(event["direction"] in copied, "unknown portable copy direction")
+                copied[event["direction"]] += nonnegative(event["bytes"], "copy bytes")
+    binned, previous = dict.fromkeys(copied, 0), None
+    for bucket in report["bins"]:
+        start, end = bucket["start_ns"], bucket["end_ns"]
+        require(type(start) is int and type(end) is int and end > start and
+                (previous is None or previous == start), "noncontiguous portable GPU bins")
+        previous = end
+        covered = union_length((max(start, a), min(end, b)) for a, b in kernels if a < end and b > start)
+        require(bucket["kernel_union_ns"] == covered and
+                math.isclose(bucket["kernel_union_fraction"], covered / (end - start), rel_tol=1e-12, abs_tol=1e-12),
+                "portable kernel bin differs from intervals")
+        require(set(bucket["copy_bytes_completed"]) == set(copied), "missing portable copy bin directions")
+        for direction, count in bucket["copy_bytes_completed"].items():
+            binned[direction] += nonnegative(count, "binned copy bytes")
+    require(copied == binned, "portable completed-copy totals differ")
+    samples, previous = report["samples"], None
+    require(len(samples) >= (2 if workflow else 1), "missing portable resource samples")
+    for sample in samples:
+        stamp = sample["timestamp_ns"]
+        require(type(stamp) is int and (previous is None or stamp > previous) and
+                sample["query_start_ns"] <= stamp <= sample["query_end_ns"],
+                "invalid portable resource sample bracket")
+        previous = stamp
+        values = {"cpu_percent": sample["cpu_percent"], "rss_bytes": sample["rss_bytes"]}
+        gpu = sample.get("gpu")
+        for key, field in (("gpu_memory", "used_memory_bytes"), ("gpu_owned_memory", "owned_compute_memory_bytes")):
+            require(gpu is None or field in gpu, f"missing portable {field}")
+            values[key] = None if gpu is None else gpu[field]
+        for key, value in values.items():
+            nonnegative(value, key, nullable=True)
+            clock = sample["metric_timestamps_ns"][key]
+            require(clock is None or type(clock) is int, "invalid portable metric clock")
+            require(value is None or clock is not None, "portable metric has no measurement clock")
+    require(isinstance(report["warnings"], list), "portable diagnostic warnings must be preserved")
+
+
+def verify_portable_nsight(report):
+    for case in report["cases"]:
+        activities, totals = case["gpu_activities"], dict.fromkeys(report["stages"], 0)
+        require(activities, "missing portable Nsight activities")
+        memory = 0
+        for event in activities:
+            start, end = event["start_ns"], event["end_ns"]
+            require(type(start) is int and type(end) is int and end > start and
+                    type(event["duration_ns"]) is int and end - start == event["duration_ns"],
+                    "invalid portable Nsight interval")
+            if event["kind"] == "kernel":
+                require(event["stage"] in totals, "unknown portable Nsight stage")
+                totals[event["stage"]] += event["duration_ns"]
+            else:
+                require(event["kind"] in ("memcpy", "memset") and event["stage"] is None,
+                        "unknown portable Nsight activity")
+                memory += event["duration_ns"]
+        span = max(row["end_ns"] for row in activities)
+        require(min(row["start_ns"] for row in activities) == 0 and case["stage_ns"] == totals and
+                case["kernel_sum_ns"] == sum(totals.values()) > 0 and
+                case["gpu_span_ns"] == span and
+                case["gap_ns"] == span - union_length((row["start_ns"], row["end_ns"]) for row in activities) and
+                case["memory_operation_ns"] == memory, "portable Nsight totals differ from intervals")
+        provenance = case["provenance"]
+        require(all(provenance[field] == report[field] for field in
+                    ("source_revision", "source_sha256", "harness_sha256")), "portable Nsight source differs")
+        require(all(provenance[field] == report["native_build"][field] for field in
+                    ("cache_key", "library_sha256", "build_sha256")), "portable Nsight native identity differs")
+        require(isinstance(case["warnings"], list), "portable Nsight warnings must be preserved")
+
+
 def check_sources(report, kind):
     revision = report["source_revision"]
     require(isinstance(revision, str) and
@@ -90,6 +271,13 @@ def check_sources(report, kind):
             f"stale source inventory: missing {sorted(required - set(recorded))}; "
             f"unexpected {sorted(set(recorded) - required)}")
     for name, expected in recorded.items():
+        # The recorded plotter is provenance for how the measurement was
+        # presented at collection time. The current plotting implementation
+        # is independently bound by the figure manifest.
+        if kind == "batch" and name == "benchmarks/plot_small_batch.py":
+            require(isinstance(expected, str) and re.fullmatch(r"[0-9a-f]{64}", expected),
+                    "invalid measured plotter identity")
+            continue
         check_hash(repo_path(name), expected)
 
 
@@ -195,6 +383,7 @@ def verify_workflow_manifest(path, manifest, plotter, count):
                 "workflow report must live under benchmarks/results/workflow")
         check_hash(report_path, item["sha256"])
         report = reports[operation] = read_json(report_path)
+        portable = require_publication_marker(report, manifest, operation)
         require(report.get("complete") is True and type(report.get("schema_version")) is int and
                 report["schema_version"] == 1 and report["operation"] == operation and
                 report["kind"] == "workflow_timeline" and report["profiled"] is True,
@@ -217,8 +406,11 @@ def verify_workflow_manifest(path, manifest, plotter, count):
         extractor = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(extractor)
         extractor.source_binding(report, ROOT)
-        evidence = {field: report[field] for field in ("native_build", "extractor_sha256", "artifact_sha256",
-                                                       "dependencies_sha256", "extractor_dependencies_sha256")}
+        evidence_fields = ("native_build", "extractor_sha256", "dependencies_sha256",
+                           "extractor_dependencies_sha256")
+        if not portable:
+            evidence_fields += ("artifact_sha256",)
+        evidence = {field: report[field] for field in evidence_fields}
         require(manifest["report_evidence"][operation] == evidence, "workflow report evidence differs")
         for manifest_field, report_field in (("warnings", "warnings"), ("time_origins", "time_origin"),
                                               ("phase_semantics", "phase_semantics")):
@@ -227,7 +419,10 @@ def verify_workflow_manifest(path, manifest, plotter, count):
         require(report["metadata_layout"] == (["encoded_length", "status"] if operation == "compress" else ["status", "reserved_zero"]),
                 "workflow metadata layout differs from operation")
         require(set(report["views"]) == {"whole_process", "measured_loop"}, "workflow requires both views")
-        verify_workflow_artifacts(report, operation)
+        if portable:
+            verify_portable_timeline(report, workflow=True)
+        else:
+            verify_workflow_artifacts(report, operation)
     require(manifest["measurement_sources"]["compress"] == manifest["measurement_sources"]["decompress"],
             "workflow operations have different measured sources")
     expected_figures = {f"{operation}-{suffix}": (operation, view) for operation in operations
@@ -330,6 +525,7 @@ def verify_host_outputs_manifest(path, manifest, plotter, count):
     require(set(manifest["style_helpers_sha256"]) == {"benchmarks/plot_results.py"}, "host-output style helper inventory differs")
     check_hash(repo_path("benchmarks/plot_results.py"), manifest["style_helpers_sha256"]["benchmarks/plot_results.py"])
     report = read_json(report_path)
+    portable = require_publication_marker(report, manifest)
     require(type(report["schema_version"]) is int and report["schema_version"] == 1 and
             report["kind"] == "host_outputs" and report["complete"] is True and not report.get("error"),
             "expected complete schema-1 host-output report")
@@ -354,12 +550,15 @@ def verify_host_outputs_manifest(path, manifest, plotter, count):
     require(manifest["measurement_source"] == measured, "host-output measured source differs")
     fields = ("dependencies_sha256", "benchmark_sha256", "profile_resident_sha256", "native_build", "environment", "arguments",
               "gpu_snapshot_before", "gpu_snapshot_after", "methodology", "validation", "warnings")
+    if portable:
+        fields = tuple(field for field in fields if field not in {"gpu_snapshot_before", "gpu_snapshot_after"})
     require(manifest["report_evidence"] == {field: report[field] for field in fields if field in report},
             "host-output report evidence differs")
-    require(isinstance(report["environment"]["gpu_uuid"], str) and re.fullmatch(
-        r"GPU-[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}", report["environment"]["gpu_uuid"]),
-        "missing host-output CUDA GPU UUID")
-    require(all(isinstance(report[field], dict) for field in ("gpu_snapshot_before", "gpu_snapshot_after", "methodology")),
+    if not portable:
+        require(isinstance(report["environment"]["gpu_uuid"], str) and re.fullmatch(
+            r"GPU-[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}", report["environment"]["gpu_uuid"]),
+            "missing host-output CUDA GPU UUID")
+    require(all(isinstance(report[field], dict) for field in ("methodology",)),
             "missing host-output measurement context")
     require(report["methodology"] and all(isinstance(value, str) and value for value in report["methodology"].values()),
             "invalid host-output methodology")
@@ -397,10 +596,16 @@ def verify_manifest(name, kind, plotter, count):
     check_hash(report_path, raw_hash)
     check_hash(repo_path(plotter), plotter_hash)
     report = read_json(report_path)
+    portable = require_publication_marker(report, manifest)
     require(report.get("complete") is True and type(report.get("schema_version")) is int
             and report["schema_version"] == 1,
             f"{report_name}: expected a complete schema-1 benchmark report")
     check_sources(report, kind)
+    if portable:
+        if kind == "timeline":
+            verify_portable_timeline(report)
+        elif kind == "nsight":
+            verify_portable_nsight(report)
     if kind == "timeline":
         for filename, field in (("benchmarks/benchmark.py", "benchmark_sha256"),
                                 ("benchmarks/profile_resident.py", "profile_resident_sha256"),
@@ -414,25 +619,29 @@ def verify_manifest(name, kind, plotter, count):
         for filename, expected in style_helpers.items():
             check_hash(repo_path(filename), expected)
         require(manifest["warnings"] == report["warnings"], "Timeline diagnostic warnings differ")
-        for field in ("native_build", "extractor_sha256", "artifact_sha256", "time_origin"):
+        for field in ("native_build", "extractor_sha256", "time_origin"):
             require(manifest[field] == report[field], f"Timeline {field} differs from report")
+        if not portable:
+            require(manifest["artifact_sha256"] == report["artifact_sha256"],
+                    "Timeline artifact_sha256 differs from report")
         require(report["fixture_oracle_verified"] is True, "Timeline fixture oracle was skipped")
-        artifacts = report["artifact_sha256"]
-        require(isinstance(artifacts, dict) and bool(artifacts), "missing timeline artifacts")
-        required = {"nsys_report", "telemetry", "command", "log", "export_log",
-                    "worker_log", "worker_result", "capture_receipt"}
-        require(required <= set(report["artifacts"]), "missing timeline capture evidence")
-        for key in required:
-            item = report["artifacts"][key]
-            require(artifacts.get(item["path"]) == item["sha256"],
-                    f"Timeline {key} missing from artifact inventory")
-        for filename, expected in artifacts.items():
-            artifact = repo_path(filename)
-            require(artifact.is_relative_to(ROOT / "benchmarks/results/timeline/captures"),
-                    f"timeline artifact outside capture directory: {filename}")
-            check_hash(artifact, expected)
-        require(any(filename.endswith(".nsys-rep") for filename in artifacts),
-                "missing raw timeline Nsight report")
+        if not portable:
+            artifacts = report["artifact_sha256"]
+            require(isinstance(artifacts, dict) and bool(artifacts), "missing timeline artifacts")
+            required = {"nsys_report", "telemetry", "command", "log", "export_log",
+                        "worker_log", "worker_result", "capture_receipt"}
+            require(required <= set(report["artifacts"]), "missing timeline capture evidence")
+            for key in required:
+                item = report["artifacts"][key]
+                require(artifacts.get(item["path"]) == item["sha256"],
+                        f"Timeline {key} missing from artifact inventory")
+            for filename, expected in artifacts.items():
+                artifact = repo_path(filename)
+                require(artifact.is_relative_to(ROOT / "benchmarks/results/timeline/captures"),
+                        f"timeline artifact outside capture directory: {filename}")
+                check_hash(artifact, expected)
+            require(any(filename.endswith(".nsys-rep") for filename in artifacts),
+                    "missing raw timeline Nsight report")
         require(set(report["views"]) == {"whole_process", "measured_loop"},
                 "timeline requires whole-process and measured-loop views")
     if kind == "nsight":
@@ -443,13 +652,14 @@ def verify_manifest(name, kind, plotter, count):
         check_hash(repo_path("benchmarks/benchmark.py"), report["benchmark_sha256"])
         check_hash(repo_path("benchmarks/extract_nsight.py"), report["extractor_sha256"])
         artifacts = report["artifact_sha256"]
-        require(isinstance(artifacts, dict) and bool(artifacts),
-                "missing Nsight trace artifacts")
-        for filename, expected in artifacts.items():
-            artifact = repo_path(filename)
-            require(artifact.is_relative_to(ROOT / "benchmarks/results/nsight/captures"),
-                    f"Nsight artifact outside capture directory: {filename}")
-            check_hash(artifact, expected)
+        if not portable:
+            require(isinstance(artifacts, dict) and bool(artifacts),
+                    "missing Nsight trace artifacts")
+            for filename, expected in artifacts.items():
+                artifact = repo_path(filename)
+                require(artifact.is_relative_to(ROOT / "benchmarks/results/nsight/captures"),
+                        f"Nsight artifact outside capture directory: {filename}")
+                check_hash(artifact, expected)
         workloads = {"zeros", "text", "uint32", "float32", "random"}
         expected_cases = {(workload, size) for workload in workloads
                           for size in (65536, 1048576, 67108864)} | {("uint32", 131072)}
@@ -457,7 +667,7 @@ def verify_manifest(name, kind, plotter, count):
         require(len(cases) == 16 and
                 {(case["workload"], case["output_bytes"]) for case in cases} == expected_cases,
                 "Nsight capture matrix is incomplete or duplicated")
-        for case in cases:
+        for case in cases if not portable else ():
             prefix = f"benchmarks/results/nsight/captures/{case['workload']}-{case['output_bytes']}"
             required = {prefix + suffix for suffix in
                         (".nsys-rep", ".log", "-profile.json", "-command.json", "-capture.json", "-export.log")}

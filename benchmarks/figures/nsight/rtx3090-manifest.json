@@ -1,0 +1,542 @@
+{
+  "capture_manifest_sha256": "7d06ba54c5a3015d7e4873881f28ba2eba56a7640e261fc8ffd38700665a6a8a",
+  "exports": {
+    "activity-timeline.pdf": "b572485b99ea10ec8166981dee91aa5e02cd22d9cbf6506b6550e12598079dff",
+    "activity-timeline.png": "84dc260268f0b27a62ac0d8927d9260ba221909577a983581297fd6589405334",
+    "activity-timeline.svg": "6f756e223eaed10892480f6bc3564295d7170b378a5863a8b3ef4f7d9b30b2d3",
+    "stage-shares.pdf": "badadac8688aa5c3fd5fd18b58d0dd742c091d77f55547140fa81c05f7c122a1",
+    "stage-shares.png": "f731ad561f1bf3321eb12d0d1c67e1d7ce788fbbd689f66eca5a1c295a04029d",
+    "stage-shares.svg": "328af57f699565555f2dfaa8c9b8cb38c0d2862a6445c297390e8813a0f63c1d"
+  },
+  "figures": {
+    "activity-timeline": {
+      "cases": [
+        {
+          "activity_count": 37,
+          "gap_ns": 29505,
+          "gpu_span_ns": 9091247,
+          "name": "uint32-131072",
+          "output_bytes": 131072,
+          "workload": "uint32"
+        },
+        {
+          "activity_count": 40,
+          "gap_ns": 31200,
+          "gpu_span_ns": 40529352,
+          "name": "float32-67108864",
+          "output_bytes": 67108864,
+          "workload": "float32"
+        },
+        {
+          "activity_count": 1,
+          "gap_ns": 0,
+          "gpu_span_ns": 3068544,
+          "name": "text-65536",
+          "output_bytes": 65536,
+          "workload": "text"
+        }
+      ],
+      "exports": {
+        "activity-timeline.pdf": "b572485b99ea10ec8166981dee91aa5e02cd22d9cbf6506b6550e12598079dff",
+        "activity-timeline.png": "84dc260268f0b27a62ac0d8927d9260ba221909577a983581297fd6589405334",
+        "activity-timeline.svg": "6f756e223eaed10892480f6bc3564295d7170b378a5863a8b3ef4f7d9b30b2d3"
+      }
+    },
+    "stage-shares": {
+      "cases": [
+        {
+          "kernel_sum_ns": 256610,
+          "name": "zeros-65536",
+          "output_bytes": 65536,
+          "stage_percent": {
+            "chain_selection": 0.0,
+            "checksum": 0.0,
+            "description": 0.0,
+            "discovery": 0.0,
+            "emission": 0.0,
+            "framing": 0.0,
+            "fused_decode": 100.0,
+            "refinement": 0.0,
+            "sorting": 0.0,
+            "verification": 0.0
+          },
+          "workload": "zeros"
+        },
+        {
+          "kernel_sum_ns": 3068544,
+          "name": "text-65536",
+          "output_bytes": 65536,
+          "stage_percent": {
+            "chain_selection": 0.0,
+            "checksum": 0.0,
+            "description": 0.0,
+            "discovery": 0.0,
+            "emission": 0.0,
+            "framing": 0.0,
+            "fused_decode": 100.0,
+            "refinement": 0.0,
+            "sorting": 0.0,
+            "verification": 0.0
+          },
+          "workload": "text"
+        },
+        {
+          "kernel_sum_ns": 13382029,
+          "name": "uint32-65536",
+          "output_bytes": 65536,
+          "stage_percent": {
+            "chain_selection": 0.0,
+            "checksum": 0.0,
+            "description": 0.0,
+            "discovery": 0.0,
+            "emission": 0.0,
+            "framing": 0.0,
+            "fused_decode": 100.0,
+            "refinement": 0.0,
+            "sorting": 0.0,
+            "verification": 0.0
+          },
+          "workload": "uint32"
+        },
+        {
+          "kernel_sum_ns": 10936374,
+          "name": "float32-65536",
+          "output_bytes": 65536,
+          "stage_percent": {
+            "chain_selection": 0.0,
+            "checksum": 0.0,
+            "description": 0.0,
+            "discovery": 0.0,
+            "emission": 0.0,
+            "framing": 0.0,
+            "fused_decode": 100.0,
+            "refinement": 0.0,
+            "sorting": 0.0,
+            "verification": 0.0
+          },
+          "workload": "float32"
+        },
+        {
+          "kernel_sum_ns": 140962,
+          "name": "random-65536",
+          "output_bytes": 65536,
+          "stage_percent": {
+            "chain_selection": 0.0,
+            "checksum": 0.0,
+            "description": 0.0,
+            "discovery": 0.0,
+            "emission": 0.0,
+            "framing": 0.0,
+            "fused_decode": 100.0,
+            "refinement": 0.0,
+            "sorting": 0.0,
+            "verification": 0.0
+          },
+          "workload": "random"
+        },
+        {
+          "kernel_sum_ns": 2206841,
+          "name": "zeros-1048576",
+          "output_bytes": 1048576,
+          "stage_percent": {
+            "chain_selection": 0.16385412451554054,
+            "checksum": 0.38715974553671967,
+            "description": 0.16965427051609064,
+            "discovery": 0.14355361351361517,
+            "emission": 0.3611044021748735,
+            "framing": 0.2639066430250299,
+            "fused_decode": 96.43431493252119,
+            "refinement": 0.7322684325694511,
+            "sorting": 0.8685718635823786,
+            "verification": 0.4756119720451088
+          },
+          "workload": "zeros"
+        },
+        {
+          "kernel_sum_ns": 14917095,
+          "name": "text-1048576",
+          "output_bytes": 1048576,
+          "stage_percent": {
+            "chain_selection": 0.04655061860234851,
+            "checksum": 0.07079126331232723,
+            "description": 37.032398064100285,
+            "discovery": 1.9465653332636146,
+            "emission": 60.4180170468848,
+            "framing": 0.013729214702996796,
+            "fused_decode": 0.0,
+            "refinement": 0.1565988552060572,
+            "sorting": 0.24112603693949794,
+            "verification": 0.07422356698807643
+          },
+          "workload": "text"
+        },
+        {
+          "kernel_sum_ns": 9462316,
+          "name": "uint32-1048576",
+          "output_bytes": 1048576,
+          "stage_percent": {
+            "chain_selection": 1.1725036449850121,
+            "checksum": 0.1109347859445827,
+            "description": 45.201787807551554,
+            "discovery": 1.6730153590304953,
+            "emission": 51.05920157390643,
+            "framing": 0.02096738261541889,
+            "fused_decode": 0.0,
+            "refinement": 0.26040136473987974,
+            "sorting": 0.38282382452668035,
+            "verification": 0.11836425669994534
+          },
+          "workload": "uint32"
+        },
+        {
+          "kernel_sum_ns": 5611040,
+          "name": "float32-1048576",
+          "output_bytes": 1048576,
+          "stage_percent": {
+            "chain_selection": 0.7573818757307024,
+            "checksum": 0.19390344748923552,
+            "description": 43.627634092788504,
+            "discovery": 9.508789814365965,
+            "emission": 44.64393410134306,
+            "framing": 0.035929168211240696,
+            "fused_decode": 0.0,
+            "refinement": 0.39350993755168384,
+            "sorting": 0.6427328980010836,
+            "verification": 0.19618466451852062
+          },
+          "workload": "float32"
+        },
+        {
+          "kernel_sum_ns": 187265,
+          "name": "random-1048576",
+          "output_bytes": 1048576,
+          "stage_percent": {
+            "chain_selection": 18.04501642058046,
+            "checksum": 4.562518356339946,
+            "description": 4.955544282166983,
+            "discovery": 10.662964248524817,
+            "emission": 25.136571169198728,
+            "framing": 3.127119322884682,
+            "fused_decode": 0.0,
+            "refinement": 8.612394200731584,
+            "sorting": 19.0879235308253,
+            "verification": 5.809948468747497
+          },
+          "workload": "random"
+        },
+        {
+          "kernel_sum_ns": 17858000,
+          "name": "zeros-67108864",
+          "output_bytes": 67108864,
+          "stage_percent": {
+            "chain_selection": 0.08099451226341135,
+            "checksum": 2.2603483032814427,
+            "description": 31.427309889125322,
+            "discovery": 0.4515679247396125,
+            "emission": 61.4273434875126,
+            "framing": 0.012185015119274275,
+            "fused_decode": 0.0,
+            "refinement": 4.072891701198342,
+            "sorting": 0.20016239220517415,
+            "verification": 0.06719677455482137
+          },
+          "workload": "zeros"
+        },
+        {
+          "kernel_sum_ns": 26290674,
+          "name": "text-67108864",
+          "output_bytes": 67108864,
+          "stage_percent": {
+            "chain_selection": 0.7064482257092382,
+            "checksum": 1.5350994805230174,
+            "description": 21.19979502997907,
+            "discovery": 6.667322412502624,
+            "emission": 48.031461650621814,
+            "framing": 0.009737293155740321,
+            "fused_decode": 0.0,
+            "refinement": 21.664267717138024,
+            "sorting": 0.13863851493499177,
+            "verification": 0.04722967543547952
+          },
+          "workload": "text"
+        },
+        {
+          "kernel_sum_ns": 27798539,
+          "name": "uint32-67108864",
+          "output_bytes": 67108864,
+          "stage_percent": {
+            "chain_selection": 5.528758184018232,
+            "checksum": 1.4541375717623146,
+            "description": 36.84254773245457,
+            "discovery": 7.90301245687768,
+            "emission": 45.6268870820873,
+            "framing": 0.009439344995792765,
+            "fused_decode": 0.0,
+            "refinement": 2.45184108416633,
+            "sorting": 0.13192060201437206,
+            "verification": 0.0514559416234069
+          },
+          "workload": "uint32"
+        },
+        {
+          "kernel_sum_ns": 40413830,
+          "name": "float32-67108864",
+          "output_bytes": 67108864,
+          "stage_percent": {
+            "chain_selection": 8.402452823699214,
+            "checksum": 0.9991950775266784,
+            "description": 28.426808347538454,
+            "discovery": 30.643185760914022,
+            "emission": 29.684137831034572,
+            "framing": 0.0054634762406829546,
+            "fused_decode": 0.0,
+            "refinement": 1.7061288177834173,
+            "sorting": 0.09200810712570424,
+            "verification": 0.04061975813725153
+          },
+          "workload": "float32"
+        },
+        {
+          "kernel_sum_ns": 2375549,
+          "name": "random-67108864",
+          "output_bytes": 67108864,
+          "stage_percent": {
+            "chain_selection": 75.34986649401885,
+            "checksum": 5.591717956564988,
+            "description": 0.8513821436644751,
+            "discovery": 1.5437694612908426,
+            "emission": 11.948522215285815,
+            "framing": 0.6061756671826176,
+            "fused_decode": 0.0,
+            "refinement": 2.0933687328697492,
+            "sorting": 1.5396861946438487,
+            "verification": 0.4755111344788089
+          },
+          "workload": "random"
+        }
+      ],
+      "denominator": "sum of recorded kernel durations; memory operations and gaps excluded",
+      "exports": {
+        "stage-shares.pdf": "badadac8688aa5c3fd5fd18b58d0dd742c091d77f55547140fa81c05f7c122a1",
+        "stage-shares.png": "f731ad561f1bf3321eb12d0d1c67e1d7ce788fbbd689f66eca5a1c295a04029d",
+        "stage-shares.svg": "328af57f699565555f2dfaa8c9b8cb38c0d2862a6445c297390e8813a0f63c1d"
+      }
+    }
+  },
+  "gap_definition": "GPU span minus union of all imported GPU activity intervals",
+  "kind": "nsight-diagnostics",
+  "limitations": [
+    "One warmed instrumented call per case; no uncertainty or speedup estimate",
+    "Fused internal stages cannot be separated",
+    "Guarded launches counted without inferring useful work",
+    "Gaps do not identify a cause; interval sums are not wall time"
+  ],
+  "measurement_source": {
+    "harness_sha256": "a50f5b0ca028dcddb50a6eb0a7fdb402d2dae2ed1ab337ecc2e045ba8a8cc7c0",
+    "revision": "d323fee215658d2c03731c2e282b395860a27ac8",
+    "sha256": {
+      "__init__.py": "2bfa5323a1484465632fa328018c2aac4c4ca565e53032646c0d7031eff850b1",
+      "_codec.py": "0a0a5484f90a55cf53530b3dc837a12b2a293d5bb88c0b9426758d17409af5d2",
+      "_decode_kernels.py": "24d4cf545663daa385d3cb08184f8261f8803b002e1ce9edff95254cc6e37ad7",
+      "_encode_kernels.py": "514bd9aba9978010f4a1659209ac0a6b9b0e72a043d6605805c4c698f6d87964",
+      "_errors.py": "2d2efd6cc4ad849873a6a1b6c020c6d5e60459c0cb92860165615a53452a3b75",
+      "_ffi.py": "287f9fd239048713ca3c3e119ecc1568e2efa04613a83e5fbd8b0abc5f02eaee",
+      "_postprocess.py": "c1ac2370317f08360c857a225bc3be6e96d93d97bc75fe49f9b434954cda8632",
+      "jax.py": "5281a522fb4e103d49acb07ab5a57aa1c433524c380bce4cee0eed59b4bb7e79",
+      "native/batch_decode.cuh": "6f4e692a543cdb8411cbe84c48a9eec92da2fd20f764ef33b3252dc2a207ce73",
+      "native/batch_encode.cuh": "9f162b5e1674d980fdae982cdcca8f6fd4e810df305d8defea69ec6168664289",
+      "native/codec_ffi.cu": "4939538453f36ef4f89405b43ce613cec4d89781ea2bea72f3be340cfd9879e0"
+    }
+  },
+  "native_identity": {
+    "build_sha256": "a1f169c838f67397cdb7a6052f1b98f0bea1558dd32b6df7c661689ef237d68d",
+    "cache_key": "f23e64aefe987fab7f182221c3db7ca4f512676ec9874e2ee1de3e72e8691d4e",
+    "library_sha256": "83420785b15e2fb659e87008bb994fa4572fec4c510f4ba406ebd32db582c405"
+  },
+  "plotter_sha256": "38bd5f73c4d4d9a64649c040cd165dd2f93ace3a792214f61fc63305b68d46bc",
+  "publication": {
+    "kind": "portable_measurement",
+    "private_evidence_sha256": "53a26e5563c2edc29c48442a95ff765423f04e67ed8ac98c97b3724acd0882f3",
+    "schema_version": 1
+  },
+  "renderer": {
+    "backend": "Agg",
+    "matplotlib": "3.11.2"
+  },
+  "schema": 1,
+  "source_report": "benchmarks/results/nsight/rtx3090-decode.json",
+  "source_report_sha256": "1e61f8870c42c9dcffcfc3391bd2a89e3930d1cf5dc22e55568a42b7607ec9e0",
+  "stage_styles": {
+    "chain_selection": {
+      "color": "#F0D573",
+      "hatch": "//",
+      "label": "Chain selection"
+    },
+    "checksum": {
+      "color": "#009E73",
+      "hatch": "",
+      "label": "Checksum"
+    },
+    "description": {
+      "color": "#E69F00",
+      "hatch": "",
+      "label": "Token description"
+    },
+    "discovery": {
+      "color": "#0072B2",
+      "hatch": "",
+      "label": "Discovery"
+    },
+    "emission": {
+      "color": "#D55E00",
+      "hatch": "",
+      "label": "Emission"
+    },
+    "framing": {
+      "color": "#94A3B8",
+      "hatch": "//",
+      "label": "Framing"
+    },
+    "fused_decode": {
+      "color": "#4477AA",
+      "hatch": "",
+      "label": "Fused decode"
+    },
+    "refinement": {
+      "color": "#CC79A7",
+      "hatch": "//",
+      "label": "Refinement"
+    },
+    "sorting": {
+      "color": "#56B4E9",
+      "hatch": "//",
+      "label": "Sorting"
+    },
+    "verification": {
+      "color": "#475569",
+      "hatch": "//",
+      "label": "Status verification"
+    }
+  },
+  "style_helper_sha256": "aa7e34864b3396b6ea3fcd77a1dbdee35bec99c7cb3d0bb37e12d22abf22ebb8",
+  "time_origin": "first imported GPU activity, separately for each case",
+  "units": {
+    "display_time": "ms",
+    "source_time": "ns",
+    "stage_share": "% of kernel sum"
+  },
+  "warnings": {
+    "float32-1048576": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ],
+    "float32-65536": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ],
+    "float32-67108864": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ],
+    "random-1048576": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ],
+    "random-65536": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ],
+    "random-67108864": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ],
+    "text-1048576": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ],
+    "text-65536": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ],
+    "text-67108864": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ],
+    "uint32-1048576": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ],
+    "uint32-131072": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ],
+    "uint32-65536": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ],
+    "uint32-67108864": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ],
+    "zeros-1048576": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ],
+    "zeros-65536": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ],
+    "zeros-67108864": [
+      {
+        "severity": "Warning",
+        "source": "sqlite",
+        "text": "Not all CUDA events might have been collected."
+      }
+    ]
+  }
+}

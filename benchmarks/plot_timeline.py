@@ -340,6 +340,7 @@ def main():
     helpers = {f"benchmarks/{name}": sha256(ROOT / name) for name in ("plot_results.py", "plot_nsight.py")}
     manifest = {
         "schema": 1, "kind": "timeline", "source_report": report_identifier(args.input),
+        **({"publication": report["publication"]} if "publication" in report else {}),
         "source_report_sha256": sha256(args.input), "plotter_sha256": sha256(Path(__file__)),
         "style_helper_sha256": helpers["benchmarks/plot_results.py"], "style_helpers_sha256": helpers, "exports": exports, "figures": figures,
         "measurement_source": {"revision": report["source_revision"], "harness_sha256": report["harness_sha256"], "sha256": report["source_sha256"]},

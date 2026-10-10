@@ -276,9 +276,15 @@ def main():
     helpers = {f"benchmarks/{name}": sha256(ROOT / name) for name in ("plot_results.py", "plot_nsight.py", "plot_timeline.py")}
     manifest = {
         "schema": 1, "kind": "workflow", "operations": list(reports), "plotter_sha256": sha256(Path(__file__)),
+        **({"publication": {operation: report["publication"] for operation, report in reports.items()
+                            if "publication" in report}} if any("publication" in report for report in reports.values()) else {}),
         "source_reports": {operation: {"path": report_identifier(getattr(args, operation)), "sha256": sha256(getattr(args, operation))} for operation in reports},
         "measurement_sources": {operation: {"revision": report["source_revision"], "harness_sha256": report["harness_sha256"], "sha256": report["source_sha256"]} for operation, report in reports.items()},
-        "report_evidence": {operation: {field: report[field] for field in ("native_build", "extractor_sha256", "artifact_sha256", "dependencies_sha256", "extractor_dependencies_sha256")} for operation, report in reports.items()},
+        "report_evidence": {operation: {field: report[field]
+            for field in ("native_build", "extractor_sha256", "artifact_sha256",
+                          "dependencies_sha256", "extractor_dependencies_sha256")
+            if field != "artifact_sha256" or "publication" not in report}
+            for operation, report in reports.items()},
         "style_helpers_sha256": helpers, "exports": exports, "figures": figures,
         "warnings": {operation: report["warnings"] for operation, report in reports.items()},
         "time_origins": {operation: report["time_origin"] for operation, report in reports.items()},

@@ -1,4 +1,4 @@
-# Compression and decompression profiles on RTX 4090
+# Compression and decompression profiles on RTX 3090
 
 [Synchronized workflow timelines](#synchronized-workflow-timelines) show host
 phases, CUDA activity, transfers and sampled resources. The
@@ -8,7 +8,7 @@ for throughput, latency and CPU comparisons; these instrumented diagnostics
 have different timing scopes.
 
 The captures use source
-[`bb00aea`](https://github.com/xangma/cuda-zlib/tree/bb00aea62bae71542cbb896b339da4842c976499),
+[`d323fee`](https://github.com/xangma/cuda-zlib/tree/d323fee215658d2c03731c2e282b395860a27ac8),
 with runtime, harness and loaded-native identities recorded in each report.
 
 ## Synchronized workflow timelines
@@ -63,11 +63,11 @@ validation and time between annotations:
 
 | Condition, in recorded order | Compression (ms/file) | Decompression (ms/file) |
 | --- | ---: | ---: |
-| Plain, no telemetry or NVTX | 683.5 | 158.5 |
-| Process-tree telemetry | 675.5 | 164.2 |
-| Telemetry + CUDA/NVTX | 677.4 | 158.1 |
-| Telemetry + CUDA/NVTX/OSRT | 677.9 | 162.8 |
-| Plain repeat | 685.3 | 158.1 |
+| Plain, no telemetry or NVTX | 865.7 | 191.6 |
+| Process-tree telemetry | 862.8 | 190.3 |
+| Telemetry + CUDA/NVTX | 865.5 | 193.1 |
+| Telemetry + CUDA/NVTX/OSRT | 865.0 | 191.4 |
+| Plain repeat | 867.1 | 190.5 |
 
 The large host costs persist in both plain controls. These sequential shared-host
 runs do not separate instrumentation effects from system variation, and do not
@@ -77,15 +77,16 @@ Median phase times in the CUDA/NVTX capture separate the costs:
 
 | Phase | Compression (ms) | Decompression (ms) |
 | --- | ---: | ---: |
-| Completed codec call | 93.58 | 30.04 |
-| Metadata materialization | 0.38 | 0.40 |
-| Output materialization | 51.20 | 52.29 |
-| Recorded output D2H activity within that phase | 3.44 | 3.39 |
-| Host array → Python bytes | 47.21 | 52.15 |
-| Output validation | 458.26 | 5.52 |
+| Completed codec call | 167.48 | 47.77 |
+| Native metadata download | 0.53 | 0.47 |
+| Output materialization | 58.94 | 60.27 |
+| Host array → Python bytes | 55.59 | 60.11 |
+| Output validation | 555.72 | 5.52 |
 
-The D2H row is contained in output materialization. Phase medians need not add;
-container annotations and gaps have separate scopes. Compression's large
+The instrumentation comparison report retains every condition's values. The
+capture uses two warmups followed by 20 measured workflows; phase values are
+the median of measured workflows. Phase medians need not add; container
+annotations and gaps have separate scopes. Compression's large
 validation interval is the independent CPU decompression oracle. Decompression's
 long host interval is mostly output materialization and bytes construction.
 These costs do not indicate a GPU decoder stall.
@@ -102,36 +103,38 @@ performance benchmark changes its timing scope; it does not speed up decoding.
 
 ### Pinned transfers and bounded scheduling
 
-A separate [resident-input download diagnostic](benchmarks/results/workflow/rtx4090-download-float32.json)
+A separate [resident-input download diagnostic](benchmarks/results/workflow/rtx3090-download-float32.json)
 compares fresh results from the same codecs, with two warmups and 12 measured
 cases per mode. Upload is outside these loops; bytes construction and validation
 remain inside. The native build and payload match the workflow captures.
 
 | Host route | Compression batch wall time (ms/file) | Decompression batch wall time (ms/file) |
 | --- | ---: | ---: |
-| Ordinary `np.asarray` | 685.6 | 151.4 |
-| Pinned host transfer, serial | 626.2 | 95.9 |
-| Pinned host transfer, depth-two queue | 616.1 | 95.2 |
+| Ordinary `np.asarray` | 863.8 | 187.2 |
+| Pinned host transfer, serial | 798.6 | 119.2 |
+| Pinned host transfer, depth-two queue | 797.6 | 117.8 |
 
-For decompression, ordinary output materialization has medians of **52.7 ms wall
-time**, **44.9 ms calling-thread CPU time**, and **16,385 process minor faults**.
-Serial pinned output materialization takes **3.7 ms wall time**, **0.29 ms thread CPU**,
-and **zero process minor faults** after warmup. Compression shows the same pattern
-(52.0 ms versus 3.7 ms materialization). High thread CPU and minor faults support
+These are batch wall times divided by 12 cases, including validation; the report
+also preserves per-case latency and phase medians. For decompression, ordinary
+output materialization has medians of **59.48 ms wall time**, **52.04 ms
+calling-thread CPU time**, and **16,385 process minor faults**. Serial pinned
+output materialization takes **3.43 ms wall time**, **0.28 ms thread CPU**, and
+**zero process minor faults**. Compression shows the same pattern (59.43 ms
+versus 3.44 ms materialization). High thread CPU and minor faults support
 host allocation/first-touch as a substantial cost; process fault counters can
 also include concurrent JAX activity and do not identify an allocator function.
 Major-fault medians are zero.
 
-Pinned transfer leaves the roughly **53 ms** decompression bytes copy intact.
+Pinned transfer leaves the roughly **61 ms** decompression bytes copy intact.
 `decompress_zlib_host` already uses this pinned-host route and returns a read-only
 NumPy view; `memoryview(result)` shares its storage. Calling `.tobytes()` adds the
 allocation and copy shown above. The codec implementation is identical across
 these diagnostic modes.
 
 For a complete public-API comparison with fresh host inputs and matching CPU
-output types, see [consumer output formats](BENCHMARKS.md#consumer-output-formats-on-rtx-4090).
-The 64 MiB float32 measurements are 34.9 ms for CUDA output as a host array,
-35.7 ms for a memoryview and 87.4 ms for Python bytes, with validation outside timing.
+output types, see [consumer output formats](BENCHMARKS.md#consumer-output-formats-on-rtx-3090).
+The 64 MiB float32 measurements are 51.9 ms for CUDA output as a host array,
+52.0 ms for a memoryview and 112.5 ms for Python bytes, with validation outside timing.
 The [file example](examples/decompress_file.py) writes the shared memoryview
 without constructing a full-size Python bytes output. These consumer timings
 have a separate scope from the resident-input diagnostic above.
@@ -143,11 +146,11 @@ this run does not establish a useful overlap gain. Per-case queue latency has a
 different scope from batch time per file, and actual GPU overlap is unproven
 without a matching trace. The fixed mode order and shared workstation also
 leave allocation/cache/device-state effects possible. Queued decompression output
-materialization has a 26.9 ms median, including scheduling and completion waits;
+materialization has a 39.93 ms median, including scheduling and completion waits;
 this phase is not an isolated D2H copy measurement.
 
-A separate cache probe takes about 52 ms for a fresh ordinary host conversion,
-then about 0.07 ms for a second conversion of the same result. That second call
+A separate cache probe takes about 59.7 ms for a fresh ordinary host conversion,
+then about 0.08 ms for a second conversion of the same result. That second call
 shares cached host storage; it is excluded from all fresh-result summaries.
 
 Reproduce the diagnostic with a fresh output path:
@@ -159,10 +162,11 @@ python benchmarks/profile_download.py --source-revision "$(git rev-parse HEAD)" 
   --output /tmp/cuda-zlib-download.json
 ```
 
-The [command, log and receipt](benchmarks/results/workflow/captures/download)
-retain capture provenance. This diagnostic records phase wall/thread CPU times,
-process and optional thread page faults, source/native hashes and every output
-check. It does not replace host-byte CPU comparisons in [benchmarks](BENCHMARKS.md).
+The public normalized report records phase wall/thread CPU times, process and
+optional thread page faults, source/native hashes and every output check.
+Collection commands, logs and receipts stay with the local capture package.
+This diagnostic does not replace host-byte CPU comparisons in
+[benchmarks](BENCHMARKS.md).
 
 ### Reading the panels
 
@@ -186,12 +190,13 @@ bracket's host/CUDA alignment uncertainty. Resource sampling has its own wider
 query windows. Missing observations remain gaps. NVML utilization has a native
 reporting window that polling cannot improve.
 
-The detailed compression/decompression captures recorded 437/260 resource
-samples, with median intervals of 41.7/41.6 ms and origin half-brackets of
-57.895/46.563 µs. The coarse decode capture recorded 233 samples at a median
-46.5 ms interval, with a 40.181 µs origin half-bracket. These are achieved
+The detailed compression/decompression captures recorded 425/234 resource
+samples, with median intervals of 53.7/53.9 ms and origin half-brackets of
+54.784/58.907 µs. The coarse decode capture recorded 203 samples at a median
+61.9 ms interval, with a 50.992 µs origin half-bracket. These are achieved
 query cadences and host/CUDA alignment bounds, rather than 10 ms resource
-resolution. Other GPU processes held allocations during these captures.
+resolution. Whole-device and worker-attributable memory have separate scopes;
+the captures do not establish exclusive GPU use.
 
 Every expected host range is checked against the trace and clock brackets.
 Collection warnings retain process scope in reports and manifests. Scheduling
@@ -199,11 +204,12 @@ information is absent, so intervals without recorded GPU activity are not
 attributed to CPU execution, preemption or synchronization. Exclusive annotation
 time and unannotated intervals likewise describe wall-time coverage only.
 
-[Normalized compression](benchmarks/results/workflow/rtx4090-compress-float32.json),
-[normalized decompression](benchmarks/results/workflow/rtx4090-decompress-float32.json)
-and [raw captures](benchmarks/results/workflow/captures) retain runtime, harness,
-runner, extractor, native-library and artifact identities. The
-[coarse-phase decoding capture](benchmarks/results/timeline/rtx4090-float32.json)
+[Normalized compression](benchmarks/results/workflow/rtx3090-compress-float32.json)
+and [normalized decompression](benchmarks/results/workflow/rtx3090-decompress-float32.json)
+reports retain runtime, harness, runner, extractor and native-library identities.
+Raw traces and collection receipts remain local; the public reports and figures
+can be verified without them. The
+[coarse-phase decoding capture](benchmarks/results/timeline/rtx3090-float32.json)
 provides the same seven resource/activity panels with fewer host annotations
 ([whole process](benchmarks/figures/timeline/whole-process.png),
 [warmed loop](benchmarks/figures/timeline/warmed-loop.png)).
@@ -214,9 +220,9 @@ These Nsight Systems figures show **recorded GPU activity for one warmed,
 checked JIT decoding call per case**. They identify where recorded kernel time
 is spent.
 
-The captures use an RTX 4090 on a shared workstation, stdlib zlib level-6 input
+The captures use an RTX 3090, stdlib zlib level-6 input
 streams, and source revision
-[`bb00aea62bae71542cbb896b339da4842c976499`](https://github.com/xangma/cuda-zlib/tree/bb00aea62bae71542cbb896b339da4842c976499).
+[`d323fee215658d2c03731c2e282b395860a27ac8`](https://github.com/xangma/cuda-zlib/tree/d323fee215658d2c03731c2e282b395860a27ac8).
 The matrix covers five synthetic workloads at 64 KiB, 1 MiB and 64 MiB,
 plus a 128 KiB integer stream. Inputs are already on the GPU. Native build,
 compilation, payload generation, upload, host status reads and output byte
@@ -245,7 +251,7 @@ even when a kernel takes an early exit.
 
 At 64 MiB, emission has the largest recorded share for zeros, text and integer
 counters; discovery leads for float32, and stored-block chain validation leads
-for random bytes. The 128 KiB integer timeline below spends **98.6%** of recorded
+for random bytes. The 128 KiB integer timeline below spends **98.19%** of recorded
 kernel time in token description and emission combined. This variation makes workload-specific
 profiles useful when choosing what to optimize.
 
@@ -276,18 +282,16 @@ activity. Every imported kernel, memset and memcpy interval is shown.
 it is not attributed to CPU work or synchronization. Kernel and memory sums
 can differ from the span and from the harness's completed-call wall time.
 
-## Raw profiles and reproduction
+## Published profile data and reproduction
 
-The [capture directory](benchmarks/results/nsight/captures) contains all 16
-`.nsys-rep` files, original profile JSON, exact commands, import logs and
-capture receipts. Open a report with Nsight Systems, for example
-[`uint32-131072.nsys-rep`](benchmarks/results/nsight/captures/uint32-131072.nsys-rep).
-The [normalized report](benchmarks/results/nsight/rtx4090-decode.json) records
-per-activity durations, geometry, source and native-library identities,
-diagnostics and artifact SHA-256 hashes. SQLite exports can be regenerated
-from the raw reports; they are not stored in Git.
+The [normalized report](benchmarks/results/nsight/rtx3090-decode.json) records
+per-activity durations, kernel geometry, source and native-library identities,
+and collection warnings. The repository publishes this derived report and its
+figures; raw Nsight traces, SQLite exports, launch receipts and logs stay in the
+local capture package. The figure verifier checks normalized reports, source
+identities and exported figure hashes without requiring those private files.
 
-The published captures use Nsight Systems **2026.1.3**, CUDA toolkit **12.1.105**,
+The measured profile used Nsight Systems **2026.1.3**, CUDA toolkit **12.6.85**,
 driver **610.57.04**, and JAX/JAXlib **0.11.2**. With a compatible GPU environment,
 capture one case from the repository root:
 
@@ -313,25 +317,26 @@ python benchmarks/plot_timeline.py
 python benchmarks/verify_figures.py
 ```
 
-Figure verification also checks the measured runtime source, profiling harness,
-extractor, raw capture artifacts and all published benchmark figure exports.
+The command above collects one local trace. To regenerate the published stage
+matrix, collect every case and retain its local stage/native receipts for
+extraction. Figure verification validates the published report identities and
+figure exports without requiring those private receipts.
 
-To repeat the underlying stage extraction, copy the committed capture directory
-to a temporary directory and export every `.nsys-rep` to an adjacent `.sqlite`
-file with the command above. Then run:
+To extract locally collected stage captures, export each `.nsys-rep` to an
+adjacent `.sqlite` file with the command above, then provide the local capture
+directory and receipts:
 
 ```sh
 python benchmarks/extract_nsight.py --capture-dir /tmp/cuda-zlib-captures \
-  --stage-receipt benchmarks/results/nsight/captures/STAGE.json \
-  --native-receipt benchmarks/results/nsight/captures/native.json \
-  --source-revision bb00aea62bae71542cbb896b339da4842c976499 \
-  --reexported-sqlite --output /tmp/rtx4090-decode.json
+  --stage-receipt /tmp/cuda-zlib-captures/STAGE.json \
+  --native-receipt /tmp/cuda-zlib-captures/native.json \
+  --source-revision d323fee215658d2c03731c2e282b395860a27ac8 \
+  --reexported-sqlite --output /tmp/rtx3090-decode.json
 ```
 
 `--reexported-sqlite` explicitly allows SQLite bytes to differ from the original
-export. The extractor retains both digests and still checks the raw trace,
-source, fixture and launch identities. It rejects unmapped kernels and failed
-imports; it retains collection warnings.
+export. The extractor checks the raw trace, source, fixture and launch identities.
+It rejects unmapped kernels and failed imports; it retains collection warnings.
 
 ### Capture and plot both workflows with one command
 
@@ -369,7 +374,7 @@ OSRT for the rendered capture. No affinity or numerical thread limits are forced
 
 The default `--nvtx-domain-exclude=TSL` preserves application markers and avoids
 a string-table import error on JAX 0.11.2 / Nsight Systems 2026.1.3. Captures also
-use CUDA toolkit 12.1.105, driver 610.57.04, `psutil` 6.1.1 and
+use CUDA toolkit 12.6.85, driver 610.57.04, `psutil` 7.0.0 and
 `nvidia-ml-py` 13.615.71. Successful extraction requires imported GPU kernels,
 checked workflows, native/source identity, selected physical GPU, clock origin
 and unambiguous host launch correlations; collection warnings are retained.
@@ -378,8 +383,8 @@ To render the committed reports without CUDA:
 
 ```sh
 python benchmarks/plot_workflow.py \
-  --compress benchmarks/results/workflow/rtx4090-compress-float32.json \
-  --decompress benchmarks/results/workflow/rtx4090-decompress-float32.json
+  --compress benchmarks/results/workflow/rtx3090-compress-float32.json \
+  --decompress benchmarks/results/workflow/rtx3090-decompress-float32.json
 python benchmarks/verify_figures.py
 ```
 

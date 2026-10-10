@@ -400,6 +400,7 @@ def main():
     }
     manifest = {
         "schema_version": 1, "source": report_identifier(args.input), "source_sha256": source_hash,
+        **({"publication": report["publication"]} if "publication" in report else {}),
         "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "renderer": {"matplotlib": matplotlib.__version__, "numpy": np.__version__, "backend": "Agg"},
         "measurement_source": {
