@@ -245,8 +245,11 @@ def main():
     for operation in OPERATIONS:
         parser.add_argument(f"--{operation}", type=Path, help=f"Normalized {operation} workflow report")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "figures/workflow")
+    parser.add_argument("--prefix", default="rtx4090", help="hardware identifier for the manifest filename")
     parser.add_argument("--validate-only", action="store_true")
     args = parser.parse_args()
+    if not args.prefix or Path(args.prefix).name != args.prefix or args.prefix in (".", ".."):
+        parser.error("prefix must be a filename component")
     if not any(getattr(args, operation) is not None for operation in OPERATIONS):
         parser.error("provide at least one of --compress or --decompress")
     reports = {operation: load_report(getattr(args, operation), operation) for operation in OPERATIONS if getattr(args, operation) is not None}
@@ -286,7 +289,7 @@ def main():
         "units": {"display_time": "seconds since collector clock origin", "copy": "MiB completed per bin", "activity": "kernel interval union/actual bin duration", "memory": "GiB", "cpu": "percent; 100 is one logical CPU"},
         "limitations": ["Instrumented diagnostics, not benchmarks", "Kernel activity is not occupancy", "Completed bytes per bin are not instantaneous bandwidth", "Host phases do not establish exclusive costs or GPU ownership", "Resource points use metric-specific query clocks; CPU uses averaging-interval midpoints", "Null resources remain gaps", "Summed RSS may double-count shared pages"],
     }
-    (args.output_dir / "rtx4090-manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    (args.output_dir / f"{args.prefix}-manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     print(f"Rendered {len(figures)} workflow families, {len(exports)} exports and provenance manifest")
 
 

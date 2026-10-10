@@ -316,8 +316,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=ROOT / "results/timeline/rtx4090-float32.json")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "figures/timeline")
+    parser.add_argument("--prefix", default="rtx4090", help="hardware identifier for the manifest filename")
     parser.add_argument("--validate-only", action="store_true")
     args = parser.parse_args()
+    if not args.prefix or Path(args.prefix).name != args.prefix or args.prefix in (".", ".."):
+        parser.error("prefix must be a filename component")
     report = load_report(args.input)
     if args.validate_only:
         print(f"Validated timeline: {len(report['gpu_activities'])} CUDA activities, {len(report['samples'])} resource samples")
@@ -351,7 +354,7 @@ def main():
         "units": {"display_time": "seconds since collector clock origin", "copy": "MiB completed per bin", "kernel_activity": "union(kernel intervals)/actual bin duration", "memory": "GiB", "cpu": "percent; 100 means one logical CPU"},
         "limitations": ["Instrumented diagnostics, not end-to-end benchmarks", "Kernel activity is not occupancy", "Host annotations do not establish GPU ownership", "Fused internal stages remain indivisible", "Missing resource values remain gaps", "Summed RSS may count shared pages more than once"],
     }
-    (args.output_dir / "rtx4090-manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    (args.output_dir / f"{args.prefix}-manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     print("Rendered two synchronized timelines, six exports and provenance manifest")
 
 

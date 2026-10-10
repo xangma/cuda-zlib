@@ -479,8 +479,31 @@ def verify_manifest(name, kind, plotter, count):
 
 def main():
     try:
+        # Exactly one active hardware snapshot. Old figures belong outside FIGURES.
+        selection_path = FIGURES / "publication.json"
+        selection = read_json(selection_path) if selection_path.is_file() else None
+        gpu_slug = "rtx4090"
+        if selection is not None:
+            require(set(selection) == {"schema_version", "kind", "gpu_slug", "source_revision"}
+                    and selection["schema_version"] == 1 and selection["kind"] == "active_publication",
+                    "invalid active publication selection")
+            gpu_slug = selection["gpu_slug"]
+            require(gpu_slug in {"rtx3090", "rtx4090"}, "unsupported active publication hardware")
+            require(re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", selection["source_revision"]),
+                    "invalid active publication revision")
+        specifications = tuple((name.replace("rtx4090", gpu_slug), kind, plotter, count)
+                               for name, kind, plotter, count in MANIFESTS)
         expected = set()
-        for specification in MANIFESTS:
+        for specification in specifications:
+            if selection is not None:
+                manifest = read_json(FIGURES / specification[0])
+                if specification[1] == "batch":
+                    revisions = {manifest["source_revision"]}
+                elif specification[1] == "workflow":
+                    revisions = {value["revision"] for value in manifest["measurement_sources"].values()}
+                else:
+                    revisions = {manifest["measurement_source"]["revision"]}
+                require(revisions == {selection["source_revision"]}, "active publication revision mismatch")
             exports = verify_manifest(*specification)
             require(not expected & exports, "exports occur in more than one manifest")
             expected.update(exports)

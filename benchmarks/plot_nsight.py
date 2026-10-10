@@ -242,8 +242,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=ROOT / "results/nsight/rtx4090-decode.json")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "figures/nsight")
+    parser.add_argument("--prefix", default="rtx4090", help="hardware identifier for the manifest filename")
     parser.add_argument("--validate-only", action="store_true")
     args = parser.parse_args()
+    if not args.prefix or Path(args.prefix).name != args.prefix or args.prefix in (".", ".."):
+        parser.error("prefix must be a filename component")
     report, cases = load_report(args.input)
     if args.validate_only:
         print(f"Validated {len(cases)} source-bound Nsight cases")
@@ -282,7 +285,7 @@ def main():
         "exports": {filename: digest for figure in figures.values() for filename, digest in figure["exports"].items()},
         "limitations": ["One warmed instrumented call per case; no uncertainty or speedup estimate", "Fused internal stages cannot be separated", "Guarded launches counted without inferring useful work", "Gaps do not identify a cause; interval sums are not wall time"],
     }
-    (args.output_dir / "rtx4090-manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    (args.output_dir / f"{args.prefix}-manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     print(f"Rendered {len(figures)} Nsight figure families, 6 exports and manifest")
 
 
